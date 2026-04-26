@@ -1,7 +1,7 @@
 import * as React from "react";
 import { cn } from "@/lib/utils";
 
-export type LogoPalette = "sky" | "amber" | "sky-bright";
+export type LogoPalette = "sky" | "amber" | "sky-bright" | "aurora";
 
 interface LogoProps extends React.SVGAttributes<SVGSVGElement> {
   size?: number;
@@ -37,6 +37,15 @@ const PALETTES: Record<LogoPalette, {
     rightBottom: "#0369a1",
     mainTop: "#38bdf8",
     shadow: "#0c4a6e",
+  },
+  aurora: {
+    // Sibling-app TYROWMS palette — blue → purple → cyan aurora on the
+    // gradient flap, indigo accents elsewhere. Keeps the origami
+    // letterform, swaps only the colour identity.
+    gradStops: ["#3b82f6", "#8b5cf6", "#06b6d4"],
+    rightBottom: "#6366f1",
+    mainTop: "#0d6e4f",
+    shadow: "#4338ca",
   },
 };
 

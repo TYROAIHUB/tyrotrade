@@ -7,6 +7,7 @@ import { GlassPanel } from "@/components/glass/GlassPanel";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { AskAiButton } from "@/components/dashboard/AskAiButton";
+import { TyroWmsButton } from "@/components/layout/TyroWmsButton";
 import { AppSidebar } from "./AppSidebar";
 import { SidebarProvider, useSidebar } from "./sidebar-context";
 import {
@@ -151,6 +152,7 @@ function TopBar({ title, pathname }: { title: string; pathname: string }) {
               <Bell />
               <span className="absolute top-1.5 right-1.5 size-1.5 rounded-full bg-rose-500" />
             </Button>
+            <TyroWmsButton className="hidden sm:inline-flex" />
             <AskAiButton className="hidden sm:inline-flex" />
           </div>
         </GlassPanel>
