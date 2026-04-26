@@ -36,3 +36,5 @@ Thumbs.db
 .agents
 .mcp.json
 skills-lock.json
+tsconfig.app.tsbuildinfo
+tsconfig.node.tsbuildinfo
