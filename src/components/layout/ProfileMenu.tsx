@@ -1,4 +1,5 @@
 import { LogOut, Settings } from "lucide-react";
+import { useMsal } from "@azure/msal-react";
 import {
   Popover,
   PopoverContent,
@@ -11,6 +12,8 @@ import {
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { useThemeAccent } from "./theme-accent";
+import { isAuthConfigured } from "@/lib/auth/msal";
+import { shouldUseMock } from "@/lib/dataverse";
 
 interface ProfileMenuProps {
   /** When true, render the full row with name + email beside the avatar.
@@ -24,6 +27,25 @@ const INITIALS = "CS";
 
 export function ProfileMenu({ expanded }: ProfileMenuProps) {
   const accent = useThemeAccent();
+  // useMsal is safe even when no MsalProvider is mounted in mock mode —
+  // it returns an empty `accounts` array and a no-op instance. We still
+  // gate the actual logout call behind `isAuthConfigured` so that mock
+  // sessions don't try to redirect to an empty endpoint.
+  const { instance } = useMsal();
+
+  const handleLogout = () => {
+    if (isAuthConfigured && !shouldUseMock()) {
+      const account = instance.getActiveAccount() ?? instance.getAllAccounts()[0];
+      void instance.logoutRedirect({
+        account: account ?? undefined,
+        // Land back on the login page after sign-out completes.
+        postLogoutRedirectUri: window.location.origin + import.meta.env.BASE_URL,
+      });
+      return;
+    }
+    // Mock / dev mode: just bounce to /login (HashRouter).
+    window.location.hash = "#/login";
+  };
 
   const avatar = (
     <span
@@ -116,6 +138,7 @@ export function ProfileMenu({ expanded }: ProfileMenuProps) {
           </button>
           <button
             type="button"
+            onClick={handleLogout}
             className="w-full flex items-center gap-2.5 rounded-xl px-3 py-2 text-sm text-rose-700 hover:bg-rose-500/10 transition-colors"
           >
             <LogOut className="size-4" />
