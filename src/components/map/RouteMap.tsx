@@ -544,32 +544,46 @@ function DurationPills({ project }: { project: Project }) {
     <>
       {transit != null && (
         <span
-          className="ml-1 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10.5px] font-medium tracking-tight bg-foreground/[0.05] text-foreground/85"
+          className="ml-1 inline-flex items-center rounded-full px-2 py-0.5 text-[10.5px] font-medium tracking-tight"
+          style={{
+            backgroundColor: "rgba(56,189,248,0.14)",
+            color: "#0c4a6e",
+            boxShadow: "inset 0 0 0 1px rgba(56,189,248,0.35)",
+          }}
           title={`Transit Süre: ${transit} gün (Yükleme bitişi → DP NOR Kabul)`}
         >
-          <Clock className="size-2.5" strokeWidth={2.5} />
-          <span className="uppercase tracking-wider text-muted-foreground">
+          <Clock className="size-2.5 mr-1" strokeWidth={2.5} />
+          <span className="uppercase tracking-wider text-sky-700/85">
             Transit
           </span>
-          <span aria-hidden className="text-foreground/40">
+          <span aria-hidden className="text-sky-700/35 mx-1">
             ·
           </span>
-          <span className="font-semibold tabular-nums">{transit}g</span>
+          <span className="font-semibold tabular-nums text-sky-900">
+            {transit}g
+          </span>
         </span>
       )}
       {operation != null && (
         <span
-          className="ml-1 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10.5px] font-medium tracking-tight bg-foreground/[0.05] text-foreground/85"
+          className="ml-1 inline-flex items-center rounded-full px-2 py-0.5 text-[10.5px] font-medium tracking-tight"
+          style={{
+            backgroundColor: "rgba(99,102,241,0.13)",
+            color: "#312e81",
+            boxShadow: "inset 0 0 0 1px rgba(99,102,241,0.32)",
+          }}
           title={`Operasyon Süresi: ${operation} gün (Toplam operasyon süresi)`}
         >
-          <Clock className="size-2.5" strokeWidth={2.5} />
-          <span className="uppercase tracking-wider text-muted-foreground">
+          <Clock className="size-2.5 mr-1" strokeWidth={2.5} />
+          <span className="uppercase tracking-wider text-indigo-700/85">
             Operasyon
           </span>
-          <span aria-hidden className="text-foreground/40">
+          <span aria-hidden className="text-indigo-700/35 mx-1">
             ·
           </span>
-          <span className="font-semibold tabular-nums">{operation}g</span>
+          <span className="font-semibold tabular-nums text-indigo-900">
+            {operation}g
+          </span>
         </span>
       )}
     </>
