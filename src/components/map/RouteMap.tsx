@@ -23,8 +23,11 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import lineSliceAlong from "@turf/line-slice-along";
+import along from "@turf/along";
 import bearing from "@turf/bearing";
 import { point } from "@turf/helpers";
+import { HugeiconsIcon } from "@hugeicons/react";
+import { ArrowUp01Icon } from "@hugeicons/core-free-icons";
 import type { Feature, LineString, Position } from "geojson";
 
 import { GlassPanel } from "@/components/glass/GlassPanel";
@@ -150,6 +153,61 @@ export function RouteMap({ project }: RouteMapProps) {
     return { completedLine: completed, position, headingDeg };
   }, [geom, progress]);
 
+  /**
+   * Direction arrows placed at evenly-spaced intervals along the
+   * route, rotated to follow the local direction of travel. Arrows
+   * before the vessel's `progress` use the active theme accent
+   * (bright); arrows after stay muted. Skips the 8% nearest each
+   * port so they don't collide with the pins / vessel marker.
+   *
+   * Bearing is sampled from a centred backward+forward pair so the
+   * tangent stays accurate on tight great-circle curves (single
+   * forward step drifted off-line on long ocean legs).
+   */
+  const chevrons = React.useMemo(() => {
+    if (!geom) return [] as Array<{
+      lon: number;
+      lat: number;
+      bearingDeg: number;
+      done: boolean;
+    }>;
+    const { line, totalKm } = geom;
+    const COUNT = 6;
+    const out: Array<{
+      lon: number;
+      lat: number;
+      bearingDeg: number;
+      done: boolean;
+    }> = [];
+    for (let i = 0; i < COUNT; i++) {
+      const t = 0.08 + (i / (COUNT - 1)) * 0.84;
+      const km = totalKm * t;
+      const here = along(line, km, { units: "kilometers" }).geometry
+        .coordinates as [number, number];
+      // Centred bearing — sample equally before and after, average via
+      // a vector from `back` to `ahead`. Stays on the rendered
+      // polyline even on curved sea-route great circles.
+      const halfStep = Math.max(0.5, totalKm * 0.005);
+      const ahead = along(
+        line,
+        Math.min(totalKm, km + halfStep),
+        { units: "kilometers" }
+      ).geometry.coordinates as [number, number];
+      const back = along(
+        line,
+        Math.max(0, km - halfStep),
+        { units: "kilometers" }
+      ).geometry.coordinates as [number, number];
+      out.push({
+        lon: here[0],
+        lat: here[1],
+        bearingDeg: bearing(point(back), point(ahead)),
+        done: t < progress,
+      });
+    }
+    return out;
+  }, [geom, progress]);
+
   const lp = project?.vesselPlan?.loadingPort;
   const dp = project?.vesselPlan?.dischargePort;
   const ms = project?.vesselPlan?.milestones;
@@ -231,6 +289,23 @@ export function RouteMap({ project }: RouteMapProps) {
                   </div>
                 </Marker>
               )}
+
+              {/* Direction chevrons along the route — convey LP→DP
+                  flow at a glance. Rendered before the vessel so the
+                  vessel marker stays on top. */}
+              {chevrons.map((c, i) => (
+                <Marker
+                  key={`chev-${i}`}
+                  longitude={c.lon}
+                  latitude={c.lat}
+                  anchor="center"
+                >
+                  <DirectionChevron
+                    bearingDeg={c.bearingDeg}
+                    done={c.done}
+                  />
+                </Marker>
+              ))}
 
               {position && progress > 0.02 && progress < 0.98 && project && (
                 <Marker
@@ -536,6 +611,49 @@ function EmptyState({
           </p>
         )}
       </div>
+    </div>
+  );
+}
+
+/**
+ * Tiny chevron arrow placed along the route to convey LP→DP direction
+ * at a glance. Rotated so the tip points along the local route
+ * tangent. Bright sky-blue when on the completed segment, dim white
+ * when still ahead of the vessel.
+ *
+ *  - `bearingDeg` is in compass degrees (0=N, 90=E…). We translate to
+ *    SVG rotation by subtracting 90° so a default east-pointing
+ *    chevron lines up with bearing=90.
+ *  - `pointer-events: none` so chevrons don't steal hover from the
+ *    underlying line / port pins.
+ */
+function DirectionChevron({
+  bearingDeg,
+  done,
+}: {
+  bearingDeg: number;
+  done: boolean;
+}) {
+  // HugeIcons ArrowUp01Icon points up by default; we add 180° to make
+  // it point along the bearing (icon "down" → travel direction).
+  // Active arrows show in deep navy; pending arrows fade.
+  return (
+    <div
+      className="pointer-events-none"
+      style={{
+        transform: `rotate(${bearingDeg}deg)`,
+        transformOrigin: "center",
+        filter: done
+          ? "drop-shadow(0 0 5px rgba(56,189,248,0.55)) drop-shadow(0 0 1px rgba(255,255,255,0.7))"
+          : "drop-shadow(0 0 2px rgba(255,255,255,0.45))",
+        color: done ? "#1e3a8a" : "rgba(71,85,105,0.7)",
+      }}
+    >
+      <HugeiconsIcon
+        icon={ArrowUp01Icon}
+        size={done ? 16 : 14}
+        strokeWidth={done ? 3 : 2.4}
+      />
     </div>
   );
 }
