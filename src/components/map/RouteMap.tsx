@@ -302,7 +302,7 @@ export function RouteMap({ project }: RouteMapProps) {
                     </span>
                   );
                 })()}
-              <DurationPills project={project} />
+              {project && <DurationPills project={project} />}
             </div>
           </GlassPanel>
         </div>

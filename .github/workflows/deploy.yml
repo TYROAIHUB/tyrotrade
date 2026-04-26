@@ -1,0 +1,60 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      - name: Build
+        run: npm run build
+        env:
+          # Azure AD SPA app registration — TIRYAKI tenant.
+          # Tenant + client IDs are not secrets (MSAL SPA flow exposes them
+          # in the client bundle anyway), but we keep them in the workflow
+          # so rotating means a single edit + push.
+          VITE_USE_MOCK: "false"
+          VITE_AAD_TENANT_ID: 9efa3bdf-67ad-47e3-8dfb-d1df79a6d7fa
+          VITE_AAD_CLIENT_ID: 7d31868c-d0ef-452e-a5ac-4d42852649ec
+          # Production redirect URI — must be added to the Azure AD app's
+          # SPA platform redirect URIs list. The GitHub Pages URL below
+          # follows the `https://<owner>.github.io/<repo>/` pattern.
+          VITE_AAD_REDIRECT_URI: https://tyroaihub.github.io/tyrotrade/
+          VITE_DATAVERSE_URL: https://operations-tiryaki.crm4.dynamics.com
+          VITE_DATAVERSE_SCOPE: https://operations-tiryaki.crm4.dynamics.com/user_impersonation
+          VITE_PROJECT_TRADER_FILTER: TRD-FTB
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

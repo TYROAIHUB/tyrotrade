@@ -46,9 +46,15 @@ async function loadSearoute(): Promise<SeaRouteFn> {
   if (searouteFn) return searouteFn;
   if (searouteLoadPromise) return searouteLoadPromise;
   searouteLoadPromise = import("searoute-ts").then((m) => {
-    // Module export shape: `seaRoute` named export OR default export
-    const fn = (m as { seaRoute?: SeaRouteFn; default?: SeaRouteFn }).seaRoute ??
-      (m as { default?: SeaRouteFn }).default;
+    // Module export shape: `seaRoute` named export OR default export.
+    // Cast through `unknown` because searoute-ts upstream types don't
+    // line up with the runtime function signature (returns geojson
+    // Feature, but its types claim something else).
+    const mod = m as unknown as {
+      seaRoute?: SeaRouteFn;
+      default?: SeaRouteFn;
+    };
+    const fn = mod.seaRoute ?? mod.default;
     if (!fn) throw new Error("searoute-ts: seaRoute export not found");
     searouteFn = fn;
     return fn;

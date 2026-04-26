@@ -14,7 +14,7 @@ import type { VesselMilestones, VesselStatus } from "@/lib/dataverse/entities";
  */
 export function computeRouteProgress(
   ms: VesselMilestones,
-  vesselStatus: VesselStatus,
+  vesselStatus: VesselStatus | undefined,
   now: Date = new Date()
 ): number {
   const t = (iso: string | null): number | null => {
@@ -92,7 +92,7 @@ export interface RouteProgressInfo {
 
 export function describeProgress(
   ms: VesselMilestones,
-  vesselStatus: VesselStatus,
+  vesselStatus: VesselStatus | undefined,
   now: Date = new Date()
 ): RouteProgressInfo {
   const progress = computeRouteProgress(ms, vesselStatus, now);
