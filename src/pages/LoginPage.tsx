@@ -12,6 +12,7 @@ import {
 import { Logo } from "@/components/brand/Logo";
 import { Button } from "@/components/ui/button";
 import { useIsMobile } from "@/hooks/useMediaQuery";
+import { cn } from "@/lib/utils";
 
 // Lazy-load the 3D globe scene — keeps three.js + world-atlas out of
 // the main bundle and shows a navy fallback while the chunk loads.
@@ -110,10 +111,10 @@ export function LoginPage({ onLogin, isLoading }: LoginPageProps = {}) {
           </div>
         </motion.div>
 
-        {/* Slogan + content — flows naturally on mobile (no flex-1 so the
-            container doesn't stretch and push content past the
-            viewport), vertically centered on md+ where there's space. */}
-        <div className="relative md:flex-1 md:flex md:flex-col md:justify-center max-w-md w-full mx-auto md:mx-0 mt-3 md:py-8">
+        {/* Slogan + content — vertically centred in the remaining space
+            on mobile (so the feature pill stack + CTA sit dead-centre)
+            and from md+ where there's room. */}
+        <div className="relative flex-1 flex flex-col justify-center max-w-md w-full mx-auto md:mx-0 mt-3 md:py-8">
           {/* Slogan + tagline — single line slogan on mobile (subtitle
               hidden), full block from md+ where there's room. */}
           <motion.div
@@ -133,8 +134,8 @@ export function LoginPage({ onLogin, isLoading }: LoginPageProps = {}) {
             </p>
           </motion.div>
 
-          {/* Feature 2×2 grid — tighter on mobile so the CTA stays in
-              view on a 667 px viewport. */}
+          {/* Feature list — vertical pill stack on mobile (icon + title
+              over subtitle), classic 2×2 grid from md+. */}
           <motion.ul
             initial="hidden"
             animate="show"
@@ -144,7 +145,7 @@ export function LoginPage({ onLogin, isLoading }: LoginPageProps = {}) {
                 transition: { staggerChildren: reduce ? 0 : 0.08, delayChildren: reduce ? 0 : 0.3 },
               },
             }}
-            className="grid grid-cols-2 gap-2 sm:gap-2.5 mb-6 sm:mb-10"
+            className="flex flex-col gap-1.5 md:grid md:grid-cols-2 md:gap-2.5 mb-5 md:mb-10"
           >
             {FEATURES.map((f) => (
               <FeatureCell key={f.title} {...f} />
@@ -241,12 +242,10 @@ export function LoginPage({ onLogin, isLoading }: LoginPageProps = {}) {
           </motion.div>
         </div>
 
-        {/* Footer — short on mobile, full attribution on md+. */}
-        <div className="relative text-[10px] sm:text-[10.5px] text-slate-600 text-center md:text-left mt-2 md:mt-3">
-          <span className="md:hidden">© {new Date().getFullYear()} TTECH</span>
-          <span className="hidden md:inline">
-            © {new Date().getFullYear()} TTECH Business Solutions · TYRO AI
-          </span>
+        {/* Footer — pinned to the very bottom of the viewport on mobile
+            so the centred content above doesn't push it. */}
+        <div className="relative text-[10px] sm:text-[10.5px] text-slate-600 text-center md:text-left mt-3">
+          © {new Date().getFullYear()} TTECH Business Solutions · TYRO AI
         </div>
       </div>
 
@@ -440,7 +439,13 @@ function FeatureCell({ icon, title, body }: Feature) {
         hidden: { opacity: 0, y: 10 },
         show: { opacity: 1, y: 0, transition: { duration: 0.5, ease: [0.22, 1, 0.36, 1] } },
       }}
-      className="rounded-xl p-2.5 sm:p-3 group hover:bg-white/[0.03] transition-colors"
+      // Mobile: horizontal pill (icon left, title + subtitle stacked
+      // right). md+: classic 2-col card (icon over title over subtitle).
+      className={cn(
+        "group hover:bg-white/[0.03] transition-colors",
+        "flex items-center gap-2.5 px-3 py-2 rounded-full",
+        "md:block md:px-3 md:py-3 md:rounded-xl"
+      )}
       style={{
         background:
           "linear-gradient(135deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.01) 100%)",
@@ -449,7 +454,10 @@ function FeatureCell({ icon, title, body }: Feature) {
       }}
     >
       <div
-        className="size-7 sm:size-8 rounded-lg grid place-items-center mb-1.5 sm:mb-2 shrink-0"
+        className={cn(
+          "size-7 rounded-lg grid place-items-center shrink-0",
+          "md:size-8 md:mb-2"
+        )}
         style={{
           background:
             "linear-gradient(135deg, rgba(56,189,248,0.18) 0%, rgba(37,99,235,0.18) 100%)",
@@ -463,13 +471,13 @@ function FeatureCell({ icon, title, body }: Feature) {
           style={{ color: "#7dd3fc" }}
         />
       </div>
-      <div className="text-[12px] sm:text-[12.5px] font-semibold text-white tracking-tight leading-tight">
-        {title}
-      </div>
-      {/* Body description shown only from md+; mobile keeps the cards
-          minimal (icon + title only). */}
-      <div className="hidden md:block text-[10.5px] text-slate-400 leading-snug mt-0.5 line-clamp-2">
-        {body}
+      <div className="min-w-0 flex-1 md:flex-initial">
+        <div className="text-[12.5px] font-semibold text-white tracking-tight leading-tight">
+          {title}
+        </div>
+        <div className="text-[10.5px] text-slate-400 leading-snug mt-0.5 line-clamp-1 md:line-clamp-2">
+          {body}
+        </div>
       </div>
     </motion.li>
   );
