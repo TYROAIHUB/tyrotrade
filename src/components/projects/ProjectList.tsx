@@ -373,8 +373,9 @@ function FilterPopover({
       <PopoverContent
         align="end"
         sideOffset={10}
+        collisionPadding={12}
         className={cn(
-          "w-80 p-0 overflow-hidden flex flex-col",
+          "w-[min(20rem,calc(100vw-1rem))] p-0 overflow-hidden flex flex-col",
           "max-h-[min(calc(100vh-120px),580px)]",
           "bg-white/85 backdrop-blur-2xl backdrop-saturate-150",
           "ring-1 ring-white/55",

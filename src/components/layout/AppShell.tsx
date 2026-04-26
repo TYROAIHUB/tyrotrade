@@ -1,6 +1,6 @@
 import * as React from "react";
 import { Outlet, useLocation } from "react-router-dom";
-import { Menu, Bell, Ship, Database } from "lucide-react";
+import { Menu, Bell, Ship, Database, Search } from "lucide-react";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { Home01Icon } from "@hugeicons/core-free-icons";
 import { GlassPanel } from "@/components/glass/GlassPanel";
@@ -130,6 +130,18 @@ function TopBar({ title, pathname }: { title: string; pathname: string }) {
               onOpen={() => setCmdOpen(true)}
               className="hidden md:inline-flex"
             />
+            {/* Mobile-only search shortcut — opens the same command
+                palette without taking horizontal real estate from the
+                title slot. */}
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setCmdOpen(true)}
+              aria-label="Ara"
+              className="md:hidden text-muted-foreground"
+            >
+              <Search />
+            </Button>
             <Button
               variant="ghost"
               size="icon"

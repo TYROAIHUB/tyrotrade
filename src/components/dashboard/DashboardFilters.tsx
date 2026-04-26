@@ -240,9 +240,11 @@ export function DashboardFilters({
         side="bottom"
         align="end"
         sideOffset={12}
+        collisionPadding={12}
         className={cn(
           // Premium liquid-glass shell — relies on shadcn .glass + .glass-strong defaults
-          "w-[440px] p-0 overflow-hidden flex flex-col",
+          // Mobile clamps width to viewport so the popover never overflows.
+          "w-[min(440px,calc(100vw-1rem))] p-0 overflow-hidden flex flex-col",
           "max-h-[min(calc(100vh-120px),600px)]",
           // Crisp white hairline + deep elevation so it pops off the dashboard
           "ring-1 ring-white/55",

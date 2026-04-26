@@ -11,6 +11,7 @@ import {
 } from "@hugeicons/core-free-icons";
 import { Logo } from "@/components/brand/Logo";
 import { Button } from "@/components/ui/button";
+import { useIsMobile } from "@/hooks/useMediaQuery";
 
 // Lazy-load the 3D globe scene — keeps three.js + world-atlas out of
 // the main bundle and shows a navy fallback while the chunk loads.
@@ -67,9 +68,9 @@ export function LoginPage({ onLogin, isLoading }: LoginPageProps = {}) {
   }, [connecting, onLogin, reduce]);
 
   return (
-    <div className="h-screen w-screen overflow-hidden grid md:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)] bg-[#020617] text-foreground">
+    <div className="min-h-screen w-screen md:h-screen md:overflow-hidden grid md:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)] bg-[#020617] text-foreground">
       {/* ── Left panel — brand + content + CTA ── */}
-      <div className="relative flex flex-col p-8 sm:p-12 lg:p-16 z-[1]">
+      <div className="relative flex flex-col p-4 sm:p-10 lg:p-16 z-[1] md:min-h-screen">
         {/* Subtle ambient glow behind content (only visible on mobile when
             scene is hidden) */}
         <div
@@ -81,21 +82,23 @@ export function LoginPage({ onLogin, isLoading }: LoginPageProps = {}) {
           }}
         />
 
-        {/* Mobile-only mini scene at top */}
-        <div className="md:hidden relative h-44 -mx-8 sm:-mx-12 mb-6 rounded-b-3xl overflow-hidden">
+        {/* Mobile-only mini scene at top — shorter so the CTA fits on
+            375×667 without scrolling. */}
+        <div className="md:hidden relative h-24 sm:h-36 -mx-4 sm:-mx-10 mb-3 rounded-b-3xl overflow-hidden">
           <SceneFallback>
             <GlobeScene accelerated={connecting || !!isLoading} />
           </SceneFallback>
         </div>
 
-        {/* Brand — anchored top-left */}
+        {/* Brand — centred on mobile (with the globe overhead), anchored
+            top-left from md+. */}
         <motion.div
           initial={reduce ? false : { opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={T(0)}
-          className="relative flex items-center gap-3"
+          className="relative flex items-center gap-3 justify-center md:justify-start"
         >
-          <Logo size={44} />
+          <Logo size={40} />
           <div className="flex flex-col leading-none">
             <span className="text-[10px] uppercase tracking-[0.3em] text-sky-400/80 font-semibold">
               Tiryaki
@@ -107,27 +110,31 @@ export function LoginPage({ onLogin, isLoading }: LoginPageProps = {}) {
           </div>
         </motion.div>
 
-        {/* Slogan + content — vertically centered in the remaining space */}
-        <div className="relative flex-1 flex flex-col justify-center max-w-md w-full mx-auto md:mx-0 py-8">
-          {/* Slogan + tagline */}
+        {/* Slogan + content — flows naturally on mobile (no flex-1 so the
+            container doesn't stretch and push content past the
+            viewport), vertically centered on md+ where there's space. */}
+        <div className="relative md:flex-1 md:flex md:flex-col md:justify-center max-w-md w-full mx-auto md:mx-0 mt-3 md:py-8">
+          {/* Slogan + tagline — single line slogan on mobile (subtitle
+              hidden), full block from md+ where there's room. */}
           <motion.div
             initial={reduce ? false : { opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
             transition={T(0.15)}
-            className="mb-9"
+            className="mb-5 sm:mb-9 text-center md:text-left"
           >
-            <h1 className="text-3xl sm:text-4xl font-bold tracking-tight leading-[1.15] text-white">
+            <h1 className="text-[20px] sm:text-4xl font-bold tracking-tight leading-[1.2] text-white">
               Uluslararası{" "}
               <span className="text-brand-gradient">Tedarik Zinciri</span>{" "}
               Platformu<span className="text-sky-400">.</span>
             </h1>
-            <p className="mt-4 text-[14px] sm:text-[15px] text-slate-400 leading-relaxed">
+            <p className="hidden md:block mt-3 sm:mt-4 text-[13.5px] sm:text-[15px] text-slate-400 leading-relaxed">
               Tedarikten teslimata, uluslararası ticaretin tüm operasyon
               süreçlerini tek panelden yönet.
             </p>
           </motion.div>
 
-          {/* Feature 2×2 grid */}
+          {/* Feature 2×2 grid — tighter on mobile so the CTA stays in
+              view on a 667 px viewport. */}
           <motion.ul
             initial="hidden"
             animate="show"
@@ -137,7 +144,7 @@ export function LoginPage({ onLogin, isLoading }: LoginPageProps = {}) {
                 transition: { staggerChildren: reduce ? 0 : 0.08, delayChildren: reduce ? 0 : 0.3 },
               },
             }}
-            className="grid grid-cols-2 gap-2.5 mb-10"
+            className="grid grid-cols-2 gap-2 sm:gap-2.5 mb-6 sm:mb-10"
           >
             {FEATURES.map((f) => (
               <FeatureCell key={f.title} {...f} />
@@ -224,7 +231,7 @@ export function LoginPage({ onLogin, isLoading }: LoginPageProps = {}) {
                 </Link>
               )}
             </Button>
-            <p className="mt-3 text-[11px] text-slate-500 text-center">
+            <p className="hidden md:block mt-3 text-[11px] text-slate-500 text-center">
               Yetkili Tiryaki kullanıcıları için. Erişim yoksa{" "}
               <span className="text-sky-400 underline decoration-dotted">
                 BT ekibiyle
@@ -234,9 +241,12 @@ export function LoginPage({ onLogin, isLoading }: LoginPageProps = {}) {
           </motion.div>
         </div>
 
-        {/* Footer */}
-        <div className="relative text-[10.5px] text-slate-600 text-center md:text-left mt-2">
-          © {new Date().getFullYear()} TTECH Business Solutions · TYRO AI
+        {/* Footer — short on mobile, full attribution on md+. */}
+        <div className="relative text-[10px] sm:text-[10.5px] text-slate-600 text-center md:text-left mt-2 md:mt-3">
+          <span className="md:hidden">© {new Date().getFullYear()} TTECH</span>
+          <span className="hidden md:inline">
+            © {new Date().getFullYear()} TTECH Business Solutions · TYRO AI
+          </span>
         </div>
       </div>
 
@@ -273,6 +283,10 @@ export function LoginPage({ onLogin, isLoading }: LoginPageProps = {}) {
 /* ─────────── Connection transition overlay ─────────── */
 
 function ConnectionOverlay({ visible }: { visible: boolean }) {
+  const isMobile = useIsMobile();
+  const portalSize = isMobile ? 80 : 96; // px — size-20 vs size-24
+  const logoSize = isMobile ? 44 : 56;
+  const ringScaleMax = isMobile ? 1.8 : 2.2;
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -300,15 +314,17 @@ function ConnectionOverlay({ visible }: { visible: boolean }) {
               rotate: { duration: 3, repeat: Infinity, ease: "linear" },
               scale: { duration: 1.2, repeat: Infinity, ease: "easeInOut" },
             }}
-            className="size-24 rounded-full grid place-items-center"
+            className="rounded-full grid place-items-center"
             style={{
+              width: portalSize,
+              height: portalSize,
               background:
                 "radial-gradient(circle, rgba(56,189,248,0.18) 0%, transparent 70%)",
               boxShadow:
                 "0 0 60px 0 rgba(56,189,248,0.45), inset 0 0 0 1px rgba(125,211,252,0.4)",
             }}
           >
-            <Logo size={56} />
+            <Logo size={logoSize} />
           </motion.div>
 
           {/* Outer expanding rings */}
@@ -318,7 +334,7 @@ function ConnectionOverlay({ visible }: { visible: boolean }) {
                 key={i}
                 aria-hidden
                 initial={{ opacity: 0.65, scale: 0.7 }}
-                animate={{ opacity: 0, scale: 2.2 }}
+                animate={{ opacity: 0, scale: ringScaleMax }}
                 transition={{
                   duration: 2.4,
                   delay: i * 0.7,
@@ -334,7 +350,7 @@ function ConnectionOverlay({ visible }: { visible: boolean }) {
         </div>
 
         {/* Wordmark with shimmer */}
-        <div className="text-3xl font-bold tracking-tight lowercase relative">
+        <div className="text-2xl sm:text-3xl font-bold tracking-tight lowercase relative text-center px-4">
           <span className="text-white">tyro</span>
           <span style={{ color: "#38bdf8" }}>verse</span>{" "}
           <span className="text-slate-300">bağlanıyor</span>
@@ -347,7 +363,7 @@ function ConnectionOverlay({ visible }: { visible: boolean }) {
           </motion.span>
         </div>
 
-        <div className="text-[12px] text-slate-500 tracking-wide">
+        <div className="text-[11px] sm:text-[12px] text-slate-500 tracking-wide text-center px-6">
           Microsoft kimlik doğrulamasına yönlendiriliyorsun
         </div>
       </div>
@@ -424,7 +440,7 @@ function FeatureCell({ icon, title, body }: Feature) {
         hidden: { opacity: 0, y: 10 },
         show: { opacity: 1, y: 0, transition: { duration: 0.5, ease: [0.22, 1, 0.36, 1] } },
       }}
-      className="rounded-xl p-3 group hover:bg-white/[0.03] transition-colors"
+      className="rounded-xl p-2.5 sm:p-3 group hover:bg-white/[0.03] transition-colors"
       style={{
         background:
           "linear-gradient(135deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.01) 100%)",
@@ -433,7 +449,7 @@ function FeatureCell({ icon, title, body }: Feature) {
       }}
     >
       <div
-        className="size-8 rounded-lg grid place-items-center mb-2 shrink-0"
+        className="size-7 sm:size-8 rounded-lg grid place-items-center mb-1.5 sm:mb-2 shrink-0"
         style={{
           background:
             "linear-gradient(135deg, rgba(56,189,248,0.18) 0%, rgba(37,99,235,0.18) 100%)",
@@ -447,10 +463,12 @@ function FeatureCell({ icon, title, body }: Feature) {
           style={{ color: "#7dd3fc" }}
         />
       </div>
-      <div className="text-[12.5px] font-semibold text-white tracking-tight leading-tight">
+      <div className="text-[12px] sm:text-[12.5px] font-semibold text-white tracking-tight leading-tight">
         {title}
       </div>
-      <div className="text-[10.5px] text-slate-400 leading-snug mt-0.5">
+      {/* Body description shown only from md+; mobile keeps the cards
+          minimal (icon + title only). */}
+      <div className="hidden md:block text-[10.5px] text-slate-400 leading-snug mt-0.5 line-clamp-2">
         {body}
       </div>
     </motion.li>

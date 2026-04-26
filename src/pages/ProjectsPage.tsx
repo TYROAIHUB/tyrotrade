@@ -52,7 +52,10 @@ export function ProjectsPage() {
   const handleSelect = (id: string) => {
     setSelectedId(id);
     navigate(`/projects/${id}`, { replace: true });
-    if (isMobile) setMobileView("map");
+    // After picking a project on mobile, jump to the details tab — that
+    // is the operator's primary destination; they can still tap "Harita"
+    // to see the route on the map afterwards.
+    if (isMobile) setMobileView("details");
   };
 
   if (isMobile) {
