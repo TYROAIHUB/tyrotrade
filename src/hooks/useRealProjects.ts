@@ -1,0 +1,133 @@
+import * as React from "react";
+import { readCache } from "@/lib/storage/entityCache";
+import {
+  composeProjects,
+  type ComposeWarnings,
+} from "@/lib/dataverse/composeProjects";
+import type { Project } from "@/lib/dataverse/entities";
+
+const ENTITY_SETS = {
+  projects: "mserp_etgtryprojecttableentities",
+  ship: "mserp_tryaiprojectshiprelationentities",
+  lines: "mserp_tryaiprojectlineentities",
+  expense: "mserp_tryaiotherexpenseentities",
+  budget: "mserp_tryaiprojectbudgetlineentities",
+  /** Synthetic key — NOT a real Dataverse entity set. Holds the per-project
+   *  `$apply=groupby+aggregate(lineamount with sum)` result so KingProjects
+   *  ranking and the BudgetVsActual card don't have to fetch raw invoices
+   *  for all 320 active projects. */
+  salesAggregate: "salesAggregateByProject",
+} as const;
+
+export interface UseRealProjectsReturn {
+  projects: Project[];
+  /** True when the project header cache is missing or empty — empty-state UI cue. */
+  isEmpty: boolean;
+  fetchedAt: {
+    projects: string | null;
+    ship: string | null;
+    lines: string | null;
+    expense: string | null;
+    budget: string | null;
+  };
+  warnings: ComposeWarnings | null;
+}
+
+/**
+ * 🔒 Read-only hook: hydrate the 5 cached Dataverse entity arrays from
+ * localStorage and run the `composeProjects` derivation.
+ *
+ * - localStorage is the single source of truth — Data Management page is
+ *   the only writer (via `useEntityRows` → `writeCache`).
+ * - Re-derives only when the cache fingerprint (raw localStorage value
+ *   prefix) changes, so React.useMemo keeps `projects` ref-stable across
+ *   unrelated renders.
+ * - Cache miss in any of the 4 child entities → degraded compose (no
+ *   vesselPlan / lines / costEstimate for affected projects). Only the
+ *   `projects` header cache being absent triggers `isEmpty=true`.
+ */
+export function useRealProjects(): UseRealProjectsReturn {
+  // Cheap fingerprints: first 80 chars of the raw localStorage value.
+  // Covers fetchedAt + start of array, enough to detect a real refresh.
+  const fpProjects = useCacheFingerprint(ENTITY_SETS.projects);
+  const fpShip = useCacheFingerprint(ENTITY_SETS.ship);
+  const fpLines = useCacheFingerprint(ENTITY_SETS.lines);
+  const fpExpense = useCacheFingerprint(ENTITY_SETS.expense);
+  const fpBudget = useCacheFingerprint(ENTITY_SETS.budget);
+  const fpSalesAgg = useCacheFingerprint(ENTITY_SETS.salesAggregate);
+
+  return React.useMemo<UseRealProjectsReturn>(() => {
+    const projC = readCache<Record<string, unknown>>(ENTITY_SETS.projects);
+    const shipC = readCache<Record<string, unknown>>(ENTITY_SETS.ship);
+    const linesC = readCache<Record<string, unknown>>(ENTITY_SETS.lines);
+    const expC = readCache<Record<string, unknown>>(ENTITY_SETS.expense);
+    const budgetC = readCache<Record<string, unknown>>(ENTITY_SETS.budget);
+    const salesAggC = readCache<Record<string, unknown>>(
+      ENTITY_SETS.salesAggregate
+    );
+
+    const fetchedAt = {
+      projects: projC?.fetchedAt ?? null,
+      ship: shipC?.fetchedAt ?? null,
+      lines: linesC?.fetchedAt ?? null,
+      expense: expC?.fetchedAt ?? null,
+      budget: budgetC?.fetchedAt ?? null,
+    };
+
+    if (!projC || projC.value.length === 0) {
+      return { projects: [], isEmpty: true, fetchedAt, warnings: null };
+    }
+
+    const composed = composeProjects({
+      projectRows: projC.value,
+      shipRows: shipC?.value ?? [],
+      lineRows: linesC?.value ?? [],
+      expenseRows: expC?.value ?? [],
+      budgetRows: budgetC?.value ?? [],
+      salesAggregateRows: salesAggC?.value ?? [],
+    });
+
+    return {
+      projects: composed.projects,
+      isEmpty: false,
+      fetchedAt,
+      warnings: composed.warnings,
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fpProjects, fpShip, fpLines, fpExpense, fpBudget, fpSalesAgg]);
+}
+
+/**
+ * Read a cheap fingerprint from localStorage. Re-runs every render but only
+ * triggers downstream re-derivation when the fingerprint actually changes
+ * (different fetchedAt or row count).
+ */
+function useCacheFingerprint(entitySet: string): string {
+  const [fp, setFp] = React.useState(() => readFingerprint(entitySet));
+  // Re-read on mount + whenever localStorage events fire (cross-tab updates).
+  React.useEffect(() => {
+    const handler = (e: StorageEvent) => {
+      if (!e.key || e.key === `tyro:dv:${entitySet}`) {
+        setFp(readFingerprint(entitySet));
+      }
+    };
+    window.addEventListener("storage", handler);
+    // Same-tab writes don't fire `storage` event; re-check on each render
+    // by reading fresh and updating state if changed.
+    const fresh = readFingerprint(entitySet);
+    if (fresh !== fp) setFp(fresh);
+    return () => window.removeEventListener("storage", handler);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [entitySet]);
+  return fp;
+}
+
+function readFingerprint(entitySet: string): string {
+  try {
+    const raw = localStorage.getItem(`tyro:dv:${entitySet}`);
+    if (!raw) return "";
+    return raw.slice(0, 80);
+  } catch {
+    return "";
+  }
+}

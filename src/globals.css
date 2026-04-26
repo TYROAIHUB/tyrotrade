@@ -1,0 +1,464 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+@import "@fontsource-variable/geist";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+
+  /* Liquid glass tokens */
+  --color-glass-tint: var(--glass-tint);
+  --color-glass-tint-strong: var(--glass-tint-strong);
+  --color-glass-tint-subtle: var(--glass-tint-subtle);
+  --color-glass-border-soft: var(--glass-border-soft);
+  --color-spec-highlight: var(--spec-highlight);
+  --color-route-done: var(--route-done);
+  --color-route-remain: var(--route-remain);
+  --color-tyro-blue: var(--tyro-blue);
+  --color-tyro-teal: var(--tyro-teal);
+  --color-tyro-coral: var(--tyro-coral);
+  --font-heading: var(--font-sans);
+  --font-sans: 'Inter Variable', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+:root {
+  --radius: 0.625rem;
+
+  /* Neutral light background */
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.145 0 0);
+
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.145 0 0);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.145 0 0);
+
+  --primary: oklch(0.5 0.134 242.749);
+  --primary-foreground: oklch(0.977 0.013 236.62);
+
+  --secondary: oklch(0.967 0.001 286.375);
+  --secondary-foreground: oklch(0.21 0.006 285.885);
+
+  --muted: oklch(0.97 0 0);
+  --muted-foreground: oklch(0.556 0 0);
+
+  --accent: oklch(0.97 0 0);
+  --accent-foreground: oklch(0.205 0 0);
+
+  --destructive: oklch(0.577 0.245 27.325);
+  --destructive-foreground: oklch(99% 0 0);
+
+  --border: oklch(0.922 0 0);
+  --input: oklch(0.922 0 0);
+  --ring: oklch(0.708 0 0);
+
+  /* Sidebar — pure white frosted, no blue tint */
+  --sidebar: oklch(0.985 0 0);
+  --sidebar-foreground: oklch(0.145 0 0);
+  --sidebar-primary: oklch(0.588 0.158 241.966);
+  --sidebar-primary-foreground: oklch(0.977 0.013 236.62);
+  --sidebar-accent: oklch(0.97 0 0);
+  --sidebar-accent-foreground: oklch(0.205 0 0);
+  --sidebar-border: oklch(0.922 0 0);
+  --sidebar-ring: oklch(0.708 0 0);
+
+  /* Liquid glass — pure white frosted, hue chroma = 0 */
+  --glass-tint: oklch(100% 0 0 / 0.55);
+  --glass-tint-strong: oklch(100% 0 0 / 0.78);
+  --glass-tint-subtle: oklch(100% 0 0 / 0.32);
+  --glass-border-soft: oklch(100% 0 0 / 0.45);
+  --spec-highlight: oklch(100% 0 0 / 0.9);
+  --route-done: oklch(56% 0.18 245);
+  --route-remain: oklch(70% 0 0 / 0.5);
+  --tyro-blue: oklch(56% 0.18 245);
+  --tyro-teal: oklch(68% 0.12 195);
+  --tyro-coral: oklch(75% 0.13 35);
+
+  --shadow-glass:
+    0 1px 0 0 var(--spec-highlight) inset,
+    0 0 0 1px var(--glass-border-soft) inset,
+    0 12px 32px -12px oklch(20% 0 0 / 0.16),
+    0 4px 12px -6px oklch(20% 0 0 / 0.08);
+  --backdrop-glass: blur(22px) saturate(120%);
+  --chart-1: oklch(0.879 0.169 91.605);
+  --chart-2: oklch(0.769 0.188 70.08);
+  --chart-3: oklch(0.666 0.179 58.318);
+  --chart-4: oklch(0.555 0.163 48.998);
+  --chart-5: oklch(0.473 0.137 46.201);
+}
+
+@layer base {
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+  }
+
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  body {
+    margin: 0;
+    color: var(--foreground);
+    background-color: var(--background);
+    font-family:
+      "Inter Variable", ui-sans-serif, system-ui, -apple-system,
+      BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial,
+      sans-serif;
+    font-feature-settings: "cv11", "ss01", "ss03";
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    overflow: hidden;
+    @apply bg-background text-foreground;
+  }
+
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: -1;
+    background:
+      radial-gradient(1200px 600px at 10% 8%, oklch(98% 0 0 / 0.9), transparent 60%),
+      radial-gradient(900px 700px at 90% 14%, oklch(97% 0 0 / 0.7), transparent 60%),
+      radial-gradient(1000px 800px at 50% 100%, oklch(99% 0 0 / 0.6), transparent 60%),
+      linear-gradient(180deg, oklch(99% 0 0) 0%, oklch(96% 0 0) 100%);
+  }
+
+  ::selection {
+    background-color: oklch(56% 0.18 245 / 0.18);
+    color: oklch(22% 0.02 250);
+  }
+  * {
+    @apply border-border outline-ring/50;
+  }
+  html {
+    @apply font-sans;
+  }
+}
+
+/* Liquid glass utilities */
+.glass {
+  position: relative;
+  isolation: isolate;
+  border-radius: var(--radius);
+  background: linear-gradient(
+    135deg,
+    var(--glass-tint-strong) 0%,
+    var(--glass-tint) 100%
+  );
+  backdrop-filter: var(--backdrop-glass);
+  -webkit-backdrop-filter: var(--backdrop-glass);
+  box-shadow: var(--shadow-glass);
+}
+
+.glass::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background: linear-gradient(
+    180deg,
+    var(--spec-highlight) 0%,
+    transparent 18%
+  );
+  mix-blend-mode: overlay;
+  opacity: 0.65;
+  z-index: 1;
+}
+
+.glass-strong {
+  background: linear-gradient(
+    135deg,
+    oklch(100% 0 0 / 0.86) 0%,
+    oklch(100% 0 0 / 0.72) 100%
+  );
+}
+
+.glass-subtle {
+  background: linear-gradient(
+    135deg,
+    var(--glass-tint-subtle) 0%,
+    oklch(100% 0 0 / 0.18) 100%
+  );
+}
+
+.glass-noise::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background-image: url("/textures/noise.svg");
+  background-size: 180px 180px;
+  opacity: 0.05;
+  mix-blend-mode: overlay;
+  z-index: 2;
+}
+
+/* TYRO trade gradient — amber (emerging markets warmth) → emerald (growth &
+ * fertile cargo corridors) → blue (deep overseas trade lanes). Matches the
+ * origami logo palette exactly. Used on the wordmark "trade" + accents. */
+.text-prism-gradient {
+  background: linear-gradient(
+    92deg,
+    #f59e0b 0%,
+    #10b981 50%,
+    #2563eb 100%
+  );
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+}
+
+.bg-prism-gradient {
+  background-image: linear-gradient(
+    92deg,
+    #f59e0b 0%,
+    #10b981 50%,
+    #2563eb 100%
+  );
+}
+
+/* Warm-only gradient for "trade" on dark/blue surfaces. Blue omitted since it
+ * would disappear against the sidebar background. Amber → lime → emerald-300. */
+.text-warm-gradient {
+  background: linear-gradient(
+    92deg,
+    #fbbf24 0%,
+    #fde047 40%,
+    #6ee7b7 100%
+  );
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+}
+
+/* TYRO brand: shared tokens with tyrostrategy sibling app */
+:root {
+  --tyro-gold: #c8922a;
+  --tyro-gold-light: #e0ad3e;
+  --tyro-gold-muted: rgba(200, 146, 42, 0.2);
+  --tyro-blue-deep: #142842;
+  --tyro-blue-dark: #1e3a5f;
+  --tyro-blue-mid: #2a4f7f;
+  --tyro-blue-light: #3b6ba5;
+}
+
+/* Sidebar themes — only the sidebar surface uses these tokens. The rest of
+ * the app keeps its global light theme. CSS custom props are scoped via
+ * `data-sb-theme` so the theme switcher only affects this subtree.            */
+.sidebar-themed {
+  background: var(--sb-bg);
+  box-shadow:
+    0 1px 0 0 var(--sb-inset-highlight) inset,
+    0 0 0 1px var(--sb-inset-border) inset,
+    0 24px 60px -20px var(--sb-shadow);
+  color: var(--sb-text);
+}
+
+/* Sky-Navy — TYRO Trade brand theme (default). Deep navy at top → sky at bottom. */
+[data-sb-theme="navy"] {
+  --sb-bg: #0b1e3f;
+  --sb-inset-highlight: rgba(255, 255, 255, 0.06);
+  --sb-inset-border: rgba(255, 255, 255, 0.05);
+  --sb-shadow: rgba(7, 17, 38, 0.7);
+  --sb-text: #ffffff;
+  --sb-text-strong: #ffffff;
+  --sb-text-muted: rgba(255, 255, 255, 0.72);
+  --sb-text-faint: rgba(255, 255, 255, 0.5);
+  --sb-active-bg: rgba(224, 173, 62, 0.14);
+  --sb-active-ring: rgba(224, 173, 62, 0.4);
+  --sb-hover-bg: rgba(255, 255, 255, 0.06);
+  --sb-divider: rgba(255, 255, 255, 0.14);
+  --sb-pin-active: #e0ad3e;
+  --sb-wordmark-tyro: #ffffff;
+  --sb-swatch-ring: rgba(255, 255, 255, 0.4);
+}
+
+/* Light — pure white frosted with dark text + brand-navy accents */
+[data-sb-theme="light"] {
+  --sb-bg: linear-gradient(180deg, #ffffff 0%, #f1f5f9 100%);
+  --sb-inset-highlight: rgba(255, 255, 255, 0.7);
+  --sb-inset-border: rgba(15, 23, 42, 0.06);
+  --sb-shadow: rgba(15, 23, 42, 0.18);
+  --sb-text: #0f172a;
+  --sb-text-strong: #0f172a;
+  --sb-text-muted: rgba(15, 23, 42, 0.65);
+  --sb-text-faint: rgba(15, 23, 42, 0.45);
+  --sb-active-bg: rgba(30, 58, 138, 0.1);
+  --sb-active-ring: rgba(30, 58, 138, 0.25);
+  --sb-hover-bg: rgba(15, 23, 42, 0.04);
+  --sb-divider: rgba(15, 23, 42, 0.1);
+  --sb-pin-active: #1e3a8a;
+  --sb-wordmark-tyro: #0f172a;
+  --sb-swatch-ring: rgba(15, 23, 42, 0.15);
+}
+
+/* Black — premium dark surface with sky accents */
+[data-sb-theme="black"] {
+  --sb-bg: linear-gradient(180deg, #050505 0%, #1a1a1a 100%);
+  --sb-inset-highlight: rgba(255, 255, 255, 0.08);
+  --sb-inset-border: rgba(255, 255, 255, 0.05);
+  --sb-shadow: rgba(0, 0, 0, 0.6);
+  --sb-text: #ffffff;
+  --sb-text-strong: #ffffff;
+  --sb-text-muted: rgba(255, 255, 255, 0.65);
+  --sb-text-faint: rgba(255, 255, 255, 0.4);
+  --sb-active-bg: rgba(56, 189, 248, 0.16);
+  --sb-active-ring: rgba(56, 189, 248, 0.32);
+  --sb-hover-bg: rgba(255, 255, 255, 0.06);
+  --sb-divider: rgba(255, 255, 255, 0.1);
+  --sb-pin-active: #38bdf8;
+  --sb-wordmark-tyro: #ffffff;
+  --sb-swatch-ring: rgba(255, 255, 255, 0.3);
+}
+
+/* Backwards-compat alias: keep .sidebar-dark working as the blue theme. */
+.sidebar-dark {
+  background: linear-gradient(180deg, #1e3a5f 0%, #2a4f7f 50%, #3b6ba5 100%);
+  box-shadow:
+    0 1px 0 0 rgba(255, 255, 255, 0.14) inset,
+    0 0 0 1px rgba(255, 255, 255, 0.06) inset,
+    0 24px 60px -20px rgba(20, 41, 74, 0.55);
+}
+
+/* TYRO Trade brand gradient — sky → navy. Used on the wordmark "trade" + accents.
+ * Sky-400 (#38bdf8) → Blue-600 (#2563eb) → Blue-900 (#1e3a8a). */
+.text-brand-gradient {
+  background: linear-gradient(90deg, #38bdf8, #2563eb, #1e3a8a);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+}
+
+/* Backwards-compat alias — old class name still works */
+.text-gold-gradient {
+  background: linear-gradient(90deg, #38bdf8, #2563eb, #1e3a8a);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+}
+
+/* Gold gradient — used on the navy sidebar theme so the wordmark + logo pop. */
+.text-amber-gradient {
+  background: linear-gradient(90deg, #e0ad3e, #c8922a, #e0ad3e);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+}
+
+/* Brighter sky gradient — used on the black sidebar theme for legibility against #050505. */
+.text-sky-bright-gradient {
+  background: linear-gradient(90deg, #7dd3fc, #38bdf8, #0ea5e9);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+}
+
+/* Custom scrollbar — subtle */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: oklch(70% 0.02 250 / 0.3);
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: oklch(60% 0.02 250 / 0.45);
+  background-clip: content-box;
+  border: 2px solid transparent;
+}
+
+.dark {
+  --background: oklch(0.145 0 0);
+  --foreground: oklch(0.985 0 0);
+  --card: oklch(0.205 0 0);
+  --card-foreground: oklch(0.985 0 0);
+  --popover: oklch(0.205 0 0);
+  --popover-foreground: oklch(0.985 0 0);
+  --primary: oklch(0.443 0.11 240.79);
+  --primary-foreground: oklch(0.977 0.013 236.62);
+  --secondary: oklch(0.274 0.006 286.033);
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted: oklch(0.269 0 0);
+  --muted-foreground: oklch(0.708 0 0);
+  --accent: oklch(0.269 0 0);
+  --accent-foreground: oklch(0.985 0 0);
+  --destructive: oklch(0.704 0.191 22.216);
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: oklch(0.556 0 0);
+  --chart-1: oklch(0.879 0.169 91.605);
+  --chart-2: oklch(0.769 0.188 70.08);
+  --chart-3: oklch(0.666 0.179 58.318);
+  --chart-4: oklch(0.555 0.163 48.998);
+  --chart-5: oklch(0.473 0.137 46.201);
+  --sidebar: oklch(0.205 0 0);
+  --sidebar-foreground: oklch(0.985 0 0);
+  --sidebar-primary: oklch(0.685 0.169 237.323);
+  --sidebar-primary-foreground: oklch(0.293 0.066 243.157);
+  --sidebar-accent: oklch(0.269 0 0);
+  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-ring: oklch(0.556 0 0);
+}
