@@ -212,7 +212,7 @@ export function LoginPage({ onLogin, isLoading }: LoginPageProps = {}) {
                     <span className="text-white"> ile bağlan</span>
                   </span>
                   <HugeiconsIcon
-                    icon={ArrowRight01Icon}
+                    icon={LoginCircle02Icon}
                     size={18}
                     strokeWidth={2.5}
                     className="relative z-[1] transition-transform group-hover:translate-x-1"

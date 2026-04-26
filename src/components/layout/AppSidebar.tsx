@@ -34,7 +34,7 @@ function HomeLineIcon({ className }: { className?: string }) {
 interface NavItem {
   to: string;
   label: string;
-  icon: React.ElementType;
+  icon: React.ComponentType<{ className?: string }>;
 }
 
 interface NavGroup {

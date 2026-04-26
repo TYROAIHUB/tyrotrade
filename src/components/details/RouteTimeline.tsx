@@ -11,7 +11,7 @@ interface Props {
 interface Step {
   key: keyof VesselMilestones;
   label: string;
-  icon: React.ElementType;
+  icon: React.ComponentType<{ className?: string }>;
   group: "loading" | "transit" | "discharge";
 }
 
