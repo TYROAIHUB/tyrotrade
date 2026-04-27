@@ -11,7 +11,7 @@ interface EventsPanelProps {
   now?: Date;
   /** Days back from `now` for the "Recent" section (default 7). */
   recentWindowDays?: number;
-  /** Days forward from `now` for "Upcoming" section (default 14). */
+  /** Days forward from `now` for "Upcoming" section (default 30). */
   upcomingWindowDays?: number;
   /** Max items per section (default 5). */
   perSectionLimit?: number;
@@ -95,7 +95,7 @@ export function EventsPanel({
   projects,
   now = new Date(),
   recentWindowDays = 7,
-  upcomingWindowDays = 14,
+  upcomingWindowDays = 30,
   perSectionLimit = 5,
 }: EventsPanelProps) {
   const navigate = useNavigate();
@@ -117,6 +117,7 @@ export function EventsPanel({
       .slice(0, perSectionLimit);
   }, [all, recentCutoff, now, perSectionLimit]);
 
+  // Primary: events inside the upcomingWindowDays window
   const upcoming = React.useMemo(() => {
     return all
       .filter(
@@ -129,12 +130,30 @@ export function EventsPanel({
       .slice(0, perSectionLimit);
   }, [all, upcomingCutoff, now, perSectionLimit]);
 
+  // Fallback: when the primary window is empty, surface the next N
+  // future milestones regardless of date so the panel never reads
+  // "Bu pencerede planlı olay yok" while real future ETAs exist
+  // farther out in the calendar.
+  const futureFallback = React.useMemo(() => {
+    if (upcoming.length > 0) return [];
+    return all
+      .filter((e) => e.kind === "upcoming" && e.date.getTime() > now.getTime())
+      .sort((a, b) => a.date.getTime() - b.date.getTime())
+      .slice(0, perSectionLimit);
+  }, [all, upcoming.length, now, perSectionLimit]);
+
+  const isUsingFallback = upcoming.length === 0 && futureFallback.length > 0;
+  const upcomingShown = isUsingFallback ? futureFallback : upcoming;
+
   return (
     <GlassPanel tone="default" className="rounded-2xl">
       <div className="px-4 pt-4 pb-2">
         <h3 className="text-sm font-semibold">Olaylar</h3>
         <p className="text-[11px] text-muted-foreground">
-          Son {recentWindowDays} gün + önümüzdeki {upcomingWindowDays} gün
+          Son {recentWindowDays} gün
+          {isUsingFallback
+            ? " + ileriye dönük ilk milestone'lar"
+            : ` + önümüzdeki ${upcomingWindowDays} gün`}
         </p>
       </div>
       <div className="px-4 pb-4">
@@ -161,26 +180,43 @@ export function EventsPanel({
           )}
         </ol>
 
-        {/* Upcoming section */}
+        {/* Upcoming section — primary 30-day window, with a fallback to
+            "next N future milestones" when nothing falls inside the
+            window. The dataset trends toward past milestones (most
+            voyages are Completed/Closed); the fallback ensures the
+            user always sees something actionable. */}
         <SectionHeader
           tone="upcoming"
-          title={`Önümüzdeki ${upcomingWindowDays} gün`}
-          count={upcoming.length}
+          title={
+            isUsingFallback
+              ? "Yaklaşan ilk planlı olaylar"
+              : `Önümüzdeki ${upcomingWindowDays} gün`
+          }
+          count={upcomingShown.length}
         />
         <ol className="space-y-2">
-          {upcoming.length === 0 ? (
+          {upcomingShown.length === 0 ? (
             <li className="text-[11px] text-muted-foreground/70 italic py-1">
-              Bu pencerede planlı olay yok
+              İleriye dönük tarihli milestone yok — gemi planlarında
+              DP-ETA / yükleme tarihleri henüz girilmemiş olabilir.
             </li>
           ) : (
-            upcoming.map((e, i) => (
-              <EventRow
-                key={`u-${i}`}
-                event={e}
-                now={now}
-                onClick={() => navigate(`/projects/${e.projectNo}`)}
-              />
-            ))
+            <>
+              {isUsingFallback && (
+                <li className="text-[10.5px] text-muted-foreground/80 italic py-1 px-1">
+                  Önümüzdeki {upcomingWindowDays} gün boş — daha uzaktaki
+                  ilk {upcomingShown.length} olay gösteriliyor.
+                </li>
+              )}
+              {upcomingShown.map((e, i) => (
+                <EventRow
+                  key={`u-${i}`}
+                  event={e}
+                  now={now}
+                  onClick={() => navigate(`/projects/${e.projectNo}`)}
+                />
+              ))}
+            </>
           )}
         </ol>
       </div>

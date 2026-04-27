@@ -15,7 +15,7 @@ import { cn } from "@/lib/utils";
 import type { Project, VesselMilestones } from "@/lib/dataverse/entities";
 
 const RECENT_DAYS = 7;
-const UPCOMING_DAYS = 14;
+const UPCOMING_DAYS = 30;
 
 interface EventItem {
   projectNo: string;
@@ -118,7 +118,11 @@ export function NotificationButton() {
     [all, recentCutoff, now]
   );
 
-  const upcoming = React.useMemo(
+  // Primary: 30-day window. Fallback: when nothing's in the window,
+  // surface the next N future milestones regardless of date so the
+  // notification list never reads "boş" while real future ETAs exist
+  // farther out.
+  const upcomingInWindow = React.useMemo(
     () =>
       all
         .filter(
@@ -127,10 +131,21 @@ export function NotificationButton() {
             e.date.getTime() > now.getTime() &&
             e.date.getTime() <= upcomingCutoff
         )
-        .sort((a, b) => a.date.getTime() - b.date.getTime())
-        .slice(0, 8),
+        .sort((a, b) => a.date.getTime() - b.date.getTime()),
     [all, upcomingCutoff, now]
   );
+  const upcomingFallback = React.useMemo(() => {
+    if (upcomingInWindow.length > 0) return [];
+    return all
+      .filter((e) => e.kind === "upcoming" && e.date.getTime() > now.getTime())
+      .sort((a, b) => a.date.getTime() - b.date.getTime())
+      .slice(0, 8);
+  }, [all, upcomingInWindow.length, now]);
+  const isUsingUpcomingFallback =
+    upcomingInWindow.length === 0 && upcomingFallback.length > 0;
+  const upcoming = isUsingUpcomingFallback
+    ? upcomingFallback
+    : upcomingInWindow.slice(0, 8);
 
   const totalNew = recent.length + upcoming.length;
   // "Imminent" = anything happening in the next 24h. Triggers the pulse.
@@ -206,7 +221,9 @@ export function NotificationButton() {
               Bildirimler
             </div>
             <div className="text-[11px] text-muted-foreground leading-tight mt-0.5">
-              Son {RECENT_DAYS} gün · Önümüzdeki {UPCOMING_DAYS} gün
+              {isUsingUpcomingFallback
+                ? `Son ${RECENT_DAYS} gün · İleriye dönük ilk milestone'lar`
+                : `Son ${RECENT_DAYS} gün · Önümüzdeki ${UPCOMING_DAYS} gün`}
             </div>
           </div>
         </div>
@@ -216,26 +233,35 @@ export function NotificationButton() {
             {/* Upcoming first — actionable */}
             <SectionHeader
               tone="upcoming"
-              title="Yaklaşan"
+              title={isUsingUpcomingFallback ? "Yaklaşan ilk planlı" : "Yaklaşan"}
               count={upcoming.length}
             />
             <ol className="space-y-1.5 mb-3">
               {upcoming.length === 0 ? (
                 <li className="text-[11px] text-muted-foreground/70 italic px-2 py-1">
-                  Bu pencerede planlı olay yok
+                  İleriye dönük tarihli milestone yok — gemi planlarında
+                  DP-ETA / yükleme tarihleri henüz girilmemiş olabilir.
                 </li>
               ) : (
-                upcoming.map((e, i) => (
-                  <EventRow
-                    key={`u-${i}`}
-                    event={e}
-                    now={now}
-                    onClick={() => {
-                      navigate(`/projects/${e.projectNo}`);
-                      setOpen(false);
-                    }}
-                  />
-                ))
+                <>
+                  {isUsingUpcomingFallback && (
+                    <li className="text-[10.5px] text-muted-foreground/80 italic px-2 py-1">
+                      Önümüzdeki {UPCOMING_DAYS} gün boş — daha uzaktaki
+                      ilk {upcoming.length} olay gösteriliyor.
+                    </li>
+                  )}
+                  {upcoming.map((e, i) => (
+                    <EventRow
+                      key={`u-${i}`}
+                      event={e}
+                      now={now}
+                      onClick={() => {
+                        navigate(`/projects/${e.projectNo}`);
+                        setOpen(false);
+                      }}
+                    />
+                  ))}
+                </>
               )}
             </ol>
 
