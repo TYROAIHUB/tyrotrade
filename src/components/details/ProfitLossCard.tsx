@@ -4,6 +4,7 @@ import { GlassPanel } from "@/components/glass/GlassPanel";
 import { AccentIconBadge, TONE_FORECAST } from "./AccentIconBadge";
 import { formatCurrency, formatNumber } from "@/lib/format";
 import { cn } from "@/lib/utils";
+import { useProjectInvoices } from "@/hooks/useProjectInvoices";
 import type { Project } from "@/lib/dataverse/entities";
 
 interface Props {
@@ -31,17 +32,41 @@ export function ProfitLossCard({ project }: Props) {
   const lines = project.lines ?? [];
   const currency = lines[0]?.currency ?? project.currency ?? "USD";
 
+  // Project lines carry only the F&O item code (no Turkish product
+  // name). Invoice transactions DO have a `mserp_name` per item, so
+  // build a code→name lookup the same way `CommoditySalesCard` does
+  // for its tooltip — falling back to the raw code when nothing
+  // matches.
+  const { invoices } = useProjectInvoices(project.projectNo);
+  const productNameByCode = React.useMemo(() => {
+    const map = new Map<string, string>();
+    for (const inv of invoices) {
+      const code = String(inv["mserp_itemid"] ?? "").trim();
+      const name = String(inv["mserp_name"] ?? "").trim();
+      if (!code || !name) continue;
+      // First non-empty name we see wins — invoices for the same code
+      // can carry slightly different copies; pick once and stick.
+      if (!map.has(code)) map.set(code, name);
+    }
+    return map;
+  }, [invoices]);
+  const labelFor = React.useCallback(
+    (code: string) => productNameByCode.get(code) ?? code,
+    [productNameByCode]
+  );
+
   const salesLines = React.useMemo(
     () =>
       lines
         .filter((l) => l.unitPrice > 0 && l.quantityKg > 0)
         .map((l) => ({
           itemCode: l.itemCode,
+          label: labelFor(l.itemCode),
           tons: l.quantityKg / 1000,
           price: l.unitPrice,
           total: (l.quantityKg / 1000) * l.unitPrice,
         })),
-    [lines]
+    [lines, labelFor]
   );
   const purchaseLines = React.useMemo(
     () =>
@@ -49,11 +74,12 @@ export function ProfitLossCard({ project }: Props) {
         .filter((l) => (l.purchasePrice ?? 0) > 0 && l.quantityKg > 0)
         .map((l) => ({
           itemCode: l.itemCode,
+          label: labelFor(l.itemCode),
           tons: l.quantityKg / 1000,
           price: l.purchasePrice ?? 0,
           total: (l.quantityKg / 1000) * (l.purchasePrice ?? 0),
         })),
-    [lines]
+    [lines, labelFor]
   );
   const expenseLines = project.costEstimateLines ?? [];
 
@@ -114,7 +140,7 @@ export function ProfitLossCard({ project }: Props) {
             {salesLines.map((l, i) => (
               <DetailLine
                 key={i}
-                code={l.itemCode}
+                code={l.label}
                 tons={l.tons}
                 rate={`${formatCurrency(l.price, currency, { maximumFractionDigits: 2 })} / t`}
                 total={`+${formatCurrency(l.total, currency)}`}
@@ -134,7 +160,7 @@ export function ProfitLossCard({ project }: Props) {
             {purchaseLines.map((l, i) => (
               <DetailLine
                 key={i}
-                code={l.itemCode}
+                code={l.label}
                 tons={l.tons}
                 rate={`${formatCurrency(l.price, currency, { maximumFractionDigits: 2 })} / t`}
                 total={`-${formatCurrency(l.total, currency)}`}
@@ -287,7 +313,7 @@ function DetailLine({
   return (
     <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-x-3 py-0.5 tabular-nums items-baseline">
       <div className="min-w-0">
-        <div className="font-mono text-[12px] text-foreground/90 truncate font-medium">
+        <div className="text-[12px] text-foreground/90 line-clamp-2 font-medium leading-snug">
           {code}
         </div>
         <div className="text-muted-foreground/90 text-[11px] truncate mt-0.5">
