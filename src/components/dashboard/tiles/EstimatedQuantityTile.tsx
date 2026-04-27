@@ -1,5 +1,5 @@
 import * as React from "react";
-import { CubeIcon } from "@hugeicons/core-free-icons";
+import { WeightScale01Icon } from "@hugeicons/core-free-icons";
 import { Bar, BarChart, Tooltip, XAxis } from "recharts";
 import { BentoTile } from "../BentoTile";
 import { TONE_CARGO } from "@/components/details/AccentIconBadge";
@@ -156,7 +156,7 @@ export function EstimatedQuantityTile({
     <BentoTile
       title="Tahmini Miktar"
       subtitle="Toplam tonaj · ay bazlı dağılım"
-      icon={CubeIcon}
+      icon={WeightScale01Icon}
       iconTone={TONE_CARGO}
       span={span}
       rowSpan={rowSpan}
@@ -193,7 +193,7 @@ export function EstimatedQuantityTile({
               Zirve
             </span>
             <span className="text-amber-700 text-[22px] font-bold leading-none tracking-tight truncate">
-              {peak.tons > 0 ? peak.month.slice(0, 3) : "—"}
+              {peak.tons > 0 ? peak.month : "—"}
             </span>
           </div>
         </div>
@@ -211,10 +211,24 @@ export function EstimatedQuantityTile({
               <XAxis
                 dataKey="month"
                 tickLine={false}
-                tickMargin={4}
+                tickMargin={6}
                 axisLine={false}
-                tick={{ fontSize: 9, fill: "currentColor", opacity: 0.6 }}
-                tickFormatter={(v: string) => v.slice(0, 3)}
+                tick={{
+                  fontSize: 11,
+                  fill: "currentColor",
+                  opacity: 0.85,
+                  fontWeight: 600,
+                }}
+                // Use the locale's narrow month name (May, Tem, Ağu …) — readable
+                // at a glance, fits a 3-col tile width without ellipsis tricks.
+                tickFormatter={(v: string) => {
+                  // Source labels are the long Turkish names ("Temmuz", "Ağustos").
+                  // Use the first 3 characters but special-case "Mayıs" / "Haziran"
+                  // so the "ı" + "i" remain legible (Tem/Ağu/Eyl/Eki/Kas/Ara/Oca/Şub/Mar/Nis/May/Haz).
+                  if (v === "Mayıs") return "May";
+                  if (v === "Haziran") return "Haz";
+                  return v.slice(0, 3);
+                }}
                 interval={0}
               />
               <Tooltip
