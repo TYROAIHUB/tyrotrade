@@ -132,3 +132,12 @@ export const TONE_COUNTERPARTY: IconBadgeTone = {
   gradient: "linear-gradient(135deg, #f472b6 0%, #ec4899 55%, #9d174d 100%)",
   ring: "rgba(236, 72, 153, 0.55)",
 };
+
+/** TYRO AI / Gemini chatbot — emerald → teal → deep teal. Carries the
+ *  premium-AI vibe (matches the chatbot drawer avatar tile and the
+ *  topbar "TYRO AI" button) without overlapping the P&L emerald or
+ *  the currency teal — slightly cooler, with a deeper anchor stop. */
+export const TONE_AI: IconBadgeTone = {
+  gradient: "linear-gradient(135deg, #14b8a6 0%, #0d9488 55%, #115e59 100%)",
+  ring: "rgba(13, 148, 136, 0.55)",
+};

@@ -2,43 +2,29 @@ import * as React from "react";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { ChatEdit01Icon } from "@hugeicons/core-free-icons";
 import { cn } from "@/lib/utils";
-import { useThemeAccent } from "@/components/layout/theme-accent";
-import { useSidebar } from "@/components/layout/sidebar-context";
+import { TONE_AI } from "@/components/details/AccentIconBadge";
 
 interface AskAiButtonProps {
-  onClick?: () => void;
+  onClick: () => void;
   className?: string;
 }
 
 /**
- * "TYRO AI'ya Sor" — premium gradient button announcing the future
- * Copilot Studio agent. Animated sparkle + gentle shimmer on hover.
- *
- * Theming: navy/black sidebar themes follow `useThemeAccent` (gold / sky)
- * because their accent palettes already pop on light page backgrounds.
- * Light theme overrides to a deep black gradient — the sky-navy accent
- * isn't bold enough to stand out as a "premium AI" call to action against
- * the white app shell. Click handler is optional placeholder until the
- * agent is wired up (Phase H).
+ * "TYRO AI" — opens the Gemini chatbot drawer. Painted with the shared
+ * `TONE_AI` emerald-teal gradient so the topbar button, the Settings
+ * card icon, and the drawer avatar all read as the same product
+ * surface. Theme-stable: the AI gradient stays put across light/navy/
+ * black sidebar themes (reads consistently as a "premium AI" CTA).
  */
-const LIGHT_BLACK_GRADIENT =
-  "linear-gradient(135deg, #1f2937 0%, #0b1220 55%, #020617 100%)";
-const LIGHT_BLACK_RING = "rgba(2, 6, 23, 0.55)";
-
 export function AskAiButton({ onClick, className }: AskAiButtonProps) {
   const [hovered, setHovered] = React.useState(false);
-  const accent = useThemeAccent();
-  const { theme } = useSidebar();
-  const isLight = theme === "light";
-  const gradient = isLight ? LIGHT_BLACK_GRADIENT : accent.gradient;
-  const ring = isLight ? LIGHT_BLACK_RING : accent.ring;
-
   return (
     <button
       type="button"
       onClick={onClick}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
+      aria-label="TYRO AI sohbetini aç"
       className={cn(
         "group relative inline-flex items-center gap-2 shrink-0",
         "rounded-full px-3.5 h-9 text-[13px] font-semibold text-white",
@@ -51,8 +37,8 @@ export function AskAiButton({ onClick, className }: AskAiButtonProps) {
         className
       )}
       style={{
-        background: gradient,
-        boxShadow: `0 4px 12px -4px ${ring}, inset 0 1px 0 0 rgba(255,255,255,0.2)`,
+        background: TONE_AI.gradient,
+        boxShadow: `0 4px 12px -4px ${TONE_AI.ring}, inset 0 1px 0 0 rgba(255,255,255,0.2)`,
       }}
     >
       {/* Animated shimmer overlay on hover */}

@@ -1,6 +1,6 @@
 import * as React from "react";
 import { Outlet, useLocation } from "react-router-dom";
-import { Menu, Ship, Database, Search } from "lucide-react";
+import { Menu, Ship, Database, Search, Settings } from "lucide-react";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { Home01Icon } from "@hugeicons/core-free-icons";
 import { GlassPanel } from "@/components/glass/GlassPanel";
@@ -9,6 +9,7 @@ import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { AskAiButton } from "@/components/dashboard/AskAiButton";
 import { TyroWmsButton } from "@/components/layout/TyroWmsButton";
 import { NotificationButton } from "@/components/layout/NotificationButton";
+import { TyroAiDrawer } from "@/components/chat/TyroAiDrawer";
 import { AppSidebar } from "./AppSidebar";
 import { SidebarProvider, useSidebar } from "./sidebar-context";
 import {
@@ -25,6 +26,7 @@ const PAGE_TITLES: Record<string, string> = {
   "/": "Dashboard",
   "/projects": "Projeler",
   "/data": "Veri Yönetimi",
+  "/settings": "Ayarlar",
 };
 
 export function AppShell() {
@@ -111,6 +113,7 @@ function TopBar({ title, pathname }: { title: string; pathname: string }) {
   const isMobile = useIsMobile();
   const { setMobileOpen } = useSidebar();
   const { open: cmdOpen, setOpen: setCmdOpen } = useCommandPalette();
+  const [aiOpen, setAiOpen] = React.useState(false);
 
   return (
     <>
@@ -146,11 +149,15 @@ function TopBar({ title, pathname }: { title: string; pathname: string }) {
             </Button>
             <NotificationButton />
             <TyroWmsButton className="hidden sm:inline-flex" />
-            <AskAiButton className="hidden sm:inline-flex" />
+            <AskAiButton
+              className="hidden sm:inline-flex"
+              onClick={() => setAiOpen(true)}
+            />
           </div>
         </GlassPanel>
       </div>
       <CommandPalette open={cmdOpen} onClose={() => setCmdOpen(false)} />
+      <TyroAiDrawer open={aiOpen} onOpenChange={setAiOpen} />
     </>
   );
 }
@@ -202,6 +209,14 @@ const PAGE_TITLE_CONFIGS: Array<{
       renderIcon: () => <Database className="size-4" strokeWidth={2} />,
       label: "Veri Yönetimi",
       title: "Dataverse Inspector",
+    },
+  },
+  {
+    match: (p) => p === "/settings",
+    config: {
+      renderIcon: () => <Settings className="size-4" strokeWidth={2} />,
+      label: "Ayarlar",
+      title: "Uygulama Tercihleri",
     },
   },
 ];

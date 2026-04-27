@@ -4,6 +4,7 @@ import { LoginPage } from "@/pages/LoginPage";
 import { DashboardPage } from "@/pages/DashboardPage";
 import { ProjectsPage } from "@/pages/ProjectsPage";
 import { DataManagementPage } from "@/pages/DataManagementPage";
+import { SettingsPage } from "@/pages/SettingsPage";
 import { AuthGate } from "@/components/auth/AuthGate";
 import { shouldUseMock } from "@/lib/dataverse";
 import { isAuthConfigured } from "@/lib/auth/msal";
@@ -23,6 +24,7 @@ export default function App() {
         <Route path="projects" element={<ProjectsPage />} />
         <Route path="projects/:projectId" element={<ProjectsPage />} />
         <Route path="data" element={<DataManagementPage />} />
+        <Route path="settings" element={<SettingsPage />} />
       </Route>
       <Route path="*" element={<Navigate to="/projects" replace />} />
     </Routes>
