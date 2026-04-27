@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/sheet";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
-import { TONE_AI } from "@/components/details/AccentIconBadge";
+import { useThemeAccent } from "@/components/layout/theme-accent";
 import { ChatSuggestions } from "./ChatSuggestions";
 import { ChatMessage, type ChatMessageData } from "./ChatMessage";
 import { ChatInput } from "./ChatInput";
@@ -42,6 +42,7 @@ interface TyroAiDrawerProps {
 export function TyroAiDrawer({ open, onOpenChange }: TyroAiDrawerProps) {
   const { settings } = useSettings();
   const { projects } = useProjects();
+  const accent = useThemeAccent();
 
   const [messages, setMessages] = React.useState<ChatMessageData[]>([]);
   const [isLoading, setIsLoading] = React.useState(false);
@@ -148,7 +149,7 @@ export function TyroAiDrawer({ open, onOpenChange }: TyroAiDrawerProps) {
         <div
           aria-hidden
           className="h-1 w-full shrink-0"
-          style={{ background: TONE_AI.gradient }}
+          style={{ background: accent.gradient }}
         />
 
         {/* Header — avatar + title + Temizle + close (Sheet ships its own X) */}
@@ -156,8 +157,8 @@ export function TyroAiDrawer({ open, onOpenChange }: TyroAiDrawerProps) {
           <span
             className="size-9 rounded-xl grid place-items-center shrink-0 shadow-sm text-white"
             style={{
-              background: TONE_AI.gradient,
-              boxShadow: `0 4px 12px -4px ${TONE_AI.ring}, inset 0 1px 0 0 rgba(255,255,255,0.25)`,
+              background: accent.gradient,
+              boxShadow: `0 4px 12px -4px ${accent.ring}, inset 0 1px 0 0 rgba(255,255,255,0.25)`,
             }}
           >
             <HugeiconsIcon icon={AiBrain02Icon} size={18} strokeWidth={2} />
@@ -236,14 +237,15 @@ function WelcomeState({
   onPick: (prompt: string) => void;
   disabled: boolean;
 }) {
+  const accent = useThemeAccent();
   return (
     <div className="h-full flex flex-col px-4 py-6 gap-5">
       <div className="flex flex-col items-center gap-3 mt-4">
         <span
           className="size-12 rounded-2xl grid place-items-center text-white shadow-sm"
           style={{
-            background: "rgba(20, 184, 166, 0.15)",
-            color: "#0d9488",
+            background: accent.tint,
+            color: accent.solid,
           }}
         >
           <HugeiconsIcon icon={FlashIcon} size={22} strokeWidth={1.75} />

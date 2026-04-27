@@ -16,6 +16,7 @@ import type { Project } from "@/lib/dataverse/entities";
 const TONE_NEUTRAL: IconBadgeTone = {
   gradient: "linear-gradient(135deg, #94a3b8 0%, #64748b 55%, #334155 100%)",
   ring: "rgba(100, 116, 139, 0.55)",
+  solid: "#64748b",
 };
 
 interface EstimatedPLTileProps {

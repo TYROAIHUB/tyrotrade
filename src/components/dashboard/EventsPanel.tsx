@@ -146,7 +146,7 @@ export function EventsPanel({
   const upcomingShown = isUsingFallback ? futureFallback : upcoming;
 
   return (
-    <GlassPanel tone="default" className="rounded-2xl">
+    <GlassPanel tone="default" className="rounded-2xl h-full flex flex-col">
       <div className="px-4 pt-4 pb-2">
         <h3 className="text-sm font-semibold">Olaylar</h3>
         <p className="text-[11px] text-muted-foreground">
@@ -156,7 +156,7 @@ export function EventsPanel({
             : ` + önümüzdeki ${upcomingWindowDays} gün`}
         </p>
       </div>
-      <div className="px-4 pb-4">
+      <div className="px-4 pb-4 flex-1 min-h-0 overflow-y-auto">
         {/* Recent section */}
         <SectionHeader
           tone="done"

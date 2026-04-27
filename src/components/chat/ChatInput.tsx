@@ -1,7 +1,7 @@
 import * as React from "react";
 import { Send } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { TONE_AI } from "@/components/details/AccentIconBadge";
+import { useThemeAccent } from "@/components/layout/theme-accent";
 
 interface ChatInputProps {
   onSubmit: (text: string) => void;
@@ -24,6 +24,7 @@ export function ChatInput({
 }: ChatInputProps) {
   const [value, setValue] = React.useState("");
   const textareaRef = React.useRef<HTMLTextAreaElement>(null);
+  const accent = useThemeAccent();
 
   const trimmed = value.trim();
   const canSend = !disabled && trimmed.length > 0;
@@ -58,10 +59,22 @@ export function ChatInput({
         "rounded-2xl bg-white/95 border border-border/60",
         "shadow-[0_2px_8px_-2px_rgba(15,23,42,0.08)]",
         "px-3 py-2",
-        "focus-within:border-teal-500/60 focus-within:shadow-[0_4px_14px_-4px_rgba(13,148,136,0.25)]",
         "transition-shadow",
         className
       )}
+      style={{
+        // Focus ring + glow follow the live theme accent so the input
+        // matches the send button's gradient.
+        ["--ai-accent-ring" as string]: accent.ring,
+      }}
+      onFocusCapture={(e) => {
+        e.currentTarget.style.borderColor = accent.solid;
+        e.currentTarget.style.boxShadow = `0 4px 14px -4px ${accent.ring}`;
+      }}
+      onBlurCapture={(e) => {
+        e.currentTarget.style.borderColor = "";
+        e.currentTarget.style.boxShadow = "";
+      }}
     >
       <textarea
         ref={textareaRef}
@@ -90,8 +103,8 @@ export function ChatInput({
           "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
         )}
         style={{
-          background: TONE_AI.gradient,
-          boxShadow: `0 4px 12px -4px ${TONE_AI.ring}, inset 0 1px 0 0 rgba(255,255,255,0.25)`,
+          background: accent.gradient,
+          boxShadow: `0 4px 12px -4px ${accent.ring}, inset 0 1px 0 0 rgba(255,255,255,0.25)`,
         }}
       >
         <Send className="size-4" />

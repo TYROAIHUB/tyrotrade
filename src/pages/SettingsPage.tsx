@@ -20,7 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { TONE_AI } from "@/components/details/AccentIconBadge";
+import { useThemeAccent } from "@/components/layout/theme-accent";
 import { useSettings } from "@/hooks/useSettings";
 import {
   isUsingDefaultKey,
@@ -58,6 +58,7 @@ export function SettingsPage() {
 
 function AiChatbotCard() {
   const { settings, setSettings, resetToDefaults } = useSettings();
+  const accent = useThemeAccent();
   const [draftKey, setDraftKey] = React.useState(settings.geminiApiKey);
   const [show, setShow] = React.useState(false);
   const [testStatus, setTestStatus] = React.useState<
@@ -120,8 +121,8 @@ function AiChatbotCard() {
         <span
           className="size-9 rounded-xl grid place-items-center shrink-0 shadow-sm text-white"
           style={{
-            background: TONE_AI.gradient,
-            boxShadow: `0 4px 12px -4px ${TONE_AI.ring}, inset 0 1px 0 0 rgba(255,255,255,0.25)`,
+            background: accent.gradient,
+            boxShadow: `0 4px 12px -4px ${accent.ring}, inset 0 1px 0 0 rgba(255,255,255,0.25)`,
           }}
         >
           <HugeiconsIcon icon={FlashIcon} size={18} strokeWidth={2} />
@@ -175,9 +176,9 @@ function AiChatbotCard() {
               disabled={testStatus.kind === "loading"}
               className="shrink-0"
               style={{
-                background: TONE_AI.gradient,
+                background: accent.gradient,
                 color: "white",
-                boxShadow: `0 4px 12px -4px ${TONE_AI.ring}`,
+                boxShadow: `0 4px 12px -4px ${accent.ring}`,
               }}
             >
               {testStatus.kind === "loading" ? "Test ediliyor…" : "Test Et"}

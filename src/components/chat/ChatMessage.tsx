@@ -1,6 +1,6 @@
 import { HugeiconsIcon } from "@hugeicons/react";
 import { AiBrain02Icon } from "@hugeicons/core-free-icons";
-import { TONE_AI } from "@/components/details/AccentIconBadge";
+import { useThemeAccent } from "@/components/layout/theme-accent";
 import { cn } from "@/lib/utils";
 
 export interface ChatMessageData {
@@ -25,6 +25,7 @@ interface ChatMessageProps {
  * "- " bullet lists ) is rendered inline.
  */
 export function ChatMessage({ message, className }: ChatMessageProps) {
+  const accent = useThemeAccent();
   const isUser = message.role === "user";
   if (isUser) {
     return (
@@ -32,8 +33,10 @@ export function ChatMessage({ message, className }: ChatMessageProps) {
         <div
           className="max-w-[85%] rounded-2xl px-3.5 py-2 text-[13px] leading-relaxed shadow-sm"
           style={{
-            background: "rgba(20, 184, 166, 0.10)",
-            border: "1px solid rgba(20, 184, 166, 0.30)",
+            // User bubble tint follows the theme accent so user messages
+            // and the send button + drawer avatar all share the same hue.
+            background: accent.tint,
+            border: `1px solid ${accent.ring}`,
             color: "#0f172a",
           }}
         >
@@ -47,8 +50,8 @@ export function ChatMessage({ message, className }: ChatMessageProps) {
       <span
         className="size-7 rounded-xl grid place-items-center shrink-0 shadow-sm text-white mt-0.5"
         style={{
-          background: TONE_AI.gradient,
-          boxShadow: `0 4px 12px -4px ${TONE_AI.ring}, inset 0 1px 0 0 rgba(255,255,255,0.25)`,
+          background: accent.gradient,
+          boxShadow: `0 4px 12px -4px ${accent.ring}, inset 0 1px 0 0 rgba(255,255,255,0.25)`,
         }}
       >
         <HugeiconsIcon icon={AiBrain02Icon} size={14} strokeWidth={2} />

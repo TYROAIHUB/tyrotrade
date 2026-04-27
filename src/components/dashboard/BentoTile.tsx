@@ -80,6 +80,7 @@ export function BentoTile({
   const effectiveTone: IconBadgeTone = iconTone ?? {
     gradient: accent.gradient,
     ring: accent.ring,
+    solid: accent.solid,
   };
 
   const hover =
@@ -132,15 +133,18 @@ export function BentoTile({
                 )}
               </div>
               {icon && (
-                <span
-                  className="size-8 rounded-xl grid place-items-center shrink-0 shadow-sm text-white"
-                  style={{
-                    background: effectiveTone.gradient,
-                    boxShadow: `0 4px 12px -4px ${effectiveTone.ring}, inset 0 1px 0 0 rgba(255,255,255,0.25)`,
-                  }}
-                >
-                  <HugeiconsIcon icon={icon} size={16} strokeWidth={2} />
-                </span>
+                // Minimal stroke icon — no pill, no shadow. The semantic
+                // tone still reads through the stroke colour but the
+                // visual weight drops dramatically so the headline
+                // numbers can lead. 1.5 stroke + 18px keeps it crisp at
+                // both 1× and 2× DPR without competing with the title.
+                <HugeiconsIcon
+                  icon={icon}
+                  size={18}
+                  strokeWidth={1.5}
+                  style={{ color: effectiveTone.solid }}
+                  className="shrink-0 opacity-90"
+                />
               )}
             </header>
           )}

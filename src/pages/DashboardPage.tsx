@@ -125,18 +125,20 @@ export function DashboardPage() {
 
         <BentoGrid projects={projects} now={now} />
 
-        <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_360px] gap-3">
-          {/* Leaderboard reads from the same filtered project set as the
-              bento — top-right Filtre is the single source of truth for
-              the whole dashboard, no per-panel scope. */}
-          <LeaderboardPanel projects={projects} />
-          <EventsPanel projects={projects} now={now} />
+        {/* Bottom 12-col grid: Kral Projeler + Kral Segmentler stacked
+            in the left 9 cols (matches BentoGrid's wider tiles above);
+            Olaylar fills the right 3 cols and stretches the full
+            stack height — same width as Counterparty in the bento row
+            above so columns align vertically across the page. */}
+        <div className="grid grid-cols-1 xl:grid-cols-12 gap-3">
+          <div className="xl:col-span-9 flex flex-col gap-3 min-w-0">
+            <LeaderboardPanel projects={projects} />
+            <LeaderboardSegmentsPanel projects={projects} />
+          </div>
+          <div className="xl:col-span-3 min-w-0">
+            <EventsPanel projects={projects} now={now} />
+          </div>
         </div>
-
-        {/* Segment-level leaderboard sits below the project-level one and
-            shares the exact same filter scope — same metrics, but rolled
-            up by `segment`. */}
-        <LeaderboardSegmentsPanel projects={projects} />
       </div>
     </ScrollArea>
   );

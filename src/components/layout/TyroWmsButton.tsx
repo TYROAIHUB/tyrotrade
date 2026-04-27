@@ -33,13 +33,14 @@ export function TyroWmsButton({ className }: TyroWmsButtonProps) {
       onBlur={() => setHovered(false)}
       className={cn(
         "group relative inline-flex items-center shrink-0 overflow-hidden",
-        "rounded-full h-9 text-[13px] font-semibold lowercase text-white",
+        "rounded-full h-9 text-[12px] font-semibold lowercase text-white",
         "ring-1 ring-white/20 hover:ring-white/40",
-        // Width animation: 36px collapsed → 116px expanded (icon + label
-        // + right padding). The transition is on `width` so layout
-        // doesn't shift adjacent topbar buttons mid-animation.
+        // Width animation: 36px collapsed → 124px expanded (icon + label
+        // + symmetric padding so the wordmark sits center-ish in the
+        // freed space). The transition is on `width` so layout doesn't
+        // shift adjacent topbar buttons mid-animation.
         "transition-[width,box-shadow,transform] duration-300 ease-out",
-        hovered ? "w-[116px]" : "w-9",
+        hovered ? "w-[124px]" : "w-9",
         "active:scale-95",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
         className
@@ -69,12 +70,16 @@ export function TyroWmsButton({ className }: TyroWmsButtonProps) {
         </span>
       </span>
 
-      {/* Wordmark fades in alongside the width animation. `whitespace-
-          nowrap` + width-clipping by the parent's `overflow-hidden`
-          keeps it from wrapping while the pill is still narrow. */}
+      {/* Wordmark fades in alongside the width animation. `flex-1 +
+          justify-center` puts the label in the middle of the freed
+          space (post-icon area) so the expanded pill reads balanced
+          rather than icon-heavy. `whitespace-nowrap` + the parent's
+          `overflow-hidden` keep it from wrapping while the pill is
+          still narrow during the open animation. */}
       <span
         className={cn(
-          "relative z-[1] tracking-tight whitespace-nowrap pr-3",
+          "relative z-[1] flex-1 inline-flex items-center justify-center",
+          "tracking-tight whitespace-nowrap pr-3",
           "transition-opacity duration-200",
           hovered ? "opacity-100 delay-100" : "opacity-0"
         )}

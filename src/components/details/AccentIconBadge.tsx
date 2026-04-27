@@ -8,6 +8,9 @@ export interface IconBadgeTone {
   gradient: string;
   /** rgba color for outer drop-shadow. */
   ring: string;
+  /** Solid mid-stop hex — used by minimal/stroke-only renders that
+   *  drop the pill background and need a single semantic colour. */
+  solid: string;
 }
 
 interface AccentIconBadgeProps {
@@ -69,30 +72,35 @@ export function AccentIconBadge({
 export const TONE_CARGO: IconBadgeTone = {
   gradient: "linear-gradient(135deg, #fbbf24 0%, #f59e0b 55%, #b45309 100%)",
   ring: "rgba(217, 119, 6, 0.55)",
+  solid: "#f59e0b",
 };
 
 /** Estimated expense — rose / muted red. */
 export const TONE_EXPENSE: IconBadgeTone = {
   gradient: "linear-gradient(135deg, #fb7185 0%, #f43f5e 55%, #be123c 100%)",
   ring: "rgba(244, 63, 94, 0.55)",
+  solid: "#f43f5e",
 };
 
 /** Sea voyage — ocean blue. */
 export const TONE_SEA: IconBadgeTone = {
   gradient: "linear-gradient(135deg, #38bdf8 0%, #0284c7 55%, #075985 100%)",
   ring: "rgba(2, 132, 199, 0.55)",
+  solid: "#0284c7",
 };
 
 /** Road / truck — warm amber-orange. */
 export const TONE_ROAD: IconBadgeTone = {
   gradient: "linear-gradient(135deg, #fb923c 0%, #ea580c 55%, #9a3412 100%)",
   ring: "rgba(234, 88, 12, 0.55)",
+  solid: "#ea580c",
 };
 
 /** Profit & loss — emerald → teal, signals financial gain/loss. */
 export const TONE_PL: IconBadgeTone = {
   gradient: "linear-gradient(135deg, #34d399 0%, #10b981 55%, #047857 100%)",
   ring: "rgba(16, 185, 129, 0.55)",
+  solid: "#10b981",
 };
 
 /** Forecast / estimate — indigo → violet. Conveys "this is a model
@@ -101,6 +109,7 @@ export const TONE_PL: IconBadgeTone = {
 export const TONE_FORECAST: IconBadgeTone = {
   gradient: "linear-gradient(135deg, #818cf8 0%, #6366f1 55%, #4338ca 100%)",
   ring: "rgba(99, 102, 241, 0.55)",
+  solid: "#6366f1",
 };
 
 /** Currency / FX exposure — teal → cyan. "Money flow" coding,
@@ -108,6 +117,7 @@ export const TONE_FORECAST: IconBadgeTone = {
 export const TONE_CURRENCY: IconBadgeTone = {
   gradient: "linear-gradient(135deg, #2dd4bf 0%, #0d9488 55%, #115e59 100%)",
   ring: "rgba(13, 148, 136, 0.55)",
+  solid: "#0d9488",
 };
 
 /** Corridor / route concentration — orange → amber. Logistics tone,
@@ -116,6 +126,7 @@ export const TONE_CURRENCY: IconBadgeTone = {
 export const TONE_CORRIDOR: IconBadgeTone = {
   gradient: "linear-gradient(135deg, #fb923c 0%, #f97316 55%, #c2410c 100%)",
   ring: "rgba(249, 115, 22, 0.55)",
+  solid: "#f97316",
 };
 
 /** Velocity / transit time — violet → purple. Time / motion / analytics
@@ -123,6 +134,7 @@ export const TONE_CORRIDOR: IconBadgeTone = {
 export const TONE_VELOCITY: IconBadgeTone = {
   gradient: "linear-gradient(135deg, #c084fc 0%, #a855f7 55%, #6b21a8 100%)",
   ring: "rgba(168, 85, 247, 0.55)",
+  solid: "#a855f7",
 };
 
 /** Counterparty / relationship mix — pink → magenta. People / parties
@@ -131,13 +143,17 @@ export const TONE_VELOCITY: IconBadgeTone = {
 export const TONE_COUNTERPARTY: IconBadgeTone = {
   gradient: "linear-gradient(135deg, #f472b6 0%, #ec4899 55%, #9d174d 100%)",
   ring: "rgba(236, 72, 153, 0.55)",
+  solid: "#ec4899",
 };
 
 /** TYRO AI / Gemini chatbot — emerald → teal → deep teal. Carries the
  *  premium-AI vibe (matches the chatbot drawer avatar tile and the
  *  topbar "TYRO AI" button) without overlapping the P&L emerald or
- *  the currency teal — slightly cooler, with a deeper anchor stop. */
+ *  the currency teal — slightly cooler, with a deeper anchor stop.
+ *  NOTE: Most TYRO AI surfaces now read the live sidebar accent via
+ *  `useThemeAccent()` instead of this fixed tone — kept for fallback. */
 export const TONE_AI: IconBadgeTone = {
   gradient: "linear-gradient(135deg, #14b8a6 0%, #0d9488 55%, #115e59 100%)",
   ring: "rgba(13, 148, 136, 0.55)",
+  solid: "#0d9488",
 };

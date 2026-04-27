@@ -2,7 +2,7 @@ import * as React from "react";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { ChatEdit01Icon } from "@hugeicons/core-free-icons";
 import { cn } from "@/lib/utils";
-import { TONE_AI } from "@/components/details/AccentIconBadge";
+import { useThemeAccent } from "@/components/layout/theme-accent";
 
 interface AskAiButtonProps {
   onClick: () => void;
@@ -10,14 +10,18 @@ interface AskAiButtonProps {
 }
 
 /**
- * "TYRO AI" — opens the Gemini chatbot drawer. Painted with the shared
- * `TONE_AI` emerald-teal gradient so the topbar button, the Settings
- * card icon, and the drawer avatar all read as the same product
- * surface. Theme-stable: the AI gradient stays put across light/navy/
- * black sidebar themes (reads consistently as a "premium AI" CTA).
+ * "TYRO AI" — opens the Gemini chatbot drawer. Painted with the live
+ * sidebar accent so the button visually announces the active theme:
+ *   - light theme  → sky/navy gradient
+ *   - navy theme   → gold gradient
+ *   - black theme  → bright sky gradient
+ *
+ * Same gradient powers the drawer header, send button, and message
+ * avatars so the entire AI surface tracks the user's theme choice.
  */
 export function AskAiButton({ onClick, className }: AskAiButtonProps) {
   const [hovered, setHovered] = React.useState(false);
+  const accent = useThemeAccent();
   return (
     <button
       type="button"
@@ -37,8 +41,8 @@ export function AskAiButton({ onClick, className }: AskAiButtonProps) {
         className
       )}
       style={{
-        background: TONE_AI.gradient,
-        boxShadow: `0 4px 12px -4px ${TONE_AI.ring}, inset 0 1px 0 0 rgba(255,255,255,0.2)`,
+        background: accent.gradient,
+        boxShadow: `0 4px 12px -4px ${accent.ring}, inset 0 1px 0 0 rgba(255,255,255,0.2)`,
       }}
     >
       {/* Animated shimmer overlay on hover */}

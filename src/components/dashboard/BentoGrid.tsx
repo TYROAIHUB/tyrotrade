@@ -28,14 +28,13 @@ const containerVariants: Variants = {
  * Layout (12-col responsive, 3 rows on lg+):
  *
  *   Row 1: [PeriodPerformance HERO 6] [EstimatedPL 3] [EstimatedQuantity 3]
- *   Row 2: [EstimatedExpense 4]       [ActivePipeline 8]
+ *   Row 2: [EstimatedExpense 3]       [ActivePipeline 9]
  *   Row 3: [CurrencyExp 3] [Corridor 3] [Velocity 3] [Counterparty 3]
  *
- * Breakpoints:
- *   <sm   single column stack
- *   sm    2-up grid, hero 2-col
- *   md    same 2-up but compacter
- *   lg+   full 12-col bento
+ * Tahmini Gider was previously col-span-4 — visually disproportionate
+ * to the 3-col risk row underneath. Pulled back to col-span-3 so all
+ * "small-card" tiles share the same width, and ActivePipeline picks
+ * up the freed col to dominate row 2.
  *
  * Container `motion.div` orchestrates a staggered fade-up-blur reveal.
  * All tiles consume the same period-filtered `projects` array — no
@@ -71,12 +70,12 @@ export function BentoGrid({ projects, now = new Date() }: BentoGridProps) {
       {/* Row 2 — Expense breakdown + pipeline */}
       <EstimatedExpenseTile
         projects={projects}
-        span="col-span-12 sm:col-span-12 lg:col-span-4"
+        span="col-span-12 sm:col-span-6 lg:col-span-3"
       />
       <ActivePipelineTile
         projects={projects}
         now={now}
-        span="col-span-12 sm:col-span-12 lg:col-span-8"
+        span="col-span-12 sm:col-span-6 lg:col-span-9"
       />
 
       {/* Row 3 — Risk / portfolio composition KPIs */}

@@ -170,8 +170,11 @@ export function DashboardFilters({
           type="button"
           aria-label="Gelişmiş filtre"
           className={cn(
-            "h-9 rounded-xl pl-2.5 pr-3.5 inline-flex items-center gap-2 shrink-0 shadow-sm relative transition-transform",
-            "text-[12.5px] font-semibold tracking-tight",
+            // rounded-full + symmetric px-3.5 mirrors AskAiButton's pill
+            // shape so the two topbar CTAs (Filtre + TYRO AI) read as a
+            // matched pair. h-9 / text-[13px] / font-semibold all align.
+            "h-9 rounded-full px-3.5 inline-flex items-center gap-2 shrink-0 shadow-sm relative transition-transform",
+            "text-[13px] font-semibold tracking-tight",
             "hover:scale-[1.04] active:scale-95",
             "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2",
             className
