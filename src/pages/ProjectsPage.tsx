@@ -9,7 +9,6 @@ import { ProjectOverviewCard } from "@/components/details/ProjectOverviewCard";
 import { CommoditySalesCard } from "@/components/details/CommoditySalesCard";
 import { ProfitLossCard } from "@/components/details/ProfitLossCard";
 import { BudgetSalesCard } from "@/components/details/BudgetSalesCard";
-import { EstimatedExpenseCard } from "@/components/details/EstimatedExpenseCard";
 import { BudgetPLCard } from "@/components/details/BudgetPLCard";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
@@ -96,7 +95,6 @@ export function ProjectsPage() {
                 <CommoditySalesCard project={selected} />
                 <ProfitLossCard project={selected} />
                 <BudgetSalesCard project={selected} />
-                <EstimatedExpenseCard project={selected} />
                 <BudgetPLCard project={selected} />
               </div>
             </ScrollArea>
@@ -128,7 +126,6 @@ export function ProjectsPage() {
               <CommoditySalesCard project={selected} />
               <ProfitLossCard project={selected} />
               <BudgetSalesCard project={selected} />
-              <EstimatedExpenseCard project={selected} />
               <BudgetPLCard project={selected} />
             </div>
           </ScrollArea>

@@ -94,3 +94,11 @@ export const TONE_PL: IconBadgeTone = {
   gradient: "linear-gradient(135deg, #34d399 0%, #10b981 55%, #047857 100%)",
   ring: "rgba(16, 185, 129, 0.55)",
 };
+
+/** Forecast / estimate — indigo → violet. Conveys "this is a model
+ *  prediction" rather than a realised result. Used by the Tahmini
+ *  Kâr & Zarar card so it doesn't read as a closed-out balance. */
+export const TONE_FORECAST: IconBadgeTone = {
+  gradient: "linear-gradient(135deg, #818cf8 0%, #6366f1 55%, #4338ca 100%)",
+  ring: "rgba(99, 102, 241, 0.55)",
+};
