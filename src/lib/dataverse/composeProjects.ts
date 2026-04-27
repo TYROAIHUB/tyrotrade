@@ -603,6 +603,9 @@ function toProjectLine(r: Record<string, unknown>): ProjectLine {
     quantityKg: num(r["mserp_qty"]),
     unit: readString(r, "mserp_unitid") || "KG",
     unitPrice: num(r["mserp_unitprice"]),
+    // Purchase price hides under the misleading `mserp_salesprice`
+    // column — see `ProjectLine` JSDoc.
+    purchasePrice: num(r["mserp_salesprice"]),
     currency: readString(r, "mserp_currencycode") || "USD",
     level1: readString(r, "mserp_etgproductlevel01"),
     level2: readString(r, "mserp_etgproductlevel02"),

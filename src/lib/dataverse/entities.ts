@@ -126,7 +126,15 @@ export interface ProjectLine {
   productName: string;
   quantityKg: number;
   unit: string;
+  /** Sales unit price (per ton). Stored in F&O as `mserp_unitprice` —
+   *  the column is misnamed at the system level, but operationally it
+   *  represents the SALES side of the line. */
   unitPrice: number;
+  /** Purchase unit price (per ton). Stored in F&O as
+   *  `mserp_salesprice` — again a system-naming oddity. Optional so
+   *  the legacy mock dataset (which never had this field) still
+   *  type-checks; consumers should treat absent as `0`. */
+  purchasePrice?: number;
   currency: string;
   level1: string;
   level2: string;
