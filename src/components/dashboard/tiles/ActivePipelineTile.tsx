@@ -24,14 +24,18 @@ interface ActivePipelineTileProps {
  * Project-level "Açık" / "Kapalı" fallback kicks in when the ship row has
  * no recognised voyage status (no ship plan attached).
  */
+// Labels mirror the raw F&O `mserp_voyagestatus` option-set values verbatim
+// — "Commenced", "Completed", etc. The user reads the same vocabulary in
+// F&O and on the dashboard; no translation drift.
 const STATUS_CATEGORIES = [
-  { key: "To Be Nominated", label: "Atanacak", color: "#8b5cf6" },
-  { key: "Nominated", label: "Atandı", color: "#6366f1" },
-  { key: "Commenced", label: "Sefer aktif", color: "#f59e0b" },
-  { key: "Completed", label: "Tamamlandı", color: "#10b981" },
-  { key: "Closed", label: "Kapandı", color: "#64748b" },
-  { key: "Cancelled", label: "İptal", color: "#f43f5e" },
-  // Project-level fallbacks (no ship plan)
+  { key: "To Be Nominated", label: "To Be Nominated", color: "#8b5cf6" },
+  { key: "Nominated", label: "Nominated", color: "#6366f1" },
+  { key: "Commenced", label: "Commenced", color: "#f59e0b" },
+  { key: "Completed", label: "Completed", color: "#10b981" },
+  { key: "Closed", label: "Closed", color: "#64748b" },
+  { key: "Cancelled", label: "Cancelled", color: "#f43f5e" },
+  // Project-level fallbacks (no ship plan) — these are stored in Turkish at
+  // the F&O project header level so they stay Turkish.
   { key: "Açık", label: "Açık", color: "#0ea5e9" },
   { key: "Kapalı", label: "Kapalı", color: "#94a3b8" },
 ] as const;

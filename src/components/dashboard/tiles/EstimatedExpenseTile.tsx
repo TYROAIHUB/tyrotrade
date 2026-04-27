@@ -11,25 +11,13 @@ interface EstimatedExpenseTileProps {
   rowSpan?: string;
 }
 
-interface BucketStat {
-  key: keyof BucketTotals;
-  label: string;
-  color: string;
-  value: number;
-}
-
-interface BucketTotals {
-  freightUsd: number;
-  insuranceUsd: number;
-  dutiesUsd: number;
-  otherUsd: number;
-}
-
 /**
- * Tahmini Gider tile — sums `costEstimate` across projects, broken down
- * by the four operational buckets (freight / insurance / duties / other).
- * Renders a 4-segment horizontal stacked bar so dominant cost categories
- * are obvious at a glance, plus a chip legend underneath.
+ * Tahmini Gider tile — sums `costEstimateLines.totalUsd` grouped by the
+ * actual F&O category name (`mserp_tryexpensetype@FormattedValue`, e.g.
+ * "freight", "opex", "Operasyonel giderler"). No translation, no
+ * bucketing — what F&O stores is what we render. Top-5 categories are
+ * shown explicitly; anything beyond the top-5 collapses into "other"
+ * so the visualisation stays scannable on a 4-col tile.
  *
  * Domain colour: rose (cost / drag on margin).
  */
@@ -39,57 +27,43 @@ export function EstimatedExpenseTile({
   rowSpan,
 }: EstimatedExpenseTileProps) {
   const reduce = useReducedMotion();
-  const totals = React.useMemo<BucketTotals>(() => {
-    const t: BucketTotals = {
-      freightUsd: 0,
-      insuranceUsd: 0,
-      dutiesUsd: 0,
-      otherUsd: 0,
-    };
+  const { categories, total } = React.useMemo(() => {
+    const map = new Map<string, number>();
     for (const p of projects) {
-      const ce = p.costEstimate;
-      if (!ce) continue;
-      t.freightUsd += ce.freightUsd ?? 0;
-      t.insuranceUsd += ce.insuranceUsd ?? 0;
-      t.dutiesUsd += ce.dutiesUsd ?? 0;
-      t.otherUsd += ce.otherUsd ?? 0;
+      const lines = p.costEstimateLines;
+      if (!lines) continue;
+      for (const l of lines) {
+        if (!l.totalUsd) continue;
+        map.set(l.name, (map.get(l.name) ?? 0) + l.totalUsd);
+      }
     }
-    return t;
+    const sorted = [...map.entries()]
+      .map(([name, value]) => ({ name, value }))
+      .sort((a, b) => b.value - a.value);
+    const total = sorted.reduce((s, r) => s + r.value, 0);
+    // Top-5 explicit, rest collapsed
+    const top = sorted.slice(0, 5);
+    const restSum = sorted.slice(5).reduce((s, r) => s + r.value, 0);
+    const categories =
+      restSum > 0 ? [...top, { name: "other", value: restSum }] : top;
+    return { categories, total };
   }, [projects]);
 
-  const total =
-    totals.freightUsd + totals.insuranceUsd + totals.dutiesUsd + totals.otherUsd;
-  const buckets: BucketStat[] = [
-    {
-      key: "freightUsd",
-      label: "Navlun",
-      color: "#f97316",
-      value: totals.freightUsd,
-    },
-    {
-      key: "insuranceUsd",
-      label: "Sigorta",
-      color: "#a855f7",
-      value: totals.insuranceUsd,
-    },
-    {
-      key: "dutiesUsd",
-      label: "Gümrük",
-      color: "#06b6d4",
-      value: totals.dutiesUsd,
-    },
-    {
-      key: "otherUsd",
-      label: "Diğer",
-      color: "#64748b",
-      value: totals.otherUsd,
-    },
+  // Distinct palette — rose-leaning but with enough variety so adjacent
+  // bars are clearly different in the stacked bar chart.
+  const PALETTE = [
+    "#f97316", // orange
+    "#a855f7", // purple
+    "#06b6d4", // cyan
+    "#10b981", // emerald
+    "#f59e0b", // amber
+    "#64748b", // slate (overflow / "other")
   ];
 
   return (
     <BentoTile
       title="Tahmini Gider"
-      subtitle="Bucket dağılımı · USD"
+      subtitle="F&O kategori dağılımı · USD"
       icon={Wallet01Icon}
       iconColor="rgb(244 63 94)"
       span={span}
@@ -102,19 +76,22 @@ export function EstimatedExpenseTile({
           </span>
         </div>
 
-        {/* 4-bucket stacked bar */}
+        {/* Stacked bar — one segment per actual F&O category */}
         {total > 0 ? (
           <div className="mt-auto flex flex-col gap-2">
             <div className="relative h-2 w-full rounded-full overflow-hidden bg-foreground/[0.06]">
-              {buckets.map((b, i) => {
-                const offset = buckets
+              {categories.map((c, i) => {
+                const offset = categories
                   .slice(0, i)
-                  .reduce((acc, prev) => acc + (prev.value / total) * 100, 0);
-                const pct = (b.value / total) * 100;
+                  .reduce(
+                    (acc, prev) => acc + (prev.value / total) * 100,
+                    0
+                  );
+                const pct = (c.value / total) * 100;
                 if (pct === 0) return null;
                 return (
                   <motion.span
-                    key={b.key}
+                    key={c.name}
                     initial={reduce ? { width: `${pct}%` } : { width: 0 }}
                     animate={{ width: `${pct}%` }}
                     transition={{
@@ -123,26 +100,32 @@ export function EstimatedExpenseTile({
                       ease: [0.22, 1, 0.36, 1],
                     }}
                     className="absolute top-0 h-full"
-                    style={{ left: `${offset}%`, backgroundColor: b.color }}
+                    style={{
+                      left: `${offset}%`,
+                      backgroundColor: PALETTE[i % PALETTE.length],
+                    }}
                   />
                 );
               })}
             </div>
             <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-[10px]">
-              {buckets.map((b) => (
+              {categories.map((c, i) => (
                 <div
-                  key={b.key}
-                  className="flex items-center gap-1.5 min-w-0 truncate"
+                  key={c.name}
+                  className="flex items-center gap-1.5 min-w-0"
+                  title={c.name}
                 >
                   <span
                     className="size-1.5 rounded-full shrink-0"
-                    style={{ backgroundColor: b.color }}
+                    style={{
+                      backgroundColor: PALETTE[i % PALETTE.length],
+                    }}
                   />
                   <span className="text-muted-foreground truncate">
-                    {b.label}
+                    {c.name}
                   </span>
-                  <span className="font-semibold tabular-nums text-foreground ml-auto">
-                    {((b.value / total) * 100).toFixed(0)}%
+                  <span className="font-semibold tabular-nums text-foreground ml-auto shrink-0">
+                    {((c.value / total) * 100).toFixed(0)}%
                   </span>
                 </div>
               ))}
