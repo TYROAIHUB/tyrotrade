@@ -74,15 +74,15 @@ export function EstimatedPLTile({
   const chartConfig: ChartConfig = {
     sales: {
       label: "Tahmini Satış",
-      colors: { light: ["#10b981"], dark: ["#34d399"] },
+      colors: { light: ["#10b981"], dark: ["#34d399"] }, // emerald
     },
     purchase: {
       label: "Tahmini Alım",
-      colors: { light: ["#fb7185"], dark: ["#f87171"] },
+      colors: { light: ["#f59e0b"], dark: ["#fbbf24"] }, // amber
     },
     expense: {
       label: "Tahmini Gider",
-      colors: { light: ["#be123c"], dark: ["#e11d48"] },
+      colors: { light: ["#dc2626"], dark: ["#ef4444"] }, // red
     },
   };
 
@@ -118,29 +118,25 @@ export function EstimatedPLTile({
           </span>
         </div>
 
-        {/* 3-arc radial chart */}
+        {/* 3-arc semi-radial chart */}
         {pl.salesTotalUsd > 0 ? (
-          <div className="relative flex-1 min-h-[140px] -mx-1 -mb-1">
+          <div className="relative flex-1 min-h-[150px] -mx-1 -mb-1">
             <EvilRadialChart
               data={chartData}
               dataKey="value"
               nameKey="key"
               chartConfig={chartConfig}
-              variant="full"
+              variant="semi"
               hideLegend
               hideTooltip
               hideBackground
-              innerRadius="35%"
-              outerRadius="100%"
-              cornerRadius={6}
-              barSize={9}
               className="h-full w-full"
             />
-            {/* Inline legend with values */}
+            {/* Inline legend with values — sits below the semi-circle */}
             <div className="absolute inset-x-0 bottom-0 flex items-center justify-around gap-1 text-[9.5px] px-1">
               <PLLegend dot="#10b981" label="Satış" value={pl.salesTotalUsd} />
-              <PLLegend dot="#fb7185" label="Alım" value={pl.purchaseTotalUsd} />
-              <PLLegend dot="#be123c" label="Gider" value={pl.expenseTotalUsd} />
+              <PLLegend dot="#f59e0b" label="Alım" value={pl.purchaseTotalUsd} />
+              <PLLegend dot="#dc2626" label="Gider" value={pl.expenseTotalUsd} />
             </div>
           </div>
         ) : (
