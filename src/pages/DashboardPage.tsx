@@ -125,12 +125,10 @@ export function DashboardPage() {
         <BentoGrid projects={projects} now={now} />
 
         <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_360px] gap-3">
-          {/* Leaderboard ranks across 4 boards (top sales / expense / margin
-              ↑↓). Pass the unfiltered project list so older big earners
-              (without ship plans) still appear. The hasUsableShipPlan +
-              dashboard filters are aimed at operational tiles, not the
-              executive leaderboard. */}
-          <LeaderboardPanel projects={rawProjects} />
+          {/* Leaderboard reads from the same filtered project set as the
+              bento — top-right Filtre is the single source of truth for
+              the whole dashboard, no per-panel scope. */}
+          <LeaderboardPanel projects={projects} />
           <EventsPanel projects={projects} now={now} />
         </div>
       </div>

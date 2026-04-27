@@ -4,6 +4,8 @@ import { Wallet01Icon } from "@hugeicons/core-free-icons";
 import { BentoTile } from "../BentoTile";
 import { AnimatedNumber } from "../AnimatedNumber";
 import { TONE_EXPENSE } from "@/components/details/AccentIconBadge";
+import { selectProjectPL } from "@/lib/selectors/profitLoss";
+import { formatCompactCurrency } from "@/lib/format";
 import type { Project } from "@/lib/dataverse/entities";
 
 interface EstimatedExpenseTileProps {
@@ -22,14 +24,16 @@ interface BucketStat {
 }
 
 /**
- * Tahmini Gider tile — sums `costEstimateLines.totalUsd` across all
- * projects, then collapses everything into three executive buckets:
- *   - **Freight**: anything matching "freight" / "navlun"
- *   - **Opex**: anything matching "opex" / "operasyonel"
- *   - **Other**: everything else (insurance, customs, port charges, …)
+ * Tahmini Gider tile — sums `costEstimateLines.totalUsd` across the same
+ * project subset the K&Z tile uses (projects with priced lines on either
+ * side). Both tiles share scope so the totals reconcile to the cent.
+ * Expenses are always denoted in USD per the F&O entity model
+ * (`mserp_expamountusdd`), so no FX conversion is needed here.
  *
- * Three side-by-side colour-coded chips sit under the stacked bar so
- * the dominant category is obvious without reading numbers.
+ * Three executive buckets:
+ *   - **Freight** — names matching "freight" / "navlun"
+ *   - **Opex**    — names matching "opex" / "operasyonel"
+ *   - **Other**   — everything else (insurance, customs, port charges, …)
  *
  * Domain colour: rose (cost / drag on margin).
  */
@@ -39,13 +43,20 @@ export function EstimatedExpenseTile({
   rowSpan,
 }: EstimatedExpenseTileProps) {
   const reduce = useReducedMotion();
-  const buckets = React.useMemo<BucketStat[]>(() => {
+  const { buckets, contributingCount } = React.useMemo(() => {
     let freight = 0;
     let opex = 0;
     let other = 0;
+    let contributingCount = 0;
     for (const p of projects) {
+      const pl = selectProjectPL(p);
+      // Same scope as aggregateEstimatedPL — projects with at least one
+      // priced line. Currency doesn't matter because expenses are
+      // already stored in USD by the composer.
+      if (pl.salesTotal <= 0 && pl.purchaseTotal <= 0) continue;
       const lines = p.costEstimateLines;
       if (!lines) continue;
+      contributingCount++;
       for (const l of lines) {
         if (!l.totalUsd) continue;
         const n = (l.name ?? "").toLowerCase();
@@ -58,11 +69,12 @@ export function EstimatedExpenseTile({
         }
       }
     }
-    return [
+    const buckets: BucketStat[] = [
       { key: "freight", label: "Freight", color: "#f97316", value: freight },
       { key: "opex", label: "Opex", color: "#a855f7", value: opex },
       { key: "other", label: "Other", color: "#64748b", value: other },
     ];
+    return { buckets, contributingCount };
   }, [projects]);
 
   const total = buckets.reduce((s, b) => s + b.value, 0);
@@ -70,14 +82,17 @@ export function EstimatedExpenseTile({
   return (
     <BentoTile
       title="Tahmini Gider"
-      subtitle="Freight · Opex · Other · USD"
+      subtitle={`USD · ${contributingCount} proje`}
       icon={Wallet01Icon}
       iconTone={TONE_EXPENSE}
       span={span}
       rowSpan={rowSpan}
     >
       <div className="flex flex-col gap-2.5 h-full">
-        <div className="flex items-baseline gap-1.5">
+        <div
+          className="flex items-baseline gap-1.5"
+          title={`Tahmini toplam gider — ${formatCompactCurrency(total, "USD")} · ${contributingCount} proje. Gider kalemleri zaten USD bazlı (mserp_expamountusdd).`}
+        >
           <span className="text-[26px] font-semibold leading-none tracking-tight text-rose-700">
             <AnimatedNumber value={total} preset="currency" currency="USD" />
           </span>
@@ -120,6 +135,7 @@ export function EstimatedExpenseTile({
                       boxShadow:
                         "inset 0 1px 0 0 rgba(255,255,255,0.4), inset 0 -1px 0 0 rgba(0,0,0,0.08)",
                     }}
+                    title={`${b.label}: ${formatCompactCurrency(b.value, "USD")} · %${pct.toFixed(1)}`}
                   />
                 );
               })}
@@ -132,7 +148,7 @@ export function EstimatedExpenseTile({
                   <div
                     key={b.key}
                     className="flex flex-col gap-0.5 min-w-0"
-                    title={b.label}
+                    title={`${b.label}: ${formatCompactCurrency(b.value, "USD")} · %${pct.toFixed(1)} pay`}
                   >
                     <div className="flex items-center gap-1.5 min-w-0">
                       <span

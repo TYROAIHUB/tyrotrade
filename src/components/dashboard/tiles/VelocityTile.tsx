@@ -39,7 +39,10 @@ export function VelocityTile({
       rowSpan={rowSpan}
     >
       <div className="flex flex-col gap-2 h-full">
-        <div className="flex items-baseline gap-1">
+        <div
+          className="flex items-baseline gap-1"
+          title={`Ortalama transit — yükleme bitişi (LP-ED ya da BL) ile varış limanına ulaşma (DP-ETA) arasındaki gün farkı. ${stats.sampleSize} seferde ölçüldü.`}
+        >
           <span className="text-[28px] font-semibold leading-none tracking-tight">
             <AnimatedNumber value={Math.round(stats.avgDays)} preset="days" />
           </span>
@@ -47,19 +50,28 @@ export function VelocityTile({
 
         {stats.sampleSize > 0 ? (
           <div className="mt-auto flex flex-col gap-1.5">
-            <div className="flex items-baseline justify-between gap-2 text-[10.5px]">
+            <div
+              className="flex items-baseline justify-between gap-2 text-[10.5px]"
+              title="En kısa transit süresi"
+            >
               <span className="text-muted-foreground">Min</span>
               <span className="font-semibold tabular-nums">
                 {Math.round(stats.minDays)} gün
               </span>
             </div>
-            <div className="flex items-baseline justify-between gap-2 text-[10.5px]">
+            <div
+              className="flex items-baseline justify-between gap-2 text-[10.5px]"
+              title="En uzun transit süresi"
+            >
               <span className="text-muted-foreground">Max</span>
               <span className="font-semibold tabular-nums">
                 {Math.round(stats.maxDays)} gün
               </span>
             </div>
-            <div className="flex items-baseline justify-between gap-2 text-[10px]">
+            <div
+              className="flex items-baseline justify-between gap-2 text-[10px]"
+              title="LP-ED ve DP-ETA tarihlerinin ikisi de dolu olan sefer sayısı"
+            >
               <span className="text-muted-foreground/80">Örneklem</span>
               <span className="text-muted-foreground tabular-nums">
                 {stats.sampleSize} sefer

@@ -51,7 +51,14 @@ export function CounterpartyMixTile({
     >
       <div className="flex flex-col gap-2 h-full text-[10.5px]">
         {/* Top supplier row */}
-        <div className="flex flex-col gap-0.5 min-w-0">
+        <div
+          className="flex flex-col gap-0.5 min-w-0"
+          title={
+            topSupplier
+              ? `En büyük tedarikçi — ${topSupplier.name}: ${topSupplier.count} proje (%${(supShare * 100).toFixed(1)}). HHI ${(mix.supplierHHI * 100).toFixed(0)} — < 15: çeşitli, 15-25: orta, > 25: yoğun.`
+              : "Tedarikçi verisi yok"
+          }
+        >
           <div className="text-[9.5px] uppercase tracking-wider text-muted-foreground/80">
             Tedarikçi
           </div>
@@ -75,7 +82,14 @@ export function CounterpartyMixTile({
         <div className="border-t border-border/40 my-0.5" />
 
         {/* Top buyer row */}
-        <div className="flex flex-col gap-0.5 min-w-0">
+        <div
+          className="flex flex-col gap-0.5 min-w-0"
+          title={
+            topBuyer
+              ? `En büyük alıcı — ${topBuyer.name}: ${topBuyer.count} proje (%${(buyShare * 100).toFixed(1)}). HHI ${(mix.buyerHHI * 100).toFixed(0)} — < 15: çeşitli, 15-25: orta, > 25: yoğun.`
+              : "Alıcı verisi yok"
+          }
+        >
           <div className="text-[9.5px] uppercase tracking-wider text-muted-foreground/80">
             Alıcı
           </div>

@@ -89,7 +89,11 @@ export function EstimatedPLTile({
   return (
     <BentoTile
       title="Tahmini K&Z"
-      subtitle={`USD bazlı · ${pl.contributingCount} proje`}
+      subtitle={
+        pl.fxConvertedCount > 0
+          ? `USD eşdeğeri · ${pl.contributingCount} proje · ${pl.fxConvertedCount} FX`
+          : `USD bazlı · ${pl.contributingCount} proje`
+      }
       icon={Coins02Icon}
       iconTone={iconTone}
       span={span}
@@ -118,7 +122,8 @@ export function EstimatedPLTile({
           </span>
         </div>
 
-        {/* 3-arc semi-radial chart */}
+        {/* 3-arc semi-radial chart — tooltip shows hovered arc's label
+            and value via the chart's own ChartTooltipContent. */}
         {pl.salesTotalUsd > 0 ? (
           <div className="relative flex-1 min-h-[110px] -mx-1 -mb-1">
             <EvilRadialChart
@@ -128,15 +133,29 @@ export function EstimatedPLTile({
               chartConfig={chartConfig}
               variant="semi"
               hideLegend
-              hideTooltip
               hideBackground
               className="h-full w-full"
             />
             {/* Inline legend with values — sits below the semi-circle */}
             <div className="absolute inset-x-0 bottom-0 flex items-center justify-around gap-1 text-[10.5px] px-1">
-              <PLLegend dot="#10b981" label="Satış" value={pl.salesTotalUsd} />
-              <PLLegend dot="#f59e0b" label="Alım" value={pl.purchaseTotalUsd} />
-              <PLLegend dot="#dc2626" label="Gider" value={pl.expenseTotalUsd} />
+              <PLLegend
+                dot="#10b981"
+                label="Satış"
+                value={pl.salesTotalUsd}
+                hint={`Tahmini satış toplamı (USD eşdeğeri) — Σ (miktar × birim fiyat). EUR/TRY/GBP statik kurla USD'ye çevrilir.`}
+              />
+              <PLLegend
+                dot="#f59e0b"
+                label="Alım"
+                value={pl.purchaseTotalUsd}
+                hint={`Tahmini alım toplamı (USD eşdeğeri) — Σ (miktar × alım fiyatı). EUR/TRY/GBP statik kurla USD'ye çevrilir.`}
+              />
+              <PLLegend
+                dot="#dc2626"
+                label="Gider"
+                value={pl.expenseTotalUsd}
+                hint={`Tahmini gider toplamı — Σ costEstimateLines.totalUsd (zaten USD). K&Z formülünde Satış − Alım − Gider olarak kullanılır.`}
+              />
             </div>
           </div>
         ) : (
@@ -145,9 +164,9 @@ export function EstimatedPLTile({
           </div>
         )}
 
-        {pl.nonUsdCount > 0 && (
+        {pl.unknownCurrencyCount > 0 && (
           <div className="text-[9.5px] text-muted-foreground/70 italic">
-            {pl.nonUsdCount} proje USD dışı — dönüşüm uygulanmadı
+            {pl.unknownCurrencyCount} proje tanımsız para birimi — kur uygulanmadı
           </div>
         )}
       </div>
@@ -159,13 +178,22 @@ function PLLegend({
   dot,
   label,
   value,
+  hint,
 }: {
   dot: string;
   label: string;
   value: number;
+  hint?: string;
 }) {
   return (
-    <span className="inline-flex items-center gap-1 min-w-0">
+    <span
+      className="inline-flex items-center gap-1 min-w-0"
+      title={
+        hint
+          ? `${label} · ${formatCompactCurrency(value, "USD")}\n${hint}`
+          : `${label}: ${formatCompactCurrency(value, "USD")}`
+      }
+    >
       <span
         className="size-2 rounded-full shrink-0"
         style={{ backgroundColor: dot }}

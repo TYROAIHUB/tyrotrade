@@ -31,12 +31,6 @@ import {
 } from "@/components/ui/chart";
 import { formatCompactCurrency } from "@/lib/format";
 import {
-  applyPeriodFilter,
-  PERIODS,
-  DEFAULT_PERIOD,
-  type PeriodKey,
-} from "@/lib/dashboard/periods";
-import {
   topBySalesActual,
   topByExpense,
   topByMargin,
@@ -336,56 +330,37 @@ function LeftAlignedTick(props: {
  *   - **En Düşük Marj**: smallest (most negative) P&L margin %
  *   - **En Yüksek Marj**: largest P&L margin %
  *
- * Each board has its own period selector (default = current FY). The
- * panel is independent of the dashboard top-bar period filter so the
- * user can compare "monthly winners" against the executive period view.
+ * Period scope is inherited from the dashboard top-right Filtre — this
+ * panel doesn't keep its own period selector so the whole dashboard
+ * stays in sync with one filter source. `projects` arrives already
+ * scoped by `applyDashboardFilters`, so we just feed it straight to
+ * the board's `build` function.
  */
 export function LeaderboardPanel({ projects }: LeaderboardPanelProps) {
   const navigate = useNavigate();
   const [board, setBoard] = React.useState<BoardKey>("top-sales");
-  const [period, setPeriod] = React.useState<PeriodKey>(DEFAULT_PERIOD);
 
   const config = BOARDS.find((b) => b.key === board) ?? BOARDS[0];
 
-  const data: ChartRow[] = React.useMemo(() => {
-    // null fyKey → current FY when period === "fy"
-    const filtered = applyPeriodFilter(projects, period, null);
-    return config.build(filtered);
-  }, [projects, period, config]);
+  const data: ChartRow[] = React.useMemo(
+    () => config.build(projects),
+    [projects, config]
+  );
 
   return (
     <Card className="overflow-hidden">
       <CardHeader className="flex flex-col gap-3 space-y-0 pb-3">
-        <div className="flex items-center justify-between gap-3">
-          <CardTitle className="flex items-center gap-2 text-base">
-            <HugeiconsIcon
-              icon={config.icon}
-              size={20}
-              strokeWidth={1.75}
-              className="shrink-0"
-              style={{ color: config.iconColor }}
-            />
-            Liderlik Tablosu
-          </CardTitle>
-          <Tabs
-            value={period}
-            onValueChange={(v) => setPeriod(v as PeriodKey)}
+        <CardTitle className="flex items-center gap-2 text-base">
+          <HugeiconsIcon
+            icon={config.icon}
+            size={20}
+            strokeWidth={1.75}
             className="shrink-0"
-          >
-            <TabsList className="h-8">
-              {PERIODS.map((p) => (
-                <TabsTrigger
-                  key={p.key}
-                  value={p.key}
-                  className="text-[11px] px-2.5 py-1 h-6"
-                >
-                  {p.label}
-                </TabsTrigger>
-              ))}
-            </TabsList>
-          </Tabs>
-        </div>
-        {/* Board selector — second tab row */}
+            style={{ color: config.iconColor }}
+          />
+          Liderlik Tablosu
+        </CardTitle>
+        {/* Board selector */}
         <Tabs
           value={board}
           onValueChange={(v) => setBoard(v as BoardKey)}

@@ -65,7 +65,10 @@ export function CorridorConcentrationTile({
       rowSpan={rowSpan}
     >
       <div className="flex flex-col gap-2 h-full">
-        <div className="flex items-baseline gap-2">
+        <div
+          className="flex items-baseline gap-2"
+          title={`Herfindahl–Hirschman Index (HHI) — koridor konsantrasyonu. < 15: çeşitli (sağlıklı) · 15-25: orta · > 25: yoğun (tek koridora bağımlılık riski)`}
+        >
           <span
             className="text-[24px] font-semibold leading-none tracking-tight tabular-nums"
             style={{ color: concentrationColor }}
@@ -91,6 +94,7 @@ export function CorridorConcentrationTile({
                 <div
                   key={`${c.loadingPort}-${c.dischargePort}`}
                   className="flex items-baseline justify-between gap-2 text-[10.5px] min-w-0"
+                  title={`#${idx + 1} koridor — ${c.loadingPort} → ${c.dischargePort}: ${c.count} proje · %${pct.toFixed(1)} pay`}
                 >
                   <span className="truncate min-w-0 flex-1">
                     <span className="text-muted-foreground tabular-nums mr-1.5">

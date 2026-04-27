@@ -8,6 +8,7 @@ import {
   type RouteStage,
 } from "./project";
 import { selectProjectPL } from "./profitLoss";
+import { toUsd } from "@/lib/finance/fxRates";
 
 /**
  * Cross-project aggregations — pure, memoizable, reusable.
@@ -166,41 +167,49 @@ export function aggregateByCorridor(projects: Project[]): CorridorRow[] {
 /* ─────────── Estimated P&L (cross-project) ─────────── */
 
 export interface EstimatedPLAggregate {
-  /** USD-denominated rollup. Non-USD projects skipped (currency-safety). */
+  /** USD-denominated rollup — non-USD currencies converted via the
+   *  static FX table in `lib/finance/fxRates`. */
   salesTotalUsd: number;
   purchaseTotalUsd: number;
   expenseTotalUsd: number;
   pl: number;
   marginPct: number;
-  /** Projects that contributed to the USD rollup (currency === "USD"). */
+  /** Projects that contributed (have priced lines on either side). */
   contributingCount: number;
-  /** Projects skipped because non-USD pricing (kept for transparency). */
-  nonUsdCount: number;
+  /** Projects whose currency was FX-converted (i.e. not USD). */
+  fxConvertedCount: number;
+  /** Projects with a currency we don't have an FX rate for — passed
+   *  through as-is. UI can warn when this is non-zero. */
+  unknownCurrencyCount: number;
 }
 
 /**
- * Roll up estimated P&L across projects. Currency-safe: only projects
- * priced in USD contribute to the global numbers; non-USD projects are
- * counted separately so the UI can disclose "X projeler USD dışı, dönüşüm
- * uygulanmadı" without silently mis-summing.
+ * Roll up estimated P&L across projects. EUR / TRY / GBP figures are
+ * FX-converted to USD using the static rate table; the conversion is
+ * deterministic (no live feed) so totals don't drift between renders
+ * but they're not accounting-grade. The K&Z and Gider tiles share this
+ * scope so they reconcile to the cent.
  */
 export function aggregateEstimatedPL(projects: Project[]): EstimatedPLAggregate {
   let salesTotalUsd = 0;
   let purchaseTotalUsd = 0;
   let expenseTotalUsd = 0;
   let contributingCount = 0;
-  let nonUsdCount = 0;
+  let fxConvertedCount = 0;
+  let unknownCurrencyCount = 0;
+  const KNOWN = new Set(["USD", "EUR", "TRY", "GBP"]);
   for (const p of projects) {
     const pl = selectProjectPL(p);
     if (pl.salesTotal <= 0 && pl.purchaseTotal <= 0) continue;
-    if (pl.currency === "USD") {
-      salesTotalUsd += pl.salesTotal;
-      purchaseTotalUsd += pl.purchaseTotal;
-      expenseTotalUsd += pl.expenseTotal;
-      contributingCount++;
-    } else {
-      nonUsdCount++;
-    }
+    const cur = (pl.currency ?? "USD").toUpperCase();
+    salesTotalUsd += toUsd(pl.salesTotal, cur);
+    purchaseTotalUsd += toUsd(pl.purchaseTotal, cur);
+    // Expense lines are always denoted in USD per the entity model
+    // (`mserp_expamountusdd`), so no conversion needed.
+    expenseTotalUsd += pl.expenseTotal;
+    contributingCount++;
+    if (cur !== "USD") fxConvertedCount++;
+    if (!KNOWN.has(cur)) unknownCurrencyCount++;
   }
   const pl = salesTotalUsd - purchaseTotalUsd - expenseTotalUsd;
   const marginPct = salesTotalUsd > 0 ? (pl / salesTotalUsd) * 100 : 0;
@@ -211,7 +220,8 @@ export function aggregateEstimatedPL(projects: Project[]): EstimatedPLAggregate 
     pl,
     marginPct,
     contributingCount,
-    nonUsdCount,
+    fxConvertedCount,
+    unknownCurrencyCount,
   };
 }
 

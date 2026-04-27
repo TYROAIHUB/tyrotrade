@@ -1,6 +1,6 @@
 import * as React from "react";
 import { CubeIcon } from "@hugeicons/core-free-icons";
-import { Bar, BarChart, XAxis } from "recharts";
+import { Bar, BarChart, Tooltip, XAxis } from "recharts";
 import { BentoTile } from "../BentoTile";
 import { TONE_CARGO } from "@/components/details/AccentIconBadge";
 import {
@@ -162,11 +162,16 @@ export function EstimatedQuantityTile({
       rowSpan={rowSpan}
     >
       <div className="flex flex-col h-full min-w-0">
-        {/* Total + Peak month strip — pattern from @evilcharts/grid-bar-chart */}
+        {/* Total + Peak (Zirve) header strip — labels follow the same
+            uppercase eyebrow style as BentoTile titles so the tile reads
+            consistently with the rest of the dashboard. */}
         <div className="flex items-stretch gap-3 mb-2">
-          <div className="flex flex-col gap-0.5 min-w-0">
-            <span className="text-foreground/60 font-mono text-[10.5px] font-semibold uppercase tracking-wider">
-              [Σ] Toplam
+          <div
+            className="flex flex-col gap-1 min-w-0"
+            title={`Toplam tahmini tonaj — Σ (line.quantityKg / 1000) tüm projelerde`}
+          >
+            <span className="text-[10px] font-bold uppercase tracking-[0.12em] text-foreground/70">
+              Toplam
             </span>
             <span className="text-amber-700 text-[22px] font-bold leading-none tabular-nums">
               {totalFmt.value}
@@ -176,9 +181,16 @@ export function EstimatedQuantityTile({
             </span>
           </div>
           <span className="border-l border-dashed border-border/70 self-stretch" />
-          <div className="flex flex-col gap-0.5 min-w-0">
-            <span className="text-foreground/60 font-mono text-[10.5px] font-semibold uppercase tracking-wider">
-              [⬆] Peak
+          <div
+            className="flex flex-col gap-1 min-w-0"
+            title={
+              peak.tons > 0
+                ? `Zirve ay — ${peak.month}: ${formatTonnage(peak.tons).value} ${formatTonnage(peak.tons).unit}`
+                : "Henüz tonaj verisi yok"
+            }
+          >
+            <span className="text-[10px] font-bold uppercase tracking-[0.12em] text-foreground/70">
+              Zirve
             </span>
             <span className="text-amber-700 text-[22px] font-bold leading-none tracking-tight truncate">
               {peak.tons > 0 ? peak.month.slice(0, 3) : "—"}
@@ -204,6 +216,28 @@ export function EstimatedQuantityTile({
                 tick={{ fontSize: 9, fill: "currentColor", opacity: 0.6 }}
                 tickFormatter={(v: string) => v.slice(0, 3)}
                 interval={0}
+              />
+              <Tooltip
+                cursor={{ fill: "rgba(245,158,11,0.08)" }}
+                contentStyle={{
+                  background: "rgba(255,255,255,0.96)",
+                  border: "1px solid rgba(180,83,9,0.35)",
+                  borderRadius: 8,
+                  padding: "6px 10px",
+                  fontSize: 11,
+                  boxShadow: "0 8px 24px -8px rgba(15,23,42,0.18)",
+                }}
+                labelStyle={{
+                  fontWeight: 600,
+                  color: "#92400e",
+                  marginBottom: 2,
+                }}
+                formatter={(v) => {
+                  const t = Number(v ?? 0);
+                  const fmt = formatTonnage(t);
+                  return [`${fmt.value} ${fmt.unit}`, "Tonaj"];
+                }}
+                labelFormatter={(l) => `${l} ayı`}
               />
               <Bar
                 dataKey="tons"

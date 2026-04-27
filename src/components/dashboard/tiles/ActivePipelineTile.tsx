@@ -63,7 +63,10 @@ export function ActivePipelineTile({
       rowSpan={rowSpan}
     >
       <div className="flex flex-col gap-3 h-full">
-        <div className="flex items-baseline gap-3">
+        <div
+          className="flex items-baseline gap-3"
+          title={`${total} proje takipte — sadece vesselPlan.vesselStatus tanımlı projeler. Voyage durumlarına göre dağılım çubukta.`}
+        >
           <span className="text-[40px] font-semibold leading-none tracking-tight">
             <AnimatedNumber value={total} preset="count" />
           </span>
@@ -112,29 +115,35 @@ export function ActivePipelineTile({
                       boxShadow:
                         "inset 0 1px 0 0 rgba(255,255,255,0.4), inset 0 -1px 0 0 rgba(0,0,0,0.08)",
                     }}
+                    title={`${s.label}: ${value} proje · %${pct.toFixed(1)}`}
                   />
                 );
               })}
           </div>
 
           <div className="flex items-center justify-between gap-2 text-[10.5px] flex-wrap">
-            {STATUS_CATEGORIES.map((s) => (
-              <div
-                key={s.key}
-                className="flex items-center gap-1.5 min-w-0 truncate"
-              >
-                <span
-                  className="size-1.5 rounded-full shrink-0"
-                  style={{ backgroundColor: s.color }}
-                />
-                <span className="text-muted-foreground truncate">
-                  {s.label}
-                </span>
-                <span className="font-semibold tabular-nums text-foreground">
-                  {counts[s.key] ?? 0}
-                </span>
-              </div>
-            ))}
+            {STATUS_CATEGORIES.map((s) => {
+              const value = counts[s.key] ?? 0;
+              const pct = sumStages > 0 ? (value / sumStages) * 100 : 0;
+              return (
+                <div
+                  key={s.key}
+                  className="flex items-center gap-1.5 min-w-0 truncate"
+                  title={`${s.label} — ${value} proje · %${pct.toFixed(1)} pay`}
+                >
+                  <span
+                    className="size-1.5 rounded-full shrink-0"
+                    style={{ backgroundColor: s.color }}
+                  />
+                  <span className="text-muted-foreground truncate">
+                    {s.label}
+                  </span>
+                  <span className="font-semibold tabular-nums text-foreground">
+                    {value}
+                  </span>
+                </div>
+              );
+            })}
           </div>
         </div>
       </div>

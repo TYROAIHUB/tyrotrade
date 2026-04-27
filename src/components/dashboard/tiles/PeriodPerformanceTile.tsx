@@ -108,6 +108,7 @@ export function PeriodPerformanceTile({
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
           <KPI
             label="Proje sayısı"
+            tooltip={`Filtrelenmiş dönemdeki toplam proje sayısı`}
             value={
               <span className="text-[22px] font-semibold leading-none tracking-tight">
                 <AnimatedNumber value={totalProjects} preset="count" />
@@ -116,6 +117,7 @@ export function PeriodPerformanceTile({
           />
           <KPI
             label="Kargo değeri"
+            tooltip={`Toplam kargo değeri (USD) — vesselPlan.cargoValueUsd ya da Σ (miktar × birim fiyat)`}
             value={
               <span className="text-[22px] font-semibold leading-none tracking-tight">
                 <AnimatedNumber
@@ -128,6 +130,7 @@ export function PeriodPerformanceTile({
           />
           <KPI
             label="Tahmini K&Z"
+            tooltip={`Net Kâr/Zarar — Satış − Alım − Gider. USD bazlı ${pl.contributingCount} proje.`}
             value={
               <span
                 className="text-[22px] font-semibold leading-none tracking-tight"
@@ -139,6 +142,7 @@ export function PeriodPerformanceTile({
           />
           <KPI
             label="Tahmini marj"
+            tooltip={`Marj % — K&Z / Satış × 100`}
             value={
               <span
                 className="inline-flex items-center mt-0.5 px-1.5 py-0.5 rounded text-[12px] font-bold tabular-nums"
@@ -187,12 +191,18 @@ export function PeriodPerformanceTile({
                   borderRadius: 8,
                   padding: "6px 10px",
                   fontSize: 11,
+                  boxShadow: "0 8px 24px -8px rgba(15,23,42,0.18)",
+                }}
+                labelStyle={{
+                  fontWeight: 600,
+                  color: "#0f172a",
+                  marginBottom: 2,
                 }}
                 // recharts' Formatter type widens `value` to `ValueType |
-                // undefined`. Coerce to number for the readable string and
-                // return the [value, name] tuple it expects.
-                formatter={(v) => [`${Number(v ?? 0)} proje`, "Adet"]}
-                labelFormatter={(l) => `Ay: ${l}`}
+                // undefined`. Coerce to number and return the [value, name]
+                // tuple it expects.
+                formatter={(v) => [`${Number(v ?? 0)} proje açıldı`, "Adet"]}
+                labelFormatter={(l) => `${l} ayı`}
               />
               <Area
                 type="monotone"
@@ -211,13 +221,15 @@ export function PeriodPerformanceTile({
 
 function KPI({
   label,
+  tooltip,
   value,
 }: {
   label: string;
+  tooltip?: string;
   value: React.ReactNode;
 }) {
   return (
-    <div className="flex flex-col gap-1 min-w-0">
+    <div className="flex flex-col gap-1 min-w-0" title={tooltip}>
       <div className="text-[10px] uppercase tracking-wider text-muted-foreground/85 truncate">
         {label}
       </div>

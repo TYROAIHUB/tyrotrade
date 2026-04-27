@@ -60,7 +60,10 @@ export function CurrencyExposureTile({
     >
       <div className="flex flex-col gap-2 h-full">
         {/* Dominant currency callout */}
-        <div className="flex items-baseline gap-2">
+        <div
+          className="flex items-baseline gap-2"
+          title={`Baskın para birimi — ${exposure.dominant}: ${exposure.byCurrency[exposure.dominant].count} proje (%${(dominantShare * 100).toFixed(1)}). Tek para birimine bağımlılık ne kadar yüksekse FX riski o kadar artar.`}
+        >
           <span
             className="text-[24px] font-semibold leading-none tracking-tight tabular-nums"
             style={{ color: COLORS[exposure.dominant] }}
@@ -82,7 +85,11 @@ export function CurrencyExposureTile({
                 ? (cnt / exposure.totalProjects) * 100
                 : 0;
             return (
-              <div key={c} className="min-w-0">
+              <div
+                key={c}
+                className="min-w-0"
+                title={`${c} — ${cnt} proje · %${pct.toFixed(1)} pay`}
+              >
                 <div className="flex items-baseline justify-between gap-2 text-[10.5px] mb-0.5">
                   <span className="font-semibold tabular-nums text-foreground/85">
                     {c}
