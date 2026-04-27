@@ -87,6 +87,13 @@ export function ProfitLossCard({ project }: Props) {
   const purchaseTotal = purchaseLines.reduce((s, l) => s + l.total, 0);
   const expenseTotal = expenseLines.reduce((s, l) => s + l.totalUsd, 0);
 
+  // Detail rows hidden by default — show only the bottom-line P&L
+  // until the user asks for the full Satış/Alım/Gider breakdown.
+  // Each section row keeps its own expand state, so opening the top
+  // toggle reveals the rows; opening a row reveals its line-by-line
+  // math.
+  const [open, setOpen] = React.useState(false);
+
   if (salesTotal <= 0 && purchaseTotal <= 0) return null;
 
   const pl = salesTotal - purchaseTotal - expenseTotal;
@@ -111,8 +118,14 @@ export function ProfitLossCard({ project }: Props) {
   return (
     <GlassPanel tone="default" className="rounded-2xl">
       <div className="p-4">
-        {/* Header — title + Expected P&L subtitle (estimate, not closed). */}
-        <div className="flex items-center gap-2.5 mb-3">
+        {/* Header doubles as the top-level expand/collapse toggle so
+            the title block is a comfortable click target. */}
+        <button
+          type="button"
+          onClick={() => setOpen((v) => !v)}
+          aria-expanded={open}
+          className="w-full flex items-center gap-2.5 mb-3 text-left cursor-pointer hover:opacity-90 transition-colors"
+        >
           <AccentIconBadge size="sm" tone={TONE_FORECAST}>
             <Icon className="size-4" strokeWidth={2} />
           </AccentIconBadge>
@@ -124,11 +137,20 @@ export function ProfitLossCard({ project }: Props) {
               Expected P&amp;L
             </div>
           </div>
-        </div>
+          <ChevronDown
+            className={cn(
+              "size-4 shrink-0 text-muted-foreground transition-transform",
+              open && "rotate-180"
+            )}
+          />
+        </button>
 
-        {/* Breakdown table — three expandable section rows + the P&L
-            footer that resolves them. */}
+        {/* Breakdown table — three expandable section rows (only
+            visible when the top toggle is open) + the P&L footer
+            that resolves them. */}
         <div className="rounded-xl border border-border/40 overflow-hidden">
+          {open && (
+            <>
           <ExpandableRow
             label="Tahmini Satış"
             count={salesLines.length}
@@ -188,10 +210,12 @@ export function ProfitLossCard({ project }: Props) {
               />
             ))}
           </ExpandableRow>
+            </>
+          )}
 
-          {/* Footer total — emphasised row carries the P&L resolution
+          {/* Footer total — always visible; carries the P&L resolution
               and the margin chip. */}
-          <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-x-3 px-3 py-2.5 text-[11.5px] border-t border-border/40 bg-foreground/[0.04] items-baseline">
+          <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-x-3 px-3 py-2.5 text-[11.5px] bg-foreground/[0.04] items-baseline">
             <div className="min-w-0">
               <div className="font-semibold uppercase tracking-wider text-[10.5px] text-muted-foreground">
                 Tahmini Kâr / Zarar

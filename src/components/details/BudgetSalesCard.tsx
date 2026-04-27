@@ -1,5 +1,5 @@
 import * as React from "react";
-import { Loader2 } from "lucide-react";
+import { Loader2, ChevronDown } from "lucide-react";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { ChartLineData01Icon } from "@hugeicons/core-free-icons";
 import { GlassPanel } from "@/components/glass/GlassPanel";
@@ -58,6 +58,9 @@ interface PeriodRow {
  */
 export function BudgetSalesCard({ project }: Props) {
   const { invoices, isFetching } = useProjectInvoices(project.projectNo);
+  // Detail rows hidden by default — operators get the totals at a
+  // glance and can drill into per-month rows on demand.
+  const [open, setOpen] = React.useState(false);
 
   // Group THIS project's invoices by year-month (USD only — budget is USD).
   const salesByMonth = React.useMemo<
@@ -131,8 +134,23 @@ export function BudgetSalesCard({ project }: Props) {
   return (
     <GlassPanel tone="default" className="rounded-2xl">
       <div className="p-4">
-        {/* Header — accent icon badge + title + segment chip + spinner */}
-        <div className="flex items-center gap-2.5 mb-3">
+        {/* Header — accent icon badge + title + segment chip + spinner +
+            detail toggle. Title block becomes the toggle so the whole
+            top of the card is a comfortable click target. */}
+        <button
+          type="button"
+          onClick={() =>
+            periods.length > 0 ? setOpen((v) => !v) : undefined
+          }
+          aria-expanded={open}
+          disabled={periods.length === 0}
+          className={
+            "w-full flex items-center gap-2.5 mb-3 text-left transition-colors " +
+            (periods.length > 0
+              ? "cursor-pointer hover:opacity-90"
+              : "cursor-default")
+          }
+        >
           <AccentIconBadge size="sm">
             <HugeiconsIcon
               icon={ChartLineData01Icon}
@@ -145,7 +163,7 @@ export function BudgetSalesCard({ project }: Props) {
               Gerçekleşen Satış Segment Bütçesi
             </div>
             <div className="text-[13px] font-semibold leading-snug flex items-center gap-1.5 flex-wrap">
-              <span>Bütçe × Faturalı Satış</span>
+              <span>Realized Sales</span>
               {segment && (
                 <code className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-foreground/[0.04] text-foreground/80 font-normal">
                   {segment}
@@ -156,33 +174,46 @@ export function BudgetSalesCard({ project }: Props) {
           {isFetching && (
             <Loader2 className="size-3.5 animate-spin text-muted-foreground shrink-0" />
           )}
-        </div>
+          {periods.length > 0 && (
+            <ChevronDown
+              className={
+                "size-4 shrink-0 text-muted-foreground transition-transform " +
+                (open ? "rotate-180" : "")
+              }
+            />
+          )}
+        </button>
 
         {periods.length > 0 && (
           <div className="rounded-xl border border-border/40 overflow-hidden">
-            {/* Header row */}
-            <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)_minmax(0,1.1fr)_56px] gap-x-3 px-3 py-1.5 bg-foreground/[0.03] text-[9.5px] uppercase tracking-wider text-muted-foreground font-semibold">
-              <div>Dönem</div>
-              <div className="text-right">Bütçe (USD)</div>
-              <div className="text-right">Faturalı Satış (USD)</div>
-              <div className="text-right">Pay</div>
-            </div>
-            {periods.map((p) => {
-              const ratio =
-                p.budgetUsd > 0 ? (p.salesUsd / p.budgetUsd) * 100 : null;
-              return (
-                <PeriodRowView
-                  key={p.key}
-                  label={`${TR_MONTHS[p.month - 1]} ${p.year}`}
-                  sub={`${p.invoiceCount} fatura`}
-                  budgetUsd={p.budgetUsd}
-                  salesUsd={p.salesUsd}
-                  ratio={ratio}
-                />
-              );
-            })}
-            {/* Footer total row */}
-            <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)_minmax(0,1.1fr)_56px] gap-x-3 px-3 py-2.5 bg-foreground/[0.04] border-t border-border/40 items-baseline">
+            {open && (
+              <>
+                {/* Detail header row — visible only when the user opted
+                    into per-month breakdown. */}
+                <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)_minmax(0,1.1fr)_56px] gap-x-3 px-3 py-1.5 bg-foreground/[0.03] text-[9.5px] uppercase tracking-wider text-muted-foreground font-semibold">
+                  <div>Dönem</div>
+                  <div className="text-right">Bütçe (USD)</div>
+                  <div className="text-right">Faturalı Satış (USD)</div>
+                  <div className="text-right">Pay</div>
+                </div>
+                {periods.map((p) => {
+                  const ratio =
+                    p.budgetUsd > 0 ? (p.salesUsd / p.budgetUsd) * 100 : null;
+                  return (
+                    <PeriodRowView
+                      key={p.key}
+                      label={`${TR_MONTHS[p.month - 1]} ${p.year}`}
+                      sub={`${p.invoiceCount} fatura`}
+                      budgetUsd={p.budgetUsd}
+                      salesUsd={p.salesUsd}
+                      ratio={ratio}
+                    />
+                  );
+                })}
+              </>
+            )}
+            {/* Footer total row — always visible (the at-a-glance summary). */}
+            <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)_minmax(0,1.1fr)_56px] gap-x-3 px-3 py-2.5 bg-foreground/[0.04] items-baseline">
               <div className="text-[10.5px] uppercase tracking-wider font-semibold text-muted-foreground">
                 Toplam
               </div>
