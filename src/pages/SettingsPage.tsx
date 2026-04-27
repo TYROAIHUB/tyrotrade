@@ -1,5 +1,12 @@
 import * as React from "react";
-import { Eye, EyeOff, RotateCcw, ExternalLink } from "lucide-react";
+import {
+  Eye,
+  EyeOff,
+  RotateCcw,
+  ExternalLink,
+  Database,
+  Trash2,
+} from "lucide-react";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { FlashIcon, AiBrain02Icon } from "@hugeicons/core-free-icons";
 import { GlassPanel } from "@/components/glass/GlassPanel";
@@ -36,15 +43,11 @@ export function SettingsPage() {
     <ScrollArea className="h-full">
       <div className="max-w-3xl mx-auto py-3 px-1 space-y-3">
         <AiChatbotCard />
+        <LocalStorageCard />
         <PlaceholderCard
           title="Tema & Görünüm"
           tagline="Sidebar tema seçimi"
           body="Açık / Lacivert / Siyah tema arasında geçişi sidebar'ın altındaki tema değiştiriciden yapabilirsin."
-        />
-        <PlaceholderCard
-          title="Veri Senkronizasyonu"
-          tagline="Dataverse cache'i"
-          body="Tüm Dataverse entity'lerini Veri Yönetimi sayfasındaki Güncelle butonu ile yenileyebilirsin. Cache localStorage'da tutulur ve oturumlar arası saklanır."
         />
       </div>
     </ScrollArea>
@@ -298,4 +301,153 @@ function PlaceholderCard({
       </div>
     </GlassPanel>
   );
+}
+
+/* ─────────── LocalStorage card ─────────── */
+
+interface StorageEntry {
+  key: string;
+  size: number;
+  preview: string;
+}
+
+/**
+ * Surfaces every `tyro:*` localStorage entry so the user can see what
+ * the app keeps in their browser and clear individual keys (or all of
+ * them) without DevTools. Sized in KB for quick triage of cache rows
+ * that have grown large after a Dataverse sync.
+ */
+function LocalStorageCard() {
+  const [entries, setEntries] = React.useState<StorageEntry[]>([]);
+  const [tick, setTick] = React.useState(0);
+
+  React.useEffect(() => {
+    if (typeof window === "undefined") return;
+    const out: StorageEntry[] = [];
+    for (let i = 0; i < window.localStorage.length; i++) {
+      const key = window.localStorage.key(i);
+      if (!key || !key.startsWith("tyro:")) continue;
+      const raw = window.localStorage.getItem(key) ?? "";
+      out.push({
+        key,
+        size: new Blob([raw]).size,
+        preview: raw.length > 80 ? `${raw.slice(0, 77)}…` : raw,
+      });
+    }
+    out.sort((a, b) => b.size - a.size);
+    setEntries(out);
+  }, [tick]);
+
+  const totalSize = entries.reduce((s, e) => s + e.size, 0);
+
+  function deleteKey(key: string) {
+    window.localStorage.removeItem(key);
+    setTick((t) => t + 1);
+    // Notify other listeners (e.g. useSettings) that storage changed
+    window.dispatchEvent(new Event("storage"));
+  }
+
+  function clearAll() {
+    if (
+      !window.confirm(
+        `${entries.length} öğeyi silmek istediğinden emin misin? Bu işlem geri alınamaz.`
+      )
+    ) {
+      return;
+    }
+    for (const e of entries) {
+      window.localStorage.removeItem(e.key);
+    }
+    setTick((t) => t + 1);
+    window.dispatchEvent(new Event("storage"));
+  }
+
+  return (
+    <GlassPanel tone="default" className="rounded-2xl">
+      <div className="px-5 py-4 flex items-start gap-3 border-b border-border/40">
+        <span className="size-9 rounded-xl grid place-items-center shrink-0 bg-foreground/[0.06] text-foreground/70">
+          <Database className="size-4" strokeWidth={2} />
+        </span>
+        <div className="min-w-0 flex-1">
+          <h2 className="text-[15px] font-semibold tracking-tight leading-tight">
+            Yerel Depolama (localStorage)
+          </h2>
+          <p className="text-[12px] text-muted-foreground mt-0.5 leading-snug">
+            Bu tarayıcıda saklanan TYRO verileri. Dataverse cache'i,
+            sidebar tercihleri, AI ayarları burada tutulur — sadece
+            okuma için, sunucuya gitmez.
+          </p>
+        </div>
+        <div className="text-right shrink-0">
+          <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
+            Toplam
+          </div>
+          <div className="text-[15px] font-bold tabular-nums">
+            {formatSize(totalSize)}
+          </div>
+        </div>
+      </div>
+
+      <div className="px-5 py-3 space-y-1.5">
+        {entries.length === 0 ? (
+          <p className="text-[12px] text-muted-foreground italic py-2">
+            Henüz hiçbir veri saklanmamış.
+          </p>
+        ) : (
+          entries.map((e) => (
+            <div
+              key={e.key}
+              className="flex items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-foreground/[0.03]"
+            >
+              <div className="min-w-0 flex-1">
+                <div className="font-mono text-[11.5px] text-foreground/85 truncate">
+                  {e.key}
+                </div>
+                <div className="text-[10.5px] text-muted-foreground/85 truncate">
+                  {e.preview}
+                </div>
+              </div>
+              <span className="text-[10.5px] tabular-nums text-muted-foreground shrink-0">
+                {formatSize(e.size)}
+              </span>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-7 w-7 p-0 shrink-0 text-muted-foreground hover:text-rose-600"
+                onClick={() => deleteKey(e.key)}
+                aria-label={`${e.key} sil`}
+              >
+                <Trash2 className="size-3.5" />
+              </Button>
+            </div>
+          ))
+        )}
+      </div>
+
+      {entries.length > 0 && (
+        <div className="px-5 py-3 border-t border-border/40 flex items-center justify-between gap-2">
+          <span className="text-[11px] text-muted-foreground">
+            {entries.length} öğe · {formatSize(totalSize)} kullanılıyor
+          </span>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={clearAll}
+            className="h-7 px-3 gap-1.5 text-[11px] text-rose-600 hover:bg-rose-50 hover:text-rose-700 border-rose-200"
+          >
+            <Trash2 className="size-3" />
+            Tümünü Temizle
+          </Button>
+        </div>
+      )}
+    </GlassPanel>
+  );
+}
+
+function formatSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
 }

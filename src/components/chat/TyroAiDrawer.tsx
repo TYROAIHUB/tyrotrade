@@ -1,5 +1,6 @@
 import * as React from "react";
 import { Link } from "react-router-dom";
+import { Eraser } from "lucide-react";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { AiBrain02Icon, FlashIcon } from "@hugeicons/core-free-icons";
 import {
@@ -9,6 +10,7 @@ import {
   SheetDescription,
 } from "@/components/ui/sheet";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Button } from "@/components/ui/button";
 import { TONE_AI } from "@/components/details/AccentIconBadge";
 import { ChatSuggestions } from "./ChatSuggestions";
 import { ChatMessage, type ChatMessageData } from "./ChatMessage";
@@ -130,9 +132,15 @@ export function TyroAiDrawer({ open, onOpenChange }: TyroAiDrawerProps) {
       <SheetContent
         side="right"
         className={cn(
-          "w-full sm:max-w-[420px] p-0 flex flex-col gap-0",
+          // Drawer sits 12px in from the viewport edges so the rounded
+          // corners on every side actually breathe. `h-auto` overrides
+          // the variant's `h-full` so the inset is symmetrical.
+          "fixed top-3 right-3 bottom-3 inset-y-auto h-auto",
+          "w-[calc(100vw-1.5rem)] sm:max-w-[420px] p-0 flex flex-col gap-0",
+          "rounded-3xl overflow-hidden",
           "bg-white/95 backdrop-blur-2xl backdrop-saturate-150",
-          "border-l border-border/60"
+          "border border-border/60",
+          "shadow-[0_30px_80px_-16px_rgba(15,23,42,0.45)]"
         )}
         aria-describedby={undefined}
       >
@@ -143,8 +151,8 @@ export function TyroAiDrawer({ open, onOpenChange }: TyroAiDrawerProps) {
           style={{ background: TONE_AI.gradient }}
         />
 
-        {/* Header — avatar + title + close (Sheet ships its own close X) */}
-        <div className="px-4 py-3 flex items-center gap-3 shrink-0 border-b border-border/40">
+        {/* Header — avatar + title + Temizle + close (Sheet ships its own X) */}
+        <div className="px-4 py-3 flex items-center gap-2 shrink-0 border-b border-border/40">
           <span
             className="size-9 rounded-xl grid place-items-center shrink-0 shadow-sm text-white"
             style={{
@@ -162,6 +170,22 @@ export function TyroAiDrawer({ open, onOpenChange }: TyroAiDrawerProps) {
               Uluslararası ticaret asistanı
             </SheetDescription>
           </div>
+          {messages.length > 0 && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setMessages([]);
+                setError(null);
+              }}
+              className="h-7 px-2.5 gap-1.5 text-[11px] rounded-full mr-7"
+              aria-label="Sohbeti temizle"
+            >
+              <Eraser className="size-3" />
+              Temizle
+            </Button>
+          )}
         </div>
 
         {/* Body — welcome state OR scrollable thread */}
