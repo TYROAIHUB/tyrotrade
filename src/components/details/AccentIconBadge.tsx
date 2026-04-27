@@ -88,3 +88,9 @@ export const TONE_ROAD: IconBadgeTone = {
   gradient: "linear-gradient(135deg, #fb923c 0%, #ea580c 55%, #9a3412 100%)",
   ring: "rgba(234, 88, 12, 0.55)",
 };
+
+/** Profit & loss — emerald → teal, signals financial gain/loss. */
+export const TONE_PL: IconBadgeTone = {
+  gradient: "linear-gradient(135deg, #34d399 0%, #10b981 55%, #047857 100%)",
+  ring: "rgba(16, 185, 129, 0.55)",
+};

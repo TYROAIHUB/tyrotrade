@@ -1,6 +1,6 @@
 import { TrendingUp, TrendingDown, Minus } from "lucide-react";
 import { GlassPanel } from "@/components/glass/GlassPanel";
-import { AccentIconBadge, TONE_EXPENSE } from "./AccentIconBadge";
+import { AccentIconBadge, TONE_PL } from "./AccentIconBadge";
 import { formatCurrency, formatNumber } from "@/lib/format";
 import type { Project } from "@/lib/dataverse/entities";
 
@@ -42,17 +42,6 @@ export function ProfitLossCard({ project }: Props) {
   const positive = pl > 0;
   const negative = pl < 0;
   const Icon = positive ? TrendingUp : negative ? TrendingDown : Minus;
-  const accentColor = positive
-    ? "#059669" // emerald-600
-    : negative
-      ? "#dc2626" // rose-600
-      : "#475569"; // slate-600
-  const accentTint = positive
-    ? "rgba(5,150,105,0.10)"
-    : negative
-      ? "rgba(220,38,38,0.10)"
-      : "rgba(71,85,105,0.10)";
-
   // Margin pct relative to sales total — easier to read than raw delta.
   const marginPct =
     salesTotal > 0 ? (pl / salesTotal) * 100 : null;
@@ -60,9 +49,9 @@ export function ProfitLossCard({ project }: Props) {
   return (
     <GlassPanel tone="default" className="rounded-2xl">
       <div className="p-4">
-        {/* Header */}
+        {/* Header — totals live in the table footer below, not here. */}
         <div className="flex items-center gap-2.5 mb-3">
-          <AccentIconBadge size="sm" tone={TONE_EXPENSE}>
+          <AccentIconBadge size="sm" tone={TONE_PL}>
             <Icon className="size-4" strokeWidth={2} />
           </AccentIconBadge>
           <div className="min-w-0 flex-1">
@@ -72,24 +61,6 @@ export function ProfitLossCard({ project }: Props) {
             <div className="text-[13px] font-semibold leading-snug">
               Satış − Alım − Gider
             </div>
-          </div>
-          {/* Big P&L value */}
-          <div className="text-right shrink-0">
-            <div
-              className="text-[18px] font-bold tabular-nums tracking-tight"
-              style={{ color: accentColor }}
-            >
-              {pl >= 0 ? "+" : "−"}
-              {formatCurrency(Math.abs(pl), currency)}
-            </div>
-            {marginPct != null && (
-              <div
-                className="inline-flex items-center mt-0.5 px-1.5 rounded-sm text-[10px] font-semibold tabular-nums"
-                style={{ backgroundColor: accentTint, color: accentColor }}
-              >
-                Marj %{marginPct.toFixed(1)}
-              </div>
-            )}
           </div>
         </div>
 
@@ -124,6 +95,11 @@ export function ProfitLossCard({ project }: Props) {
           />
           <BreakdownRow
             label="Tahmini Kâr / Zarar"
+            sub={
+              marginPct != null
+                ? `Tahmini marj %${marginPct.toFixed(1)}`
+                : undefined
+            }
             value={`${pl >= 0 ? "+" : "−"}${formatCurrency(
               Math.abs(pl),
               currency
