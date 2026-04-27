@@ -145,28 +145,32 @@ export function NotificationButton() {
           variant="ghost"
           size="icon"
           aria-label="Bildirimler"
-          className="text-muted-foreground relative"
+          className="text-foreground/70 relative size-10 hover:text-foreground"
         >
-          <Bell />
+          {/* Bell stroke is 22 px so the icon sits comfortably inside the
+              40 px hit-target without dominating the topbar — large enough
+              to read at a glance, small enough to keep the corner badge
+              visually separate. */}
+          <Bell className="size-[22px]" strokeWidth={1.75} />
           {totalNew > 0 && (
             <>
               <span
-                className="absolute top-1 right-1 min-w-[16px] h-[16px] px-1 rounded-full grid place-items-center text-[9px] font-bold tabular-nums shadow-sm"
+                className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 rounded-full grid place-items-center text-[10px] font-bold tabular-nums shadow-sm ring-2 ring-background"
                 style={{
                   background: accent.gradient,
                   color: "white",
                   boxShadow: `0 2px 6px -1px ${accent.ring}`,
                 }}
               >
-                {totalNew}
+                {totalNew > 99 ? "99+" : totalNew}
               </span>
               {imminent && (
                 <span
                   aria-hidden
-                  className="absolute top-1 right-1 size-[16px] rounded-full animate-ping pointer-events-none"
+                  className="absolute -top-0.5 -right-0.5 size-[18px] rounded-full animate-ping pointer-events-none"
                   style={{
                     background: accent.solid,
-                    opacity: 0.45,
+                    opacity: 0.4,
                   }}
                 />
               )}
