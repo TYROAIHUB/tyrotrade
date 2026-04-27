@@ -9,7 +9,7 @@
  * lookup / numeric / date fields.
  *
  * Output is `Project[]` matching `src/lib/dataverse/entities.ts` so existing
- * UI consumers (ProjectList, RouteMap, KingProjectsPanel, dashboard tiles,
+ * UI consumers (ProjectList, RouteMap, LeaderboardPanel, dashboard tiles,
  * selectors) keep working without changes.
  */
 

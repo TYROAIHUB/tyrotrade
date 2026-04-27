@@ -1,8 +1,8 @@
-import { CircleCheck, Clock } from "lucide-react";
 import { GlassPanel } from "@/components/glass/GlassPanel";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { BentoGrid } from "@/components/dashboard/BentoGrid";
-import { KingProjectsPanel } from "@/components/dashboard/KingProjectsPanel";
+import { LeaderboardPanel } from "@/components/dashboard/LeaderboardPanel";
+import { EventsPanel } from "@/components/dashboard/EventsPanel";
 import {
   DashboardFilters,
   EMPTY_DASHBOARD_FILTERS,
@@ -11,12 +11,10 @@ import {
   type DashboardFilterState,
 } from "@/components/dashboard/DashboardFilters";
 import * as React from "react";
-import { formatDate } from "@/lib/format";
 import { useProjects } from "@/hooks/useProjects";
 import { ProjectsEmptyState } from "@/components/projects/ProjectsEmptyState";
 import { aggregatePipelineBuckets } from "@/lib/selectors/aggregate";
-import { cn } from "@/lib/utils";
-import type { Project, VesselMilestones } from "@/lib/dataverse/entities";
+import { getFinancialYear } from "@/lib/dashboard/financialPeriod";
 
 export function DashboardPage() {
   const now = new Date();
@@ -27,14 +25,17 @@ export function DashboardPage() {
   // 🔒 Read-only — composes Project[] from cached Dataverse entities (real
   // mode) or returns mockProjects (mock mode). isEmpty cues the empty state
   // when the user hasn't run "Güncelle" yet.
-  const { projects: rawProjects, isEmpty } = useProjects();
+  const { projects: rawProjects, isEmpty, fetchedAt } = useProjects();
   // No hard-coded ship-plan filter — every project flows in. The advanced
   // filter (`DashboardFilters`) carries the same `includeWithoutShipPlan`
   // toggle as the Projects page, so the user controls inclusion themselves.
   const allProjects = rawProjects;
 
   const projects = React.useMemo(
-    () => applyDashboardFilters(allProjects, filters),
+    () => applyDashboardFilters(allProjects, filters, now),
+    // `now` recomputed every render but stable string-equal so we leave it
+    // out of deps to avoid a render thrash.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [allProjects, filters]
   );
   const totalAvailable = allProjects.length;
@@ -44,10 +45,11 @@ export function DashboardPage() {
   const buckets = aggregatePipelineBuckets(projects, now);
   const inTransit = buckets.inTransit;
   const loading = buckets.loading;
-
-  const activity = buildActivityFeed(projects, now);
+  const atDischarge = buckets.atDischarge;
 
   const greeting = getGreeting();
+  const fy = getFinancialYear(now);
+  const lastSyncLabel = fetchedAt ? formatSyncTime(fetchedAt) : null;
 
   if (isEmpty) {
     return <ProjectsEmptyState />;
@@ -70,13 +72,42 @@ export function DashboardPage() {
               <h2 className="text-xl font-semibold tracking-tight">
                 {greeting}, Cenk
               </h2>
+              {/* Subtitle: FY context + pipeline state breakdown (loading /
+                  in-transit / at-discharge counts), active filter chip, and
+                  last sync timestamp when in real mode. Empty stages are
+                  skipped — only meaningful counts render so the line stays
+                  short and scannable. */}
               <p className="text-sm text-muted-foreground">
-                Bugün <span className="font-medium text-foreground">{totalProjects} aktif proje</span>{" "}
-                izleniyor. {inTransit > 0 && `${inTransit} yolda, `}
-                {loading > 0 && `${loading} yüklemede.`}
+                <span className="font-semibold text-foreground">
+                  {fy.fullLabel}
+                </span>{" "}
+                finansal döneminde{" "}
+                <span className="font-semibold text-foreground">
+                  {totalProjects} proje
+                </span>{" "}
+                izleniyor.
+                {(inTransit > 0 || loading > 0 || atDischarge > 0) && (
+                  <>
+                    {" "}
+                    {[
+                      inTransit > 0 && `${inTransit} yolda`,
+                      loading > 0 && `${loading} yüklemede`,
+                      atDischarge > 0 && `${atDischarge} tahliyede`,
+                    ]
+                      .filter(Boolean)
+                      .join(" · ")}
+                    .
+                  </>
+                )}
                 {activeFilterCount > 0 && (
-                  <span className="ml-1 text-foreground/70">
-                    · {activeFilterCount} filtre aktif
+                  <span className="ml-1.5 text-foreground/70">
+                    · <span className="font-medium">{activeFilterCount}</span>{" "}
+                    filtre aktif
+                  </span>
+                )}
+                {lastSyncLabel && (
+                  <span className="ml-1.5 text-muted-foreground/70">
+                    · son senkron {lastSyncLabel}
                   </span>
                 )}
               </p>
@@ -94,108 +125,16 @@ export function DashboardPage() {
         <BentoGrid projects={projects} now={now} />
 
         <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_360px] gap-3">
-          {/* KingProjects ranks by invoiced sales — pass the unfiltered
-              project list so older big earners (without ship plans) still
-              appear. The hasUsableShipPlan + dashboard filters are aimed at
-              the operational tiles, not the leaderboard. */}
-          <KingProjectsPanel projects={rawProjects} />
-          <ActivityPanel activity={activity} />
+          {/* Leaderboard ranks across 4 boards (top sales / expense / margin
+              ↑↓). Pass the unfiltered project list so older big earners
+              (without ship plans) still appear. The hasUsableShipPlan +
+              dashboard filters are aimed at operational tiles, not the
+              executive leaderboard. */}
+          <LeaderboardPanel projects={rawProjects} />
+          <EventsPanel projects={projects} now={now} />
         </div>
       </div>
     </ScrollArea>
-  );
-}
-
-interface ActivityEvent {
-  projectNo: string;
-  vesselName: string;
-  label: string;
-  date: Date;
-  kind: "done" | "upcoming";
-}
-
-function buildActivityFeed(projects: Project[], now: Date): ActivityEvent[] {
-  const events: ActivityEvent[] = [];
-  for (const p of projects) {
-    const vp = p.vesselPlan;
-    if (!vp) continue;
-    const ms = vp.milestones;
-    const list: Array<[keyof VesselMilestones, string]> = [
-      ["lpEta", "Yükleme limanına varış (LP-ETA)"],
-      ["lpNorAccepted", "LP-NOR Kabul"],
-      ["lpSd", "Yükleme başladı"],
-      ["lpEd", "Yükleme tamamlandı"],
-      ["blDate", "Bill of Lading düzenlendi"],
-      ["dpEta", "Varış limanına ulaşma (DP-ETA)"],
-      ["dpNorAccepted", "DP-NOR Kabul"],
-      ["dpSd", "Tahliye başladı (DP-SD)"],
-      ["dpEd", "Tahliye tamamlandı (DP-ED)"],
-    ];
-    for (const [key, label] of list) {
-      const iso = ms[key];
-      if (!iso) continue;
-      const d = new Date(iso);
-      events.push({
-        projectNo: p.projectNo,
-        vesselName: vp.vesselName,
-        label,
-        date: d,
-        kind: d.getTime() <= now.getTime() ? "done" : "upcoming",
-      });
-    }
-  }
-  events.sort((a, b) => b.date.getTime() - a.date.getTime());
-  return events.slice(0, 12);
-}
-
-function ActivityPanel({ activity }: { activity: ActivityEvent[] }) {
-  return (
-    <GlassPanel tone="default" className="rounded-2xl">
-      <div className="px-4 pt-4 pb-2">
-        <h3 className="text-sm font-semibold">Son Olaylar</h3>
-        <p className="text-[11px] text-muted-foreground">
-          Tüm projeler boyunca milestone akışı
-        </p>
-      </div>
-      <div className="px-4 pb-4">
-        <ol className="space-y-2.5">
-          {activity.map((e, i) => (
-            <li key={i} className="flex gap-2.5">
-              <div className="shrink-0 mt-0.5">
-                {e.kind === "done" ? (
-                  <span className="size-6 rounded-full bg-emerald-500/15 text-emerald-700 grid place-items-center">
-                    <CircleCheck className="size-3.5" />
-                  </span>
-                ) : (
-                  <span className="size-6 rounded-full bg-muted text-muted-foreground grid place-items-center">
-                    <Clock className="size-3.5" />
-                  </span>
-                )}
-              </div>
-              <div className="min-w-0 flex-1">
-                <div
-                  className={cn(
-                    "text-xs leading-snug",
-                    e.kind === "done" ? "text-foreground" : "text-muted-foreground"
-                  )}
-                >
-                  {e.label}
-                </div>
-                <div className="text-[10px] text-muted-foreground mt-0.5 truncate">
-                  <span className="font-mono">{e.projectNo}</span> ·{" "}
-                  {e.vesselName} · {formatDate(e.date.toISOString())}
-                </div>
-              </div>
-            </li>
-          ))}
-          {activity.length === 0 && (
-            <li className="text-xs text-muted-foreground text-center py-6">
-              Henüz milestone yok
-            </li>
-          )}
-        </ol>
-      </div>
-    </GlassPanel>
   );
 }
 
@@ -205,4 +144,22 @@ function getGreeting(): string {
   if (h < 12) return "Günaydın";
   if (h < 18) return "İyi günler";
   return "İyi akşamlar";
+}
+
+/** Compact "saat:dakika" if today, otherwise "dd.MM HH:mm". Used for the
+ *  greeting subtitle's last-sync footnote — dense, scannable. */
+function formatSyncTime(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  const now = new Date();
+  const sameDay =
+    d.getFullYear() === now.getFullYear() &&
+    d.getMonth() === now.getMonth() &&
+    d.getDate() === now.getDate();
+  const hh = String(d.getHours()).padStart(2, "0");
+  const mm = String(d.getMinutes()).padStart(2, "0");
+  if (sameDay) return `${hh}:${mm}`;
+  const dd = String(d.getDate()).padStart(2, "0");
+  const mo = String(d.getMonth() + 1).padStart(2, "0");
+  return `${dd}.${mo} ${hh}:${mm}`;
 }

@@ -1,0 +1,219 @@
+import * as React from "react";
+import { ChartLineData01Icon } from "@hugeicons/core-free-icons";
+import {
+  ResponsiveContainer,
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  Tooltip,
+} from "recharts";
+import { BentoTile } from "../BentoTile";
+import { AnimatedNumber } from "../AnimatedNumber";
+import { useThemeAccent } from "@/components/layout/theme-accent";
+import { aggregateEstimatedPL } from "@/lib/selectors/aggregate";
+import { selectCargoValueUsd } from "@/lib/selectors/project";
+import type { Project } from "@/lib/dataverse/entities";
+
+interface PeriodPerformanceTileProps {
+  projects: Project[];
+  now?: Date;
+  span?: string;
+  rowSpan?: string;
+}
+
+interface SparkPoint {
+  monthKey: string;
+  monthLabel: string;
+  value: number;
+}
+
+/**
+ * Executive hero tile — period-scoped headline KPIs with a 12-month
+ * project-creation sparkline. Shows: total project count, total cargo
+ * value (USD-only sum), estimated P&L margin, and an area sparkline
+ * derived from `projectDate` distribution.
+ *
+ * The sparkline uses the project-creation month as its bucketing key —
+ * an "intake heatmap" rather than realised cashflow, since realised
+ * sales are still partial in our dataset (Phase I.9 caveat).
+ */
+export function PeriodPerformanceTile({
+  projects,
+  now = new Date(),
+  span,
+  rowSpan,
+}: PeriodPerformanceTileProps) {
+  const accent = useThemeAccent();
+
+  const totalProjects = projects.length;
+  const totalCargoValueUsd = React.useMemo(
+    () => projects.reduce((sum, p) => sum + selectCargoValueUsd(p), 0),
+    [projects]
+  );
+  const pl = React.useMemo(() => aggregateEstimatedPL(projects), [projects]);
+
+  // 12-month rolling sparkline anchored at `now`. Each bucket counts how
+  // many projects in `projects` were created in that calendar month.
+  const sparkline = React.useMemo<SparkPoint[]>(() => {
+    const buckets: SparkPoint[] = [];
+    for (let i = 11; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const monthKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+      const monthLabel = new Intl.DateTimeFormat("tr-TR", {
+        month: "short",
+      }).format(d);
+      buckets.push({ monthKey, monthLabel, value: 0 });
+    }
+    const indexByKey = new Map(buckets.map((b, i) => [b.monthKey, i]));
+    for (const p of projects) {
+      const t = new Date(p.projectDate);
+      if (Number.isNaN(t.getTime())) continue;
+      const key = `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, "0")}`;
+      const idx = indexByKey.get(key);
+      if (idx !== undefined) buckets[idx].value++;
+    }
+    return buckets;
+  }, [projects, now]);
+
+  const marginColor =
+    pl.marginPct > 5
+      ? "rgb(4 120 87)"
+      : pl.marginPct < -5
+        ? "rgb(159 18 57)"
+        : "rgb(71 85 105)";
+  const marginBg =
+    pl.marginPct > 5
+      ? "rgba(16,185,129,0.12)"
+      : pl.marginPct < -5
+        ? "rgba(244,63,94,0.12)"
+        : "rgba(100,116,139,0.12)";
+
+  return (
+    <BentoTile
+      title="Dönem Performansı"
+      subtitle="Seçili dönem · finansal bakış"
+      icon={ChartLineData01Icon}
+      iconColor={accent.solid}
+      span={span}
+      rowSpan={rowSpan}
+    >
+      <div className="flex flex-col gap-3 h-full">
+        {/* 4-up KPI row */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <KPI
+            label="Proje sayısı"
+            value={
+              <span className="text-[26px] font-semibold leading-none tracking-tight">
+                <AnimatedNumber value={totalProjects} preset="count" />
+              </span>
+            }
+          />
+          <KPI
+            label="Kargo değeri"
+            value={
+              <span className="text-[26px] font-semibold leading-none tracking-tight">
+                <AnimatedNumber
+                  value={totalCargoValueUsd}
+                  preset="currency"
+                  currency="USD"
+                />
+              </span>
+            }
+          />
+          <KPI
+            label="Tahmini K&Z"
+            value={
+              <span
+                className="text-[26px] font-semibold leading-none tracking-tight"
+                style={{ color: marginColor }}
+              >
+                <AnimatedNumber value={pl.pl} preset="currency" currency="USD" />
+              </span>
+            }
+          />
+          <KPI
+            label="Tahmini marj"
+            value={
+              <span
+                className="inline-flex items-center mt-0.5 px-2 py-1 rounded-md text-[14px] font-bold tabular-nums"
+                style={{ color: marginColor, backgroundColor: marginBg }}
+              >
+                {pl.marginPct.toFixed(1)}%
+              </span>
+            }
+          />
+        </div>
+
+        {/* Sparkline — 12-month project intake distribution */}
+        <div className="flex-1 min-h-[80px] relative">
+          <ResponsiveContainer width="100%" height="100%">
+            <AreaChart
+              data={sparkline}
+              margin={{ top: 6, right: 4, bottom: 0, left: 4 }}
+            >
+              <defs>
+                <linearGradient id="ppt-spark" x1="0" y1="0" x2="0" y2="1">
+                  <stop
+                    offset="0%"
+                    stopColor={accent.solid}
+                    stopOpacity={0.45}
+                  />
+                  <stop
+                    offset="100%"
+                    stopColor={accent.solid}
+                    stopOpacity={0}
+                  />
+                </linearGradient>
+              </defs>
+              <XAxis
+                dataKey="monthLabel"
+                tick={{ fontSize: 9, fill: "currentColor", opacity: 0.55 }}
+                tickLine={false}
+                axisLine={false}
+                interval="preserveStartEnd"
+              />
+              <YAxis hide />
+              <Tooltip
+                cursor={{ stroke: accent.solid, strokeOpacity: 0.3 }}
+                contentStyle={{
+                  background: "rgba(255,255,255,0.96)",
+                  border: `1px solid ${accent.ring}`,
+                  borderRadius: 8,
+                  padding: "6px 10px",
+                  fontSize: 11,
+                }}
+                formatter={(v: number) => [`${v} proje`, "Adet"]}
+                labelFormatter={(l) => `Ay: ${l}`}
+              />
+              <Area
+                type="monotone"
+                dataKey="value"
+                stroke={accent.solid}
+                strokeWidth={1.5}
+                fill="url(#ppt-spark)"
+              />
+            </AreaChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+    </BentoTile>
+  );
+}
+
+function KPI({
+  label,
+  value,
+}: {
+  label: string;
+  value: React.ReactNode;
+}) {
+  return (
+    <div className="flex flex-col gap-1 min-w-0">
+      <div className="text-[10px] uppercase tracking-wider text-muted-foreground/85 truncate">
+        {label}
+      </div>
+      <div className="min-h-[26px] flex items-baseline">{value}</div>
+    </div>
+  );
+}

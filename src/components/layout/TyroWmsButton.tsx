@@ -34,11 +34,17 @@ export function TyroWmsButton({ className }: TyroWmsButtonProps) {
         "overflow-hidden",
         className
       )}
+      // Triple-layer shadow + 1px border keeps the white pill legible on every
+      // sidebar tone (light/navy/black). Without the hard 1px under-shadow the
+      // edges dissolve on white topbars; without the inset highlight the pill
+      // looks flat. Border is a slate hairline at 8% opacity — visible but
+      // never harsh.
       style={{
         background: "white",
         color: "#0f172a",
+        border: "1px solid rgba(15,23,42,0.08)",
         boxShadow:
-          "0 4px 12px -4px rgba(15,23,42,0.18), inset 0 1px 0 0 rgba(255,255,255,0.7)",
+          "0 1px 2px 0 rgba(15,23,42,0.08), 0 4px 14px -4px rgba(15,23,42,0.22), inset 0 1px 0 0 rgba(255,255,255,0.85)",
       }}
       aria-label="TYROWMS uygulamasını aç"
     >

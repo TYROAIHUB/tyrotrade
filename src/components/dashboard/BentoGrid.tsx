@@ -1,8 +1,13 @@
 import { motion, useReducedMotion, type Variants } from "framer-motion";
 import { ActivePipelineTile } from "./tiles/ActivePipelineTile";
-import { TonnageInTransitTile } from "./tiles/TonnageInTransitTile";
-import { CargoValueTile } from "./tiles/CargoValueTile";
-import { BudgetPulseTile } from "./tiles/BudgetPulseTile";
+import { PeriodPerformanceTile } from "./tiles/PeriodPerformanceTile";
+import { EstimatedPLTile } from "./tiles/EstimatedPLTile";
+import { EstimatedQuantityTile } from "./tiles/EstimatedQuantityTile";
+import { EstimatedExpenseTile } from "./tiles/EstimatedExpenseTile";
+import { CurrencyExposureTile } from "./tiles/CurrencyExposureTile";
+import { CorridorConcentrationTile } from "./tiles/CorridorConcentrationTile";
+import { VelocityTile } from "./tiles/VelocityTile";
+import { CounterpartyMixTile } from "./tiles/CounterpartyMixTile";
 import type { Project } from "@/lib/dataverse/entities";
 
 interface BentoGridProps {
@@ -13,25 +18,28 @@ interface BentoGridProps {
 const containerVariants: Variants = {
   hidden: {},
   show: {
-    transition: { staggerChildren: 0.06, delayChildren: 0.05 },
+    transition: { staggerChildren: 0.05, delayChildren: 0.05 },
   },
 };
 
 /**
- * Bento Grid 2.0 — premium dashboard tile arrangement.
+ * Executive Bento Grid — premium 9-tile dashboard.
  *
- * Phase 1 layout (asymmetric, 12-col responsive):
+ * Layout (12-col responsive, 3 rows on lg+):
  *
- *   <640px:  single column stack
- *   640-1023:  3+3 / 6 layout (2 rows)
- *   ≥1024:    [ActivePipeline 6×1] [Tonnage 3×1] [CargoVal 3×1]
- *             [BudgetPulse 12×1                                 ]
+ *   Row 1: [PeriodPerformance HERO 6] [EstimatedPL 3] [EstimatedQuantity 3]
+ *   Row 2: [EstimatedExpense 4]       [ActivePipeline 8]
+ *   Row 3: [CurrencyExp 3] [Corridor 3] [Velocity 3] [Counterparty 3]
  *
- * Phase 2 will prepend a hero row (FleetAtGlance + NextArrival)
- * and shift ActivePipeline to col-span-3 row-span-2.
+ * Breakpoints:
+ *   <sm   single column stack
+ *   sm    2-up grid, hero 2-col
+ *   md    same 2-up but compacter
+ *   lg+   full 12-col bento
  *
- * The container `motion.div` orchestrates a staggered fade-up-blur
- * reveal on mount. Tiles inherit `tileVariants` from BentoTile.
+ * Container `motion.div` orchestrates a staggered fade-up-blur reveal.
+ * All tiles consume the same period-filtered `projects` array — no
+ * separate state — so a filter change ripples uniformly.
  */
 export function BentoGrid({ projects, now = new Date() }: BentoGridProps) {
   const reduceMotion = useReducedMotion();
@@ -41,26 +49,51 @@ export function BentoGrid({ projects, now = new Date() }: BentoGridProps) {
       variants={reduceMotion ? undefined : containerVariants}
       initial="hidden"
       animate="show"
-      className="grid grid-cols-12 grid-rows-[auto_auto] gap-3"
-      aria-label="Operasyon özeti"
+      className="grid grid-cols-12 auto-rows-min gap-3"
+      aria-label="Yönetici özeti"
     >
+      {/* Row 1 — Hero + headline P&L + tonnage */}
+      <PeriodPerformanceTile
+        projects={projects}
+        now={now}
+        span="col-span-12 sm:col-span-12 lg:col-span-6"
+      />
+      <EstimatedPLTile
+        projects={projects}
+        span="col-span-12 sm:col-span-6 lg:col-span-3"
+      />
+      <EstimatedQuantityTile
+        projects={projects}
+        span="col-span-12 sm:col-span-6 lg:col-span-3"
+      />
+
+      {/* Row 2 — Expense breakdown + pipeline */}
+      <EstimatedExpenseTile
+        projects={projects}
+        span="col-span-12 sm:col-span-12 lg:col-span-4"
+      />
       <ActivePipelineTile
         projects={projects}
         now={now}
-        span="col-span-12 sm:col-span-12 md:col-span-6 lg:col-span-6"
+        span="col-span-12 sm:col-span-12 lg:col-span-8"
       />
-      <TonnageInTransitTile
+
+      {/* Row 3 — Risk / portfolio composition KPIs */}
+      <CurrencyExposureTile
         projects={projects}
-        now={now}
-        span="col-span-12 sm:col-span-6 md:col-span-3 lg:col-span-3"
+        span="col-span-12 sm:col-span-6 lg:col-span-3"
       />
-      <CargoValueTile
+      <CorridorConcentrationTile
         projects={projects}
-        span="col-span-12 sm:col-span-6 md:col-span-3 lg:col-span-3"
+        span="col-span-12 sm:col-span-6 lg:col-span-3"
       />
-      <BudgetPulseTile
+      <VelocityTile
         projects={projects}
-        span="col-span-12"
+        span="col-span-12 sm:col-span-6 lg:col-span-3"
+      />
+      <CounterpartyMixTile
+        projects={projects}
+        span="col-span-12 sm:col-span-6 lg:col-span-3"
       />
     </motion.section>
   );

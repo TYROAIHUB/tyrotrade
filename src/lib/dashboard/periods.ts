@@ -1,9 +1,25 @@
-export type PeriodKey = "monthly" | "quarterly" | "yearly" | "all";
+import {
+  filterByFinancialYear,
+  findFyByKey,
+  getFinancialYear,
+} from "./financialPeriod";
+
+/**
+ * Period taxonomy.
+ *
+ * - `monthly | quarterly | yearly`: rolling-window (last N days from `now`).
+ *   Useful for "operasyonel görünürlük" — son N gün ne oldu?
+ * - `fy`: Tiryaki financial year (Jul 1 → Jun 30). When selected, an
+ *   accompanying `fyKey` (e.g. "25-26") narrows it to a specific year.
+ *   Default = current FY. Used for executive reporting.
+ * - `all`: no time filter.
+ */
+export type PeriodKey = "monthly" | "quarterly" | "yearly" | "fy" | "all";
 
 export interface PeriodMeta {
   key: PeriodKey;
   label: string;
-  /** Days back from `now`, or null for unbounded. */
+  /** Days back from `now`, or null for unbounded / FY-specific. */
   days: number | null;
 }
 
@@ -11,14 +27,20 @@ export const PERIODS: PeriodMeta[] = [
   { key: "monthly", label: "Aylık", days: 30 },
   { key: "quarterly", label: "Çeyreklik", days: 90 },
   { key: "yearly", label: "Yıllık", days: 365 },
+  { key: "fy", label: "Finansal Dönem", days: null },
   { key: "all", label: "Tüm Zamanlar", days: null },
 ];
 
-export const DEFAULT_PERIOD: PeriodKey = "yearly";
+/** Default = "fy" + current financial year. Executive lens. */
+export const DEFAULT_PERIOD: PeriodKey = "fy";
 
 /**
  * Return only items whose `projectDate` falls within the rolling window
- * specified by `period`. "all" returns the input unchanged.
+ * specified by `period`. "all" / "fy" returns the input unchanged — for
+ * those, prefer `applyPeriodFilter` which knows how to dispatch.
+ *
+ * Kept for backwards compat (King Projects panel still calls this with
+ * the legacy 4-key set).
  */
 export function filterByPeriod<T extends { projectDate: string }>(
   items: T[],
@@ -32,4 +54,25 @@ export function filterByPeriod<T extends { projectDate: string }>(
     const t = new Date(it.projectDate).getTime();
     return Number.isFinite(t) && t >= cutoff;
   });
+}
+
+/**
+ * Universal period filter — supports rolling windows + financial year +
+ * "all". When `period === "fy"`, `fyKey` selects which year ("25-26").
+ * Falls back to current FY if `fyKey` is null/invalid.
+ *
+ * This is the function dashboard tiles + leaderboards should call.
+ */
+export function applyPeriodFilter<T extends { projectDate: string }>(
+  items: T[],
+  period: PeriodKey,
+  fyKey: string | null,
+  now: Date = new Date()
+): T[] {
+  if (period === "all") return items;
+  if (period === "fy") {
+    const fy = (fyKey && findFyByKey(fyKey)) || getFinancialYear(now);
+    return filterByFinancialYear(items, fy);
+  }
+  return filterByPeriod(items, period, now);
 }

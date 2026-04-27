@@ -5,6 +5,7 @@ import { AccentIconBadge, TONE_FORECAST } from "./AccentIconBadge";
 import { formatCurrency, formatNumber } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { useProjectInvoices } from "@/hooks/useProjectInvoices";
+import { selectProjectPL } from "@/lib/selectors/profitLoss";
 import type { Project } from "@/lib/dataverse/entities";
 
 interface Props {
@@ -83,9 +84,13 @@ export function ProfitLossCard({ project }: Props) {
   );
   const expenseLines = project.costEstimateLines ?? [];
 
-  const salesTotal = salesLines.reduce((s, l) => s + l.total, 0);
-  const purchaseTotal = purchaseLines.reduce((s, l) => s + l.total, 0);
-  const expenseTotal = expenseLines.reduce((s, l) => s + l.totalUsd, 0);
+  // Totals come from the shared P&L selector — same math as the dashboard
+  // tiles, no risk of the card drifting from the executive rollup. The
+  // per-line arrays above are still computed locally because they carry
+  // UI-specific formatting (labels, tons, rates) that the selector
+  // intentionally doesn't expose.
+  const { salesTotal, purchaseTotal, expenseTotal, pl, marginPct } =
+    selectProjectPL(project);
 
   // Detail rows hidden by default — show only the bottom-line P&L
   // until the user asks for the full Satış/Alım/Gider breakdown.
@@ -96,12 +101,9 @@ export function ProfitLossCard({ project }: Props) {
 
   if (salesTotal <= 0 && purchaseTotal <= 0) return null;
 
-  const pl = salesTotal - purchaseTotal - expenseTotal;
   const positive = pl > 0;
   const negative = pl < 0;
   const Icon = positive ? TrendingUp : negative ? TrendingDown : Minus;
-
-  const marginPct = salesTotal > 0 ? (pl / salesTotal) * 100 : null;
   // Faded sentiment colour for the margin chip — soft enough to read
   // as "estimate", strong enough to communicate direction.
   const marginColor = positive
