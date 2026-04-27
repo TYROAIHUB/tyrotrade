@@ -1,5 +1,4 @@
 import * as React from "react";
-import { motion, useReducedMotion } from "framer-motion";
 import { Coins02Icon } from "@hugeicons/core-free-icons";
 import { BentoTile } from "../BentoTile";
 import { AnimatedNumber } from "../AnimatedNumber";
@@ -8,10 +7,10 @@ import {
   TONE_EXPENSE,
   type IconBadgeTone,
 } from "@/components/details/AccentIconBadge";
-import {
-  aggregateEstimatedPL,
-  aggregateMarginDistribution,
-} from "@/lib/selectors/aggregate";
+import { EvilRadialChart } from "@/components/evilcharts/charts/radial-chart";
+import { type ChartConfig } from "@/components/evilcharts/ui/chart";
+import { aggregateEstimatedPL } from "@/lib/selectors/aggregate";
+import { formatCompactCurrency } from "@/lib/format";
 import type { Project } from "@/lib/dataverse/entities";
 
 const TONE_NEUTRAL: IconBadgeTone = {
@@ -26,22 +25,25 @@ interface EstimatedPLTileProps {
 }
 
 /**
- * Tahmini P&L tile — USD-only rollup of (sales − purchase − expense).
- * Domain-fixed colours follow margin sign (emerald = healthy, rose =
- * loss, slate = neutral). Shows margin distribution as a 3-segment
- * bar (positive / marginal / negative) underneath the headline number.
+ * Tahmini K&Z tile — USD-only rollup of (sales − purchase − expense).
+ *
+ * Layout:
+ *   - Headline: net P&L value + margin % (sign-coloured)
+ *   - Hero: 3-arc radial chart (Tahmini Satış / Alım / Gider) using
+ *     `@evilcharts/radial-chart`. Concentric arcs make it instantly
+ *     obvious how much sales is consumed by purchase + expense.
+ *   - Footer: net P&L total
+ *
+ * Domain-fixed colours — emerald for sales (revenue), rose for purchase
+ * + expense (outflows). Different shades distinguish purchase from
+ * expense without breaking the rose family.
  */
 export function EstimatedPLTile({
   projects,
   span,
   rowSpan,
 }: EstimatedPLTileProps) {
-  const reduce = useReducedMotion();
   const pl = React.useMemo(() => aggregateEstimatedPL(projects), [projects]);
-  const dist = React.useMemo(
-    () => aggregateMarginDistribution(projects),
-    [projects]
-  );
 
   const positive = pl.pl > 0;
   const negative = pl.pl < 0;
@@ -50,25 +52,39 @@ export function EstimatedPLTile({
     : negative
       ? "rgb(159 18 57)"
       : "rgb(71 85 105)";
-  // Pill colour follows P&L sign — emerald (good), rose (loss), slate
-  // (break-even). Carries the same domain meaning as the headline
-  // number tint, just rendered as a gradient pill instead of a stroke.
   const iconTone: IconBadgeTone = positive
     ? TONE_PL
     : negative
       ? TONE_EXPENSE
       : TONE_NEUTRAL;
 
-  const totalDist =
-    dist.positive + dist.marginal + dist.negative + dist.unknown;
-  const segs =
-    totalDist === 0
-      ? null
-      : [
-          { key: "positive", value: dist.positive, color: "#10b981" },
-          { key: "marginal", value: dist.marginal, color: "#94a3b8" },
-          { key: "negative", value: dist.negative, color: "#f43f5e" },
-        ];
+  // Radial chart data — 3 arcs sized by their absolute USD totals. Sales
+  // gets the emerald family, purchase + expense get rose shades. Recharts
+  // RadialBar renders each entry as a concentric arc; relative arc length
+  // reflects the value ratio.
+  const chartData = React.useMemo(
+    () => [
+      { key: "sales", label: "Satış", value: pl.salesTotalUsd },
+      { key: "purchase", label: "Alım", value: pl.purchaseTotalUsd },
+      { key: "expense", label: "Gider", value: pl.expenseTotalUsd },
+    ],
+    [pl]
+  );
+
+  const chartConfig: ChartConfig = {
+    sales: {
+      label: "Tahmini Satış",
+      colors: { light: ["#10b981"], dark: ["#34d399"] },
+    },
+    purchase: {
+      label: "Tahmini Alım",
+      colors: { light: ["#fb7185"], dark: ["#f87171"] },
+    },
+    expense: {
+      label: "Tahmini Gider",
+      colors: { light: ["#be123c"], dark: ["#e11d48"] },
+    },
+  };
 
   return (
     <BentoTile
@@ -79,10 +95,11 @@ export function EstimatedPLTile({
       span={span}
       rowSpan={rowSpan}
     >
-      <div className="flex flex-col gap-2 h-full">
+      <div className="flex flex-col gap-1 h-full min-h-0">
+        {/* Headline net P&L + margin */}
         <div className="flex items-baseline gap-2 flex-wrap">
           <span
-            className="text-[28px] font-semibold leading-none tracking-tight"
+            className="text-[24px] font-semibold leading-none tracking-tight"
             style={{ color: tintColor }}
           >
             <AnimatedNumber
@@ -93,7 +110,7 @@ export function EstimatedPLTile({
             />
           </span>
           <span
-            className="text-[12px] font-semibold tabular-nums"
+            className="text-[11px] font-semibold tabular-nums"
             style={{ color: tintColor }}
           >
             {pl.marginPct >= 0 ? "+" : ""}
@@ -101,60 +118,37 @@ export function EstimatedPLTile({
           </span>
         </div>
 
-        <div className="text-[10.5px] text-muted-foreground/80 leading-snug">
-          Satış {((pl.salesTotalUsd / 1_000_000) || 0).toFixed(1)}M − Alım{" "}
-          {((pl.purchaseTotalUsd / 1_000_000) || 0).toFixed(1)}M − Gider{" "}
-          {((pl.expenseTotalUsd / 1_000_000) || 0).toFixed(1)}M
-        </div>
-
-        {/* Margin distribution stacked bar */}
-        {segs && (
-          <div className="mt-auto flex flex-col gap-1.5">
-            <div
-              className="relative h-2 w-full rounded-full overflow-hidden"
-              style={{
-                background: "rgba(15,23,42,0.06)",
-                boxShadow:
-                  "inset 0 1px 1px 0 rgba(15,23,42,0.08), inset 0 -1px 0 0 rgba(255,255,255,0.6)",
-              }}
-            >
-              {segs.map((s, i) => {
-                const offset = segs
-                  .slice(0, i)
-                  .reduce(
-                    (acc, prev) => acc + (prev.value / totalDist) * 100,
-                    0
-                  );
-                const pct = (s.value / totalDist) * 100;
-                if (pct === 0) return null;
-                return (
-                  <motion.span
-                    key={s.key}
-                    initial={reduce ? { width: `${pct}%` } : { width: 0 }}
-                    animate={{ width: `${pct}%` }}
-                    transition={{
-                      duration: 0.6,
-                      delay: 0.15 + i * 0.08,
-                      ease: [0.22, 1, 0.36, 1],
-                    }}
-                    className="absolute top-0 h-full"
-                    style={{
-                      left: `${offset}%`,
-                      background: `linear-gradient(180deg, ${s.color} 0%, ${s.color} 55%, color-mix(in oklab, ${s.color} 75%, black 25%) 100%)`,
-                      boxShadow:
-                        "inset 0 1px 0 0 rgba(255,255,255,0.4), inset 0 -1px 0 0 rgba(0,0,0,0.08)",
-                    }}
-                  />
-                );
-              })}
-            </div>
-            <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
-              <Legend dot="#10b981" label={`${dist.positive} kazanan`} />
-              <Legend dot="#94a3b8" label={`${dist.marginal} marjinal`} />
-              <Legend dot="#f43f5e" label={`${dist.negative} zararlı`} />
+        {/* 3-arc radial chart */}
+        {pl.salesTotalUsd > 0 ? (
+          <div className="relative flex-1 min-h-[140px] -mx-1 -mb-1">
+            <EvilRadialChart
+              data={chartData}
+              dataKey="value"
+              nameKey="key"
+              chartConfig={chartConfig}
+              variant="full"
+              hideLegend
+              hideTooltip
+              hideBackground
+              innerRadius="35%"
+              outerRadius="100%"
+              cornerRadius={6}
+              barSize={9}
+              className="h-full w-full"
+            />
+            {/* Inline legend with values */}
+            <div className="absolute inset-x-0 bottom-0 flex items-center justify-around gap-1 text-[9.5px] px-1">
+              <PLLegend dot="#10b981" label="Satış" value={pl.salesTotalUsd} />
+              <PLLegend dot="#fb7185" label="Alım" value={pl.purchaseTotalUsd} />
+              <PLLegend dot="#be123c" label="Gider" value={pl.expenseTotalUsd} />
             </div>
           </div>
+        ) : (
+          <div className="mt-auto text-[10.5px] text-muted-foreground/70">
+            Tahmini satış verisi yok
+          </div>
         )}
+
         {pl.nonUsdCount > 0 && (
           <div className="text-[9.5px] text-muted-foreground/70 italic">
             {pl.nonUsdCount} proje USD dışı — dönüşüm uygulanmadı
@@ -165,14 +159,25 @@ export function EstimatedPLTile({
   );
 }
 
-function Legend({ dot, label }: { dot: string; label: string }) {
+function PLLegend({
+  dot,
+  label,
+  value,
+}: {
+  dot: string;
+  label: string;
+  value: number;
+}) {
   return (
-    <span className="inline-flex items-center gap-1 truncate">
+    <span className="inline-flex items-center gap-1 min-w-0">
       <span
         className="size-1.5 rounded-full shrink-0"
         style={{ backgroundColor: dot }}
       />
-      <span className="truncate">{label}</span>
+      <span className="text-muted-foreground truncate">{label}</span>
+      <span className="font-semibold tabular-nums text-foreground/85 shrink-0">
+        {formatCompactCurrency(value, "USD")}
+      </span>
     </span>
   );
 }

@@ -2,6 +2,7 @@ import { motion, useReducedMotion } from "framer-motion";
 import { ContainerIcon } from "@hugeicons/core-free-icons";
 import { BentoTile } from "../BentoTile";
 import { AnimatedNumber } from "../AnimatedNumber";
+import { TONE_SEA } from "@/components/details/AccentIconBadge";
 import type { Project } from "@/lib/dataverse/entities";
 
 interface ActivePipelineTileProps {
@@ -65,6 +66,7 @@ export function ActivePipelineTile({
       title="Aktif Pipeline"
       subtitle="Tüm operasyonel projeler"
       icon={ContainerIcon}
+      iconTone={TONE_SEA}
       span={span}
       rowSpan={rowSpan}
     >

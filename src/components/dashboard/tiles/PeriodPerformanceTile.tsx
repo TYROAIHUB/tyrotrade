@@ -11,6 +11,7 @@ import {
 import { BentoTile } from "../BentoTile";
 import { AnimatedNumber } from "../AnimatedNumber";
 import { useThemeAccent } from "@/components/layout/theme-accent";
+import { TONE_FORECAST } from "@/components/details/AccentIconBadge";
 import { aggregateEstimatedPL } from "@/lib/selectors/aggregate";
 import { selectCargoValueUsd } from "@/lib/selectors/project";
 import { getFinancialYear } from "@/lib/dashboard/financialPeriod";
@@ -98,6 +99,7 @@ export function PeriodPerformanceTile({
       title="Dönem Performansı"
       subtitle="Seçili dönem · finansal bakış"
       icon={ChartLineData01Icon}
+      iconTone={TONE_FORECAST}
       span={span}
       rowSpan={rowSpan}
     >

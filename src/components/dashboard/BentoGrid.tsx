@@ -64,6 +64,7 @@ export function BentoGrid({ projects, now = new Date() }: BentoGridProps) {
       />
       <EstimatedQuantityTile
         projects={projects}
+        now={now}
         span="col-span-12 sm:col-span-6 lg:col-span-3"
       />
 

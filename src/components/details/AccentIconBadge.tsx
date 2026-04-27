@@ -102,3 +102,33 @@ export const TONE_FORECAST: IconBadgeTone = {
   gradient: "linear-gradient(135deg, #818cf8 0%, #6366f1 55%, #4338ca 100%)",
   ring: "rgba(99, 102, 241, 0.55)",
 };
+
+/** Currency / FX exposure — teal → cyan. "Money flow" coding,
+ *  distinct from cost (rose) and P&L (emerald). */
+export const TONE_CURRENCY: IconBadgeTone = {
+  gradient: "linear-gradient(135deg, #2dd4bf 0%, #0d9488 55%, #115e59 100%)",
+  ring: "rgba(13, 148, 136, 0.55)",
+};
+
+/** Corridor / route concentration — orange → amber. Logistics tone,
+ *  reads like a "lane" colour without overlapping cargo (gold) or
+ *  road (warmer orange). */
+export const TONE_CORRIDOR: IconBadgeTone = {
+  gradient: "linear-gradient(135deg, #fb923c 0%, #f97316 55%, #c2410c 100%)",
+  ring: "rgba(249, 115, 22, 0.55)",
+};
+
+/** Velocity / transit time — violet → purple. Time / motion / analytics
+ *  cue, doesn't compete with forecast indigo. */
+export const TONE_VELOCITY: IconBadgeTone = {
+  gradient: "linear-gradient(135deg, #c084fc 0%, #a855f7 55%, #6b21a8 100%)",
+  ring: "rgba(168, 85, 247, 0.55)",
+};
+
+/** Counterparty / relationship mix — pink → magenta. People / parties
+ *  cue. Distinguishes from cargo (gold), expense (rose), velocity
+ *  (purple). */
+export const TONE_COUNTERPARTY: IconBadgeTone = {
+  gradient: "linear-gradient(135deg, #f472b6 0%, #ec4899 55%, #9d174d 100%)",
+  ring: "rgba(236, 72, 153, 0.55)",
+};
