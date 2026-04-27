@@ -1,4 +1,3 @@
-import * as React from "react";
 import { TrendingUp, TrendingDown, Minus } from "lucide-react";
 import { GlassPanel } from "@/components/glass/GlassPanel";
 import { AccentIconBadge, TONE_EXPENSE } from "./AccentIconBadge";
