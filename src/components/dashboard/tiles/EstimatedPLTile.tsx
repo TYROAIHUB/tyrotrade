@@ -58,15 +58,16 @@ export function EstimatedPLTile({
       ? TONE_EXPENSE
       : TONE_NEUTRAL;
 
-  // Radial chart data — 3 arcs sized by their absolute USD totals. Sales
-  // gets the emerald family, purchase + expense get rose shades. Recharts
-  // RadialBar renders each entry as a concentric arc; relative arc length
-  // reflects the value ratio.
+  // Radial chart data — 3 arcs sized by their absolute USD totals.
+  // Recharts RadialBar renders the FIRST item innermost and the LAST
+  // outermost ("on top"). Order inside-out: Gider → Alım → Satış so
+  // sales sits on the outer ring like a revenue lid covering the cost
+  // arcs underneath.
   const chartData = React.useMemo(
     () => [
-      { key: "sales", label: "Satış", value: pl.salesTotalUsd },
-      { key: "purchase", label: "Alım", value: pl.purchaseTotalUsd },
       { key: "expense", label: "Gider", value: pl.expenseTotalUsd },
+      { key: "purchase", label: "Alım", value: pl.purchaseTotalUsd },
+      { key: "sales", label: "Satış", value: pl.salesTotalUsd },
     ],
     [pl]
   );
