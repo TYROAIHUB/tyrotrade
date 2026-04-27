@@ -39,6 +39,8 @@ export const PROJECT_COLUMNS = [
   "mserp_contractdate",
   "mserp_status",
   "mserp_tryprojectsegment",
+  "mserp_tryexpenseprojecttype",
+  "mserp_executionperiod",
   "mserp_traderid",
   "mserp_maintraderid",
   "mserp_currencycode",

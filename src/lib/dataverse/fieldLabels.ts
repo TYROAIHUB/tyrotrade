@@ -103,6 +103,7 @@ export const FIELD_LABELS: Record<string, string> = {
   mserp_projtradetypeid: "Ticaret Tipi",
   mserp_vendaccount: "Satıcı Hesabı",
   mserp_vendaccountdescription: "Satıcı Açıklaması",
+  mserp_executionperiod: "Operasyon Periyodu",
 
   /* ─────────── mserp_tryaiprojectlineentities (Proje Satırları) ─────────── */
   mserp_linenum: "Satır No",
