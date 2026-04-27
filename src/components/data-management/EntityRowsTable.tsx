@@ -189,7 +189,14 @@ export function EntityRowsTable<T extends Record<string, unknown>>({
                   {i + 1}
                 </td>
                 {cols.map((c) => {
-                  const formatted = getFormattedValue(row, c);
+                  const rawFormatted = getFormattedValue(row, c);
+                  // F&O option-set FormattedValue often renders unset
+                  // values as "(0 - Null)" or similar sentinels. Treat
+                  // them as empty so the cell shows nothing rather
+                  // than parading a "Null" placeholder.
+                  const formatted = isNullSentinel(rawFormatted)
+                    ? undefined
+                    : rawFormatted;
                   return (
                     <td
                       key={c}
@@ -224,7 +231,7 @@ export function EntityRowsTable<T extends Record<string, unknown>>({
 }
 
 function formatCell(v: unknown): string {
-  if (v === null || v === undefined) return "—";
+  if (v === null || v === undefined) return "";
   if (typeof v === "object") return JSON.stringify(v);
   // ISO dates (datetime "2026-04-25T…" OR date-only "2026-04-25")
   // → dd.MM.yyyy Turkish convention. Matches the `formatDate` helper
@@ -233,7 +240,25 @@ function formatCell(v: unknown): string {
     const [y, m, d] = v.slice(0, 10).split("-");
     return `${d}.${m}.${y}`;
   }
+  if (typeof v === "string" && isNullSentinel(v)) return "";
   return String(v);
+}
+
+/** True when the FormattedValue / raw string is one of F&O's "no
+ *  value" sentinels — option-sets often surface these instead of an
+ *  honest null when nothing is selected. */
+function isNullSentinel(v: string | undefined | null): boolean {
+  if (!v) return false;
+  const s = v.trim().toLowerCase();
+  return (
+    s === "" ||
+    s === "0" ||
+    s === "null" ||
+    s === "(0 - null)" ||
+    s === "0 - null" ||
+    s === "—" ||
+    s === "-"
+  );
 }
 
 function formatCellTitle(v: unknown): string {
