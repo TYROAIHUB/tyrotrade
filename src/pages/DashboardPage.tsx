@@ -2,6 +2,7 @@ import { GlassPanel } from "@/components/glass/GlassPanel";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { BentoGrid } from "@/components/dashboard/BentoGrid";
 import { LeaderboardPanel } from "@/components/dashboard/LeaderboardPanel";
+import { LeaderboardSegmentsPanel } from "@/components/dashboard/LeaderboardSegmentsPanel";
 import { EventsPanel } from "@/components/dashboard/EventsPanel";
 import {
   DashboardFilters,
@@ -131,6 +132,11 @@ export function DashboardPage() {
           <LeaderboardPanel projects={projects} />
           <EventsPanel projects={projects} now={now} />
         </div>
+
+        {/* Segment-level leaderboard sits below the project-level one and
+            shares the exact same filter scope — same metrics, but rolled
+            up by `segment`. */}
+        <LeaderboardSegmentsPanel projects={projects} />
       </div>
     </ScrollArea>
   );

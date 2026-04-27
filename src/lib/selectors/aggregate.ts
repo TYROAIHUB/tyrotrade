@@ -475,3 +475,69 @@ export function topByMargin<T extends Project>(
   );
   return enriched.slice(0, n);
 }
+
+/* ─────────── Segment rollups ─────────── */
+
+export interface SegmentRollup {
+  segment: string;
+  projectCount: number;
+  /** Realised invoiced sales (sum of `salesActualUsd`). */
+  salesActualUsd: number;
+  /** USD-equivalent estimated sales (FX-converted). */
+  salesEstimateUsd: number;
+  /** USD-equivalent estimated purchase (FX-converted). */
+  purchaseEstimateUsd: number;
+  /** Estimated expense — already USD per F&O entity model. */
+  expenseEstimateUsd: number;
+  /** Net P&L = salesEstimate − purchaseEstimate − expenseEstimate. */
+  pl: number;
+  /** Margin % = pl / salesEstimate × 100. Null when sales is zero. */
+  marginPct: number | null;
+}
+
+/**
+ * Group projects by `segment` field and roll up the same metrics the
+ * project-level leaderboard ranks on. Projects with no segment are
+ * bucketed under "Tanımsız". The rollup uses `selectProjectPL` so
+ * EUR/TRY/GBP get FX-converted via the static rate table, matching
+ * the K&Z and Gider tile scopes.
+ */
+export function aggregateBySegment(projects: Project[]): SegmentRollup[] {
+  const map = new Map<string, SegmentRollup>();
+  for (const p of projects) {
+    const key = (p.segment ?? "").trim() || "Tanımsız";
+    const pl = selectProjectPL(p);
+    const cur = (pl.currency ?? "USD").toUpperCase();
+    const salesUsd = toUsd(pl.salesTotal, cur);
+    const purchaseUsd = toUsd(pl.purchaseTotal, cur);
+    const expenseUsd = pl.expenseTotal;
+    const salesActualUsd = p.salesActualUsd ?? 0;
+    const existing = map.get(key);
+    if (existing) {
+      existing.projectCount++;
+      existing.salesActualUsd += salesActualUsd;
+      existing.salesEstimateUsd += salesUsd;
+      existing.purchaseEstimateUsd += purchaseUsd;
+      existing.expenseEstimateUsd += expenseUsd;
+    } else {
+      map.set(key, {
+        segment: key,
+        projectCount: 1,
+        salesActualUsd,
+        salesEstimateUsd: salesUsd,
+        purchaseEstimateUsd: purchaseUsd,
+        expenseEstimateUsd: expenseUsd,
+        pl: 0,
+        marginPct: null,
+      });
+    }
+  }
+  // Compute pl / marginPct after all sums are known
+  const out: SegmentRollup[] = [];
+  for (const r of map.values()) {
+    r.pl = r.salesEstimateUsd - r.purchaseEstimateUsd - r.expenseEstimateUsd;
+    r.marginPct = r.salesEstimateUsd > 0 ? (r.pl / r.salesEstimateUsd) * 100 : null;
+    out.push(r);
+  }
+  return out;
+}

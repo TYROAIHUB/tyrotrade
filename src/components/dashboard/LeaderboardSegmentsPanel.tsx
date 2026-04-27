@@ -1,11 +1,11 @@
 import * as React from "react";
-import { useNavigate } from "react-router-dom";
 import { HugeiconsIcon } from "@hugeicons/react";
 import {
   CrownIcon,
   Wallet01Icon,
   ChartDownIcon,
   ChartUpIcon,
+  PieChartIcon,
 } from "@hugeicons/core-free-icons";
 import {
   Bar,
@@ -31,15 +31,14 @@ import {
 } from "@/components/ui/chart";
 import { formatCompactCurrency } from "@/lib/format";
 import {
-  topBySalesActual,
-  topByExpense,
-  topByMargin,
+  aggregateBySegment,
+  type SegmentRollup,
 } from "@/lib/selectors/aggregate";
 import type { Project } from "@/lib/dataverse/entities";
 
 const TOP_N = 10;
 
-interface LeaderboardPanelProps {
+interface LeaderboardSegmentsPanelProps {
   projects: Project[];
 }
 
@@ -49,34 +48,27 @@ type BoardKey =
   | "lowest-margin"
   | "highest-margin";
 
+interface ChartRow {
+  segment: string;
+  label: string;
+  /** The numeric quantity the bar visualises. */
+  value: number;
+  projectCount: number;
+  /** Optional companion stats for the tooltip. */
+  pl?: number;
+  marginPct?: number | null;
+  salesEstimate?: number;
+}
+
 interface BoardConfig {
   key: BoardKey;
   label: string;
   icon: typeof CrownIcon;
   iconColor: string;
   emptyMessage: string;
-  /** Returns the top-N rows for this board, given a period-filtered set. */
-  build: (filtered: Project[]) => ChartRow[];
-  /** Tooltip & axis formatter for the bar value. */
+  build: (rollups: SegmentRollup[]) => ChartRow[];
   formatValue: (n: number, row: ChartRow) => string;
-  /** X-axis tick label formatter. */
   formatTick: (n: number) => string;
-}
-
-interface ChartRow {
-  projectNo: string;
-  label: string;
-  fullLabel: string;
-  /** The numeric quantity the bar visualises (sales, expense, or margin). */
-  value: number;
-  /** Optional secondary string (currency, group). */
-  currency?: string;
-  group?: string;
-  vesselName?: string;
-  /** For margin-based boards we also surface the underlying P&L for tooltip. */
-  pl?: number;
-  marginPct?: number;
-  salesTotal?: number;
 }
 
 const BOARDS: BoardConfig[] = [
@@ -85,17 +77,18 @@ const BOARDS: BoardConfig[] = [
     label: "En Çok Faturalı",
     icon: CrownIcon,
     iconColor: "#e0ad3e",
-    emptyMessage: "Bu dönemde faturalı satış yok.",
-    build: (filtered) =>
-      topBySalesActual(filtered, TOP_N).map((p) => ({
-        projectNo: p.projectNo,
-        label: `${p.projectNo}␟${p.projectName}`,
-        fullLabel: `${p.projectNo}  ${p.projectName}`,
-        value: p.salesActualUsd,
-        currency: p.currency,
-        group: p.projectGroup,
-        vesselName: p.vesselPlan?.vesselName,
-      })),
+    emptyMessage: "Bu filtrede faturalı segment yok.",
+    build: (rollups) =>
+      rollups
+        .filter((r) => r.salesActualUsd > 0)
+        .sort((a, b) => b.salesActualUsd - a.salesActualUsd)
+        .slice(0, TOP_N)
+        .map((r) => ({
+          segment: r.segment,
+          label: r.segment,
+          value: r.salesActualUsd,
+          projectCount: r.projectCount,
+        })),
     formatValue: (n) => formatCompactCurrency(n, "USD"),
     formatTick: (n) => formatCompactCurrency(n, "USD"),
   },
@@ -104,17 +97,18 @@ const BOARDS: BoardConfig[] = [
     label: "El Yakanlar",
     icon: Wallet01Icon,
     iconColor: "#f43f5e",
-    emptyMessage: "Bu dönemde gider tahmini olan proje yok.",
-    build: (filtered) =>
-      topByExpense(filtered, TOP_N).map((p) => ({
-        projectNo: p.projectNo,
-        label: `${p.projectNo}␟${p.projectName}`,
-        fullLabel: `${p.projectNo}  ${p.projectName}`,
-        value: p.expenseTotalUsd,
-        currency: "USD",
-        group: p.projectGroup,
-        vesselName: p.vesselPlan?.vesselName,
-      })),
+    emptyMessage: "Bu filtrede gider tahmini olan segment yok.",
+    build: (rollups) =>
+      rollups
+        .filter((r) => r.expenseEstimateUsd > 0)
+        .sort((a, b) => b.expenseEstimateUsd - a.expenseEstimateUsd)
+        .slice(0, TOP_N)
+        .map((r) => ({
+          segment: r.segment,
+          label: r.segment,
+          value: r.expenseEstimateUsd,
+          projectCount: r.projectCount,
+        })),
     formatValue: (n) => formatCompactCurrency(n, "USD"),
     formatTick: (n) => formatCompactCurrency(n, "USD"),
   },
@@ -123,20 +117,21 @@ const BOARDS: BoardConfig[] = [
     label: "En Düşük Marj",
     icon: ChartDownIcon,
     iconColor: "#f43f5e",
-    emptyMessage: "Bu dönemde marj hesaplanabilir proje yok.",
-    build: (filtered) =>
-      topByMargin(filtered, TOP_N, "asc").map((p) => ({
-        projectNo: p.projectNo,
-        label: `${p.projectNo}␟${p.projectName}`,
-        fullLabel: `${p.projectNo}  ${p.projectName}`,
-        value: p.marginPct,
-        currency: p.currency,
-        group: p.projectGroup,
-        vesselName: p.vesselPlan?.vesselName,
-        pl: p.pl,
-        marginPct: p.marginPct,
-        salesTotal: p.salesTotal,
-      })),
+    emptyMessage: "Bu filtrede marj hesaplanabilir segment yok.",
+    build: (rollups) =>
+      rollups
+        .filter((r) => r.marginPct !== null && r.salesEstimateUsd > 0)
+        .sort((a, b) => (a.marginPct ?? 0) - (b.marginPct ?? 0))
+        .slice(0, TOP_N)
+        .map((r) => ({
+          segment: r.segment,
+          label: r.segment,
+          value: r.marginPct ?? 0,
+          projectCount: r.projectCount,
+          pl: r.pl,
+          marginPct: r.marginPct,
+          salesEstimate: r.salesEstimateUsd,
+        })),
     formatValue: (n) => `${n.toFixed(1)}%`,
     formatTick: (n) => `${n.toFixed(0)}%`,
   },
@@ -145,42 +140,43 @@ const BOARDS: BoardConfig[] = [
     label: "En Yüksek Marj",
     icon: ChartUpIcon,
     iconColor: "#10b981",
-    emptyMessage: "Bu dönemde marj hesaplanabilir proje yok.",
-    build: (filtered) =>
-      topByMargin(filtered, TOP_N, "desc").map((p) => ({
-        projectNo: p.projectNo,
-        label: `${p.projectNo}␟${p.projectName}`,
-        fullLabel: `${p.projectNo}  ${p.projectName}`,
-        value: p.marginPct,
-        currency: p.currency,
-        group: p.projectGroup,
-        vesselName: p.vesselPlan?.vesselName,
-        pl: p.pl,
-        marginPct: p.marginPct,
-        salesTotal: p.salesTotal,
-      })),
+    emptyMessage: "Bu filtrede marj hesaplanabilir segment yok.",
+    build: (rollups) =>
+      rollups
+        .filter((r) => r.marginPct !== null && r.salesEstimateUsd > 0)
+        .sort((a, b) => (b.marginPct ?? 0) - (a.marginPct ?? 0))
+        .slice(0, TOP_N)
+        .map((r) => ({
+          segment: r.segment,
+          label: r.segment,
+          value: r.marginPct ?? 0,
+          projectCount: r.projectCount,
+          pl: r.pl,
+          marginPct: r.marginPct,
+          salesEstimate: r.salesEstimateUsd,
+        })),
     formatValue: (n) => `${n.toFixed(1)}%`,
     formatTick: (n) => `${n.toFixed(0)}%`,
   },
 ];
 
 const chartConfig: ChartConfig = {
-  value: { label: "Değer", color: "#3b82f6" },
+  value: { label: "Değer", color: "#6366f1" },
 };
 
-/* ─────────── Bar ranks ─────────── */
+/* ─────────── Bar palette per board ─────────── */
 
-const RANK_COLORS_NAVY = [
-  "#1e3a8a",
-  "#1e40af",
-  "#2563eb",
-  "#3b82f6",
-  "#60a5fa",
-  "#7dd3fc",
-  "#93c5fd",
-  "#bae6fd",
-  "#cffafe",
-  "#e0f2fe",
+const RANK_COLORS_INDIGO = [
+  "#3730a3",
+  "#4338ca",
+  "#4f46e5",
+  "#6366f1",
+  "#818cf8",
+  "#a5b4fc",
+  "#c7d2fe",
+  "#ddd6fe",
+  "#e0e7ff",
+  "#eef2ff",
 ];
 const RANK_COLORS_ROSE = [
   "#9f1239",
@@ -210,7 +206,7 @@ const RANK_COLORS_EMERALD = [
 function rankColor(board: BoardKey, idx: number): string {
   const palette =
     board === "top-sales"
-      ? RANK_COLORS_NAVY
+      ? RANK_COLORS_INDIGO
       : board === "top-expense" || board === "lowest-margin"
         ? RANK_COLORS_ROSE
         : RANK_COLORS_EMERALD;
@@ -226,7 +222,7 @@ function StripedBar(props: {
   height?: number;
   fill?: string;
 }) {
-  const { x = 0, y = 0, width = 0, height = 0, fill = "#3b82f6" } = props;
+  const { x = 0, y = 0, width = 0, height = 0, fill = "#6366f1" } = props;
   if (width <= 0 || height <= 0) return null;
   const stripeW = 4;
   const gap = 3;
@@ -251,23 +247,20 @@ function StripedBar(props: {
   );
 }
 
-/* ─────────── Y-axis tick (code + name) ─────────── */
+/* ─────────── Y-axis tick ─────────── */
 
-function LeftAlignedTick(props: {
+function SegmentTick(props: {
   x?: number;
   y?: number;
   payload?: { value?: string | number };
 }) {
   const { x = 0, y = 0, payload } = props;
   const value = String(payload?.value ?? "");
-  const sepIdx = value.indexOf("␟");
-  const code = sepIdx > 0 ? value.slice(0, sepIdx) : value;
-  const name = sepIdx > 0 ? value.slice(sepIdx + 1) : "";
   const safeLeft = 4;
   const safeRight = 12;
   const foX = safeLeft;
   const foWidth = Math.max(0, x - safeLeft - safeRight);
-  const blockHeight = 48;
+  const blockHeight = 36;
   return (
     <foreignObject
       x={foX}
@@ -279,42 +272,17 @@ function LeftAlignedTick(props: {
       <div
         style={{
           display: "flex",
-          flexDirection: "column",
-          justifyContent: "center",
+          alignItems: "center",
           height: "100%",
-          gap: 2,
-          overflow: "hidden",
           color: "var(--foreground)",
+          fontSize: 13,
+          fontWeight: 600,
+          lineHeight: 1.2,
+          overflow: "hidden",
+          wordBreak: "break-word",
         }}
       >
-        <span
-          style={{
-            fontFamily: "ui-monospace, monospace",
-            fontSize: 11,
-            letterSpacing: "0.02em",
-            opacity: 0.6,
-            lineHeight: 1.1,
-            whiteSpace: "nowrap",
-          }}
-        >
-          {code}
-        </span>
-        {name && (
-          <span
-            style={{
-              fontSize: 12.5,
-              fontWeight: 600,
-              lineHeight: 1.25,
-              display: "-webkit-box",
-              WebkitLineClamp: 2,
-              WebkitBoxOrient: "vertical",
-              overflow: "hidden",
-              wordBreak: "break-word",
-            }}
-          >
-            {name}
-          </span>
-        )}
+        {value}
       </div>
     </foreignObject>
   );
@@ -323,42 +291,37 @@ function LeftAlignedTick(props: {
 /* ─────────── Component ─────────── */
 
 /**
- * Multi-board executive leaderboard.
+ * Segment-level executive leaderboard. Same 4-board taxonomy as the
+ * project-level "Kral Projeler" panel, but rows roll up by `segment`.
+ * Project counts ride along in the tooltip so the user can see how
+ * many projects feed each segment row.
  *
- *   - **En Çok Faturalı**: realised invoiced sales (`salesActualUsd`)
- *   - **El Yakanlar**: highest estimated expense (`costEstimate.totalUsd`)
- *   - **En Düşük Marj**: smallest (most negative) P&L margin %
- *   - **En Yüksek Marj**: largest P&L margin %
- *
- * Period scope is inherited from the dashboard top-right Filtre — this
- * panel doesn't keep its own period selector so the whole dashboard
- * stays in sync with one filter source. `projects` arrives already
- * scoped by `applyDashboardFilters`, so we just feed it straight to
- * the board's `build` function.
+ * Period scope is inherited from the dashboard top-right Filtre —
+ * `projects` arrives already scoped, then we group by segment.
  */
-export function LeaderboardPanel({ projects }: LeaderboardPanelProps) {
-  const navigate = useNavigate();
+export function LeaderboardSegmentsPanel({
+  projects,
+}: LeaderboardSegmentsPanelProps) {
   const [board, setBoard] = React.useState<BoardKey>("top-sales");
-
   const config = BOARDS.find((b) => b.key === board) ?? BOARDS[0];
 
-  const data: ChartRow[] = React.useMemo(
-    () => config.build(projects),
-    [projects, config]
-  );
+  const data: ChartRow[] = React.useMemo(() => {
+    const rollups = aggregateBySegment(projects);
+    return config.build(rollups);
+  }, [projects, config]);
 
   return (
     <Card className="overflow-hidden">
       <CardHeader className="flex flex-col gap-3 space-y-0 pb-3">
         <CardTitle className="flex items-center gap-2 text-base">
           <HugeiconsIcon
-            icon={config.icon}
+            icon={PieChartIcon}
             size={20}
             strokeWidth={1.75}
             className="shrink-0"
-            style={{ color: config.iconColor }}
+            style={{ color: "#6366f1" }}
           />
-          Kral Projeler
+          Kral Segmentler
         </CardTitle>
         {/* Board selector */}
         <Tabs
@@ -395,7 +358,7 @@ export function LeaderboardPanel({ projects }: LeaderboardPanelProps) {
           <ChartContainer
             config={chartConfig}
             className="aspect-auto w-full"
-            style={{ height: Math.max(420, data.length * 60) }}
+            style={{ height: Math.max(280, data.length * 44) }}
           >
             <BarChart
               accessibilityLayer
@@ -403,15 +366,6 @@ export function LeaderboardPanel({ projects }: LeaderboardPanelProps) {
               layout="vertical"
               margin={{ left: 8, right: 80, top: 4, bottom: 4 }}
               barCategoryGap="35%"
-              onClick={(state) => {
-                const s = state as unknown as {
-                  activePayload?: Array<{ payload?: ChartRow }>;
-                };
-                const payload = s.activePayload?.[0]?.payload;
-                if (payload?.projectNo) {
-                  navigate(`/projects/${payload.projectNo}`);
-                }
-              }}
             >
               <CartesianGrid horizontal={false} strokeDasharray="3 3" />
               <XAxis
@@ -428,9 +382,9 @@ export function LeaderboardPanel({ projects }: LeaderboardPanelProps) {
                 tickLine={false}
                 axisLine={false}
                 tickMargin={12}
-                width={300}
+                width={200}
                 interval={0}
-                tick={<LeftAlignedTick />}
+                tick={<SegmentTick />}
               />
               <ChartTooltip
                 cursor={{ fill: "var(--muted)", opacity: 0.4 }}
@@ -440,20 +394,20 @@ export function LeaderboardPanel({ projects }: LeaderboardPanelProps) {
                     labelFormatter={(_label, payload) => {
                       const row = payload?.[0]?.payload as ChartRow | undefined;
                       if (!row) return "";
-                      return row.fullLabel;
+                      return row.segment;
                     }}
                     formatter={(value, _name, item) => {
                       const row = item?.payload as ChartRow | undefined;
                       if (!row) return [String(value), ""];
                       return [
                         config.formatValue(Number(value), row),
-                        `${row.projectNo} · ${row.group ?? ""}`,
+                        `${row.projectCount} proje`,
                       ];
                     }}
                   />
                 }
               />
-              <Bar dataKey="value" shape={<StripedBar />} cursor="pointer">
+              <Bar dataKey="value" shape={<StripedBar />}>
                 {data.map((_, i) => (
                   <Cell key={i} fill={rankColor(board, i)} />
                 ))}
