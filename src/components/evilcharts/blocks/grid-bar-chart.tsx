@@ -34,7 +34,7 @@ const chartConfig = {
   },
 } satisfies ChartConfig;
 
-interface GridBarProps {
+export interface GridBarProps {
   x?: number;
   y?: number;
   width?: number;
@@ -45,7 +45,7 @@ interface GridBarProps {
 // Renders ghost squares filling the entire column height — used as the Bar background.
 // recharts passes y = chart top, height = full chart area height, so y + height = the
 // shared bottom baseline, which perfectly aligns with the data squares in GridBarShape.
-const GridBarBackground = (props: GridBarProps) => {
+export const GridBarBackground = (props: GridBarProps) => {
   const { fill, x, y, width, height } = props;
 
   const xPos = Number(x ?? 0);
@@ -80,7 +80,7 @@ const GridBarBackground = (props: GridBarProps) => {
   );
 };
 
-const GridBarShape = (props: GridBarProps) => {
+export const GridBarShape = (props: GridBarProps) => {
   const { fill, x, y, width, height } = props;
 
   const xPos = Number(x ?? 0);

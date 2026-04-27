@@ -1,8 +1,16 @@
 import * as React from "react";
 import { CubeIcon } from "@hugeicons/core-free-icons";
+import { Bar, BarChart, XAxis } from "recharts";
 import { BentoTile } from "../BentoTile";
-import { AnimatedNumber } from "../AnimatedNumber";
 import { TONE_CARGO } from "@/components/details/AccentIconBadge";
+import {
+  ChartContainer,
+  type ChartConfig,
+} from "@/components/evilcharts/ui/chart";
+import {
+  GridBarBackground,
+  GridBarShape,
+} from "@/components/evilcharts/blocks/grid-bar-chart";
 import { selectTotalKg, selectTotalTons } from "@/lib/selectors/project";
 import { getFinancialYear } from "@/lib/dashboard/financialPeriod";
 import type { Project } from "@/lib/dataverse/entities";
@@ -15,20 +23,35 @@ interface EstimatedQuantityTileProps {
   rowSpan?: string;
 }
 
-interface MonthBucket {
-  monthKey: string;
-  monthLabel: string;
+interface MonthRow {
+  month: string;
   tons: number;
 }
 
+const TR_MONTHS = [
+  "Ocak",
+  "Şubat",
+  "Mart",
+  "Nisan",
+  "Mayıs",
+  "Haziran",
+  "Temmuz",
+  "Ağustos",
+  "Eylül",
+  "Ekim",
+  "Kasım",
+  "Aralık",
+];
+
 /**
- * Tahmini Miktar tile — period-scoped tonnage with a small monthly
- * breakdown chart at the bottom. Total tonnage stays as the headline
- * number; the 12-bar grid chart underneath shows distribution across
- * the financial year (Jul → Jun).
+ * Tahmini Miktar tile — period-scoped tonnage with the full
+ * `@evilcharts/grid-bar-chart` treatment (Total + Peak headers above
+ * the grid bars). FY-aligned: months render Jul → Jun, peak month
+ * surfaces the heaviest month inside the period.
  *
- * Domain colour: amber / cargo. Bar intensity scales with the value's
- * percentile within the period, so heavy months read as deeper amber.
+ * Domain colour: amber / cargo (TONE_CARGO). Grid bars use the same
+ * amber so the visual hierarchy reads vertically: pill icon → headline
+ * total → peak callout → bars.
  */
 export function EstimatedQuantityTile({
   projects,
@@ -44,18 +67,16 @@ export function EstimatedQuantityTile({
   // FY-aligned monthly tonnage. Aggregates `quantityKg` by the project's
   // `projectDate` calendar month, so the chart bucketing matches the
   // dashboard period filter (which uses the same field).
-  const monthly = React.useMemo<MonthBucket[]>(() => {
+  const monthly = React.useMemo<MonthRow[]>(() => {
     const fy = getFinancialYear(now);
-    const buckets: MonthBucket[] = [];
+    const buckets: MonthRow[] = [];
+    const indexByKey = new Map<string, number>();
     for (let i = 0; i < 12; i++) {
-      const d = new Date(fy.startYear, 6 + i, 1);
-      const monthKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-      const monthLabel = new Intl.DateTimeFormat("tr-TR", {
-        month: "short",
-      }).format(d);
-      buckets.push({ monthKey, monthLabel, tons: 0 });
+      const d = new Date(fy.startYear, 6 + i, 1); // Jul = 6
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+      buckets.push({ month: TR_MONTHS[d.getMonth()], tons: 0 });
+      indexByKey.set(key, i);
     }
-    const indexByKey = new Map(buckets.map((b, i) => [b.monthKey, i]));
     for (const p of projects) {
       const t = new Date(p.projectDate);
       if (Number.isNaN(t.getTime())) continue;
@@ -66,10 +87,35 @@ export function EstimatedQuantityTile({
     return buckets;
   }, [projects, now]);
 
-  const maxMonth = React.useMemo(
-    () => monthly.reduce((m, b) => (b.tons > m ? b.tons : m), 0),
+  const peak = React.useMemo(
+    () =>
+      monthly.reduce(
+        (acc, b, i) => (b.tons > acc.tons ? { ...b, idx: i } : acc),
+        { month: monthly[0]?.month ?? "—", tons: 0, idx: 0 }
+      ),
     [monthly]
   );
+
+  // Compact total formatter — matches headline conventions elsewhere
+  // (e.g. "12.4 bin t", "847 t").
+  const totalLabel =
+    totalTons >= 1000
+      ? `${(totalTons / 1000).toLocaleString("tr-TR", {
+          minimumFractionDigits: 1,
+          maximumFractionDigits: 1,
+        })} bin`
+      : totalTons.toLocaleString("tr-TR", {
+          maximumFractionDigits: 0,
+        });
+  const totalUnit = totalTons >= 1000 ? "t" : "t";
+
+  // Single-series chart config — amber, theme-stable in light + dark.
+  const chartConfig: ChartConfig = {
+    tons: {
+      label: "Tonaj",
+      colors: { light: ["#f59e0b"], dark: ["#fbbf24"] },
+    },
+  };
 
   return (
     <BentoTile
@@ -80,106 +126,65 @@ export function EstimatedQuantityTile({
       span={span}
       rowSpan={rowSpan}
     >
-      <div className="flex flex-col gap-2 h-full">
-        <div className="flex items-baseline gap-1">
-          <span className="text-[28px] font-semibold leading-none tracking-tight text-amber-700">
-            <AnimatedNumber value={totalTons} preset="tons" />
-          </span>
+      <div className="flex flex-col h-full min-w-0">
+        {/* Total + Peak month strip — pattern from @evilcharts/grid-bar-chart */}
+        <div className="flex items-stretch gap-3 mb-2">
+          <div className="flex flex-col gap-0.5 min-w-0">
+            <span className="text-muted-foreground font-mono text-[10px]">
+              [Σ] Toplam
+            </span>
+            <span className="text-amber-700 font-mono text-2xl tracking-tighter leading-none">
+              {totalLabel}
+              <span className="text-[11px] ml-0.5 text-muted-foreground">
+                {totalUnit}
+              </span>
+            </span>
+          </div>
+          <span className="border-l border-dashed border-border/70 self-stretch" />
+          <div className="flex flex-col gap-0.5 min-w-0">
+            <span className="text-muted-foreground font-mono text-[10px]">
+              [⬆] Peak
+            </span>
+            <span className="text-amber-700 font-mono text-2xl tracking-tighter leading-none truncate">
+              {peak.tons > 0 ? peak.month.slice(0, 3) : "—"}
+            </span>
+          </div>
         </div>
+        <hr className="border-t border-dashed border-border/70 mb-2" />
 
-        {/* Monthly grid-bar chart — FY aligned (Jul → Jun) */}
-        {maxMonth > 0 ? (
-          <MiniGridBarChart data={monthly} max={maxMonth} />
+        {/* Grid-bar chart — recharts BarChart with the GridBarShape +
+            GridBarBackground primitives from @evilcharts/grid-bar-chart. */}
+        {peak.tons > 0 ? (
+          <ChartContainer config={chartConfig} className="flex-1 min-h-[80px] w-full">
+            <BarChart
+              accessibilityLayer
+              data={monthly}
+              margin={{ top: 4, right: 0, left: 0, bottom: 0 }}
+            >
+              <XAxis
+                dataKey="month"
+                tickLine={false}
+                tickMargin={4}
+                axisLine={false}
+                tick={{ fontSize: 9, fill: "currentColor", opacity: 0.6 }}
+                tickFormatter={(v: string) => v.slice(0, 3)}
+                interval={0}
+              />
+              <Bar
+                dataKey="tons"
+                fill="var(--color-tons-0)"
+                background={GridBarBackground}
+                shape={GridBarShape}
+                activeBar={GridBarShape}
+              />
+            </BarChart>
+          </ChartContainer>
         ) : (
-          <div className="mt-auto text-[10.5px] text-muted-foreground/70">
+          <div className="flex-1 grid place-items-center text-[10.5px] text-muted-foreground/70">
             Veri yok
           </div>
         )}
       </div>
     </BentoTile>
-  );
-}
-
-/* ─────────── Compact grid-bar chart ─────────── */
-
-const CELL = 6; // square size px
-const GAP = 2;
-const STEP = CELL + GAP;
-const CHART_HEIGHT = 64;
-const COL_GAP = 4;
-
-/**
- * Inline grid-bar chart — same visual grammar as `@evilcharts/grid-bar-chart`
- * but compact enough to fit a 3-col bento tile. Each month renders as a
- * vertical stack of small squares; cell colour scales by the bar's
- * percentile (low / mid / high) within the period.
- */
-function MiniGridBarChart({
-  data,
-  max,
-}: {
-  data: MonthBucket[];
-  max: number;
-}) {
-  const numCells = Math.floor(CHART_HEIGHT / STEP);
-  // Three amber stops covering low → mid → high tonnage. None of them are
-  // black; intensity is the only "level" cue (per user spec).
-  const STOPS = ["#fcd34d", "#f59e0b", "#b45309"];
-  const colorFor = (tons: number): string => {
-    if (max <= 0) return STOPS[0];
-    const ratio = tons / max;
-    if (ratio < 0.34) return STOPS[0];
-    if (ratio < 0.67) return STOPS[1];
-    return STOPS[2];
-  };
-  return (
-    <div className="mt-auto flex flex-col gap-1">
-      <div className="flex items-end justify-between gap-[2px] h-[64px]">
-        {data.map((b) => {
-          const filled = max > 0 ? Math.round((b.tons / max) * numCells) : 0;
-          const color = colorFor(b.tons);
-          return (
-            <div
-              key={b.monthKey}
-              className="flex-1 flex flex-col-reverse items-center justify-start"
-              title={`${b.monthLabel}: ${b.tons.toFixed(0)} t`}
-              style={{ gap: GAP }}
-            >
-              {Array.from({ length: numCells }).map((_, i) => {
-                const isFilled = i < filled;
-                return (
-                  <span
-                    key={i}
-                    style={{
-                      width: CELL,
-                      height: CELL,
-                      borderRadius: 1,
-                      background: isFilled ? color : "rgba(15,23,42,0.06)",
-                      boxShadow: isFilled
-                        ? "inset 0 1px 0 0 rgba(255,255,255,0.4)"
-                        : undefined,
-                    }}
-                  />
-                );
-              })}
-            </div>
-          );
-        })}
-      </div>
-      {/* Month labels under the bars */}
-      <div
-        className="flex justify-between text-[8.5px] text-muted-foreground tabular-nums"
-        style={{ gap: COL_GAP }}
-      >
-        {data.map((b) => (
-          <span
-            key={`l-${b.monthKey}`}
-            className="flex-1 text-center truncate"
-          >
-            {b.monthLabel}
-          </span>
-        ))}
-      </div>
-    </div>
   );
 }
