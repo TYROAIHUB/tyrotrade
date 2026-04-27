@@ -116,7 +116,7 @@ export function ProfitLossCard({ project }: Props) {
                 key={i}
                 code={l.itemCode}
                 tons={l.tons}
-                rate={`${formatCurrency(l.price, currency)} / t`}
+                rate={`${formatCurrency(l.price, currency, { maximumFractionDigits: 2 })} / t`}
                 total={`+${formatCurrency(l.total, currency)}`}
                 sign="positive"
               />
@@ -136,7 +136,7 @@ export function ProfitLossCard({ project }: Props) {
                 key={i}
                 code={l.itemCode}
                 tons={l.tons}
-                rate={`${formatCurrency(l.price, currency)} / t`}
+                rate={`${formatCurrency(l.price, currency, { maximumFractionDigits: 2 })} / t`}
                 total={`-${formatCurrency(l.total, currency)}`}
                 sign="negative"
               />
@@ -156,7 +156,7 @@ export function ProfitLossCard({ project }: Props) {
                 key={i}
                 code={l.name}
                 tons={l.tons}
-                rate={`${formatCurrency(l.unitPriceUsd, "USD")} / t`}
+                rate={`${formatCurrency(l.unitPriceUsd, "USD", { maximumFractionDigits: 2 })} / t`}
                 total={`-${formatCurrency(l.totalUsd, "USD")}`}
                 sign="negative"
               />
@@ -285,16 +285,16 @@ function DetailLine({
 }) {
   const valueColor = sign === "positive" ? "text-emerald-700" : "text-rose-700";
   return (
-    <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-x-3 text-[11px] tabular-nums items-baseline">
-      <div className="min-w-0 flex items-baseline gap-1.5 truncate">
-        <span className="font-mono text-[10.5px] text-foreground/85 truncate">
+    <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-x-3 py-0.5 tabular-nums items-baseline">
+      <div className="min-w-0">
+        <div className="font-mono text-[12px] text-foreground/90 truncate font-medium">
           {code}
-        </span>
-        <span className="text-muted-foreground/85 text-[10px] shrink-0">
+        </div>
+        <div className="text-muted-foreground/90 text-[11px] truncate mt-0.5">
           {formatNumber(tons, 0)} t × {rate}
-        </span>
+        </div>
       </div>
-      <div className={cn("text-right font-semibold", valueColor)}>
+      <div className={cn("text-right font-semibold text-[12px]", valueColor)}>
         {total}
       </div>
     </div>
