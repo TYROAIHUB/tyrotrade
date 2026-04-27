@@ -183,7 +183,10 @@ export function PeriodPerformanceTile({
                   padding: "6px 10px",
                   fontSize: 11,
                 }}
-                formatter={(v: number) => [`${v} proje`, "Adet"]}
+                // recharts' Formatter type widens `value` to `ValueType |
+                // undefined`. Coerce to number for the readable string and
+                // return the [value, name] tuple it expects.
+                formatter={(v) => [`${Number(v ?? 0)} proje`, "Adet"]}
                 labelFormatter={(l) => `Ay: ${l}`}
               />
               <Area
