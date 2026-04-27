@@ -109,8 +109,11 @@ export const FIELD_LABELS: Record<string, string> = {
   mserp_itemid: "Madde Kodu",
   mserp_qty: "Miktar",
   mserp_unitid: "Birim",
-  mserp_unitprice: "Birim Fiyat",
-  mserp_salesprice: "Satış Fiyatı",
+  // System names are swapped in F&O (`unitprice` is the SALES price,
+  // `salesprice` is the PURCHASE/buying price). The labels here flip
+  // them back to the operationally correct semantics shown in the UI.
+  mserp_unitprice: "Satış Birim Fiyatı",
+  mserp_salesprice: "Alım Birim Fiyatı",
   mserp_priceunit: "Fiyat Birimi",
   mserp_etgproductlevel01: "Ürün Seviye 1",
   mserp_etgproductlevel02: "Ürün Seviye 2",
