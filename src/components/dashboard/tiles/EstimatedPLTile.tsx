@@ -99,7 +99,7 @@ export function EstimatedPLTile({
         {/* Headline net P&L + margin */}
         <div className="flex items-baseline gap-2 flex-wrap">
           <span
-            className="text-[24px] font-semibold leading-none tracking-tight"
+            className="text-[22px] font-semibold leading-none tracking-tight"
             style={{ color: tintColor }}
           >
             <AnimatedNumber
@@ -120,7 +120,7 @@ export function EstimatedPLTile({
 
         {/* 3-arc semi-radial chart */}
         {pl.salesTotalUsd > 0 ? (
-          <div className="relative flex-1 min-h-[150px] -mx-1 -mb-1">
+          <div className="relative flex-1 min-h-[110px] -mx-1 -mb-1">
             <EvilRadialChart
               data={chartData}
               dataKey="value"
@@ -133,7 +133,7 @@ export function EstimatedPLTile({
               className="h-full w-full"
             />
             {/* Inline legend with values — sits below the semi-circle */}
-            <div className="absolute inset-x-0 bottom-0 flex items-center justify-around gap-1 text-[9.5px] px-1">
+            <div className="absolute inset-x-0 bottom-0 flex items-center justify-around gap-1 text-[10.5px] px-1">
               <PLLegend dot="#10b981" label="Satış" value={pl.salesTotalUsd} />
               <PLLegend dot="#f59e0b" label="Alım" value={pl.purchaseTotalUsd} />
               <PLLegend dot="#dc2626" label="Gider" value={pl.expenseTotalUsd} />
@@ -167,11 +167,11 @@ function PLLegend({
   return (
     <span className="inline-flex items-center gap-1 min-w-0">
       <span
-        className="size-1.5 rounded-full shrink-0"
+        className="size-2 rounded-full shrink-0"
         style={{ backgroundColor: dot }}
       />
-      <span className="text-muted-foreground truncate">{label}</span>
-      <span className="font-semibold tabular-nums text-foreground/85 shrink-0">
+      <span className="text-foreground/80 font-medium truncate">{label}</span>
+      <span className="font-bold tabular-nums text-foreground shrink-0">
         {formatCompactCurrency(value, "USD")}
       </span>
     </span>

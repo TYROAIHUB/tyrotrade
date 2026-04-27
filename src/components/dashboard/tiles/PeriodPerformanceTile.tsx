@@ -103,13 +103,13 @@ export function PeriodPerformanceTile({
       span={span}
       rowSpan={rowSpan}
     >
-      <div className="flex flex-col gap-3 h-full">
+      <div className="flex flex-col gap-2 h-full">
         {/* 4-up KPI row */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
           <KPI
             label="Proje sayısı"
             value={
-              <span className="text-[26px] font-semibold leading-none tracking-tight">
+              <span className="text-[22px] font-semibold leading-none tracking-tight">
                 <AnimatedNumber value={totalProjects} preset="count" />
               </span>
             }
@@ -117,7 +117,7 @@ export function PeriodPerformanceTile({
           <KPI
             label="Kargo değeri"
             value={
-              <span className="text-[26px] font-semibold leading-none tracking-tight">
+              <span className="text-[22px] font-semibold leading-none tracking-tight">
                 <AnimatedNumber
                   value={totalCargoValueUsd}
                   preset="currency"
@@ -130,7 +130,7 @@ export function PeriodPerformanceTile({
             label="Tahmini K&Z"
             value={
               <span
-                className="text-[26px] font-semibold leading-none tracking-tight"
+                className="text-[22px] font-semibold leading-none tracking-tight"
                 style={{ color: marginColor }}
               >
                 <AnimatedNumber value={pl.pl} preset="currency" currency="USD" />
@@ -141,7 +141,7 @@ export function PeriodPerformanceTile({
             label="Tahmini marj"
             value={
               <span
-                className="inline-flex items-center mt-0.5 px-2 py-1 rounded-md text-[14px] font-bold tabular-nums"
+                className="inline-flex items-center mt-0.5 px-1.5 py-0.5 rounded text-[12px] font-bold tabular-nums"
                 style={{ color: marginColor, backgroundColor: marginBg }}
               >
                 {pl.marginPct.toFixed(1)}%
@@ -151,7 +151,7 @@ export function PeriodPerformanceTile({
         </div>
 
         {/* Sparkline — 12-month project intake distribution */}
-        <div className="flex-1 min-h-[80px] relative">
+        <div className="flex-1 min-h-[56px] relative">
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart
               data={sparkline}

@@ -15,18 +15,13 @@ interface ActivePipelineTileProps {
 /**
  * Active project status breakdown. Categories mirror the F&O voyage-status
  * option-set (`mserp_voyagestatus`) verbatim, so the tile speaks the same
- * language as the rest of the app:
+ * language the user reads in F&O. Projects without a ship plan are
+ * excluded — this tile is a voyage-state lens, not a project-level one.
  *   - "To Be Nominated" / "Nominated"  — pre-loading
  *   - "Commenced"                      — voyage in progress
  *   - "Completed" / "Closed"           — terminal (delivered / paid)
  *   - "Cancelled"                      — terminal (cancelled)
- *
- * Project-level "Açık" / "Kapalı" fallback kicks in when the ship row has
- * no recognised voyage status (no ship plan attached).
  */
-// Labels mirror the raw F&O `mserp_voyagestatus` option-set values verbatim
-// — "Commenced", "Completed", etc. The user reads the same vocabulary in
-// F&O and on the dashboard; no translation drift.
 const STATUS_CATEGORIES = [
   { key: "To Be Nominated", label: "To Be Nominated", color: "#8b5cf6" },
   { key: "Nominated", label: "Nominated", color: "#6366f1" },
@@ -34,10 +29,6 @@ const STATUS_CATEGORIES = [
   { key: "Completed", label: "Completed", color: "#10b981" },
   { key: "Closed", label: "Closed", color: "#64748b" },
   { key: "Cancelled", label: "Cancelled", color: "#f43f5e" },
-  // Project-level fallbacks (no ship plan) — these are stored in Turkish at
-  // the F&O project header level so they stay Turkish.
-  { key: "Açık", label: "Açık", color: "#0ea5e9" },
-  { key: "Kapalı", label: "Kapalı", color: "#94a3b8" },
 ] as const;
 
 export function ActivePipelineTile({
@@ -47,24 +38,25 @@ export function ActivePipelineTile({
 }: ActivePipelineTileProps) {
   const reduceMotion = useReducedMotion();
 
+  // Only count projects that actually carry a recognised voyage status —
+  // project-level "Açık" / "Kapalı" fallbacks are excluded so the tile
+  // reads as a vessel-fleet lens, not a generic project pipeline.
   const counts: Record<string, number> = Object.fromEntries(
     STATUS_CATEGORIES.map((c) => [c.key, 0])
   );
+  let total = 0;
   for (const p of projects) {
-    const status = p.vesselPlan?.vesselStatus ?? p.status;
-    if (status in counts) counts[status]++;
-    else counts[status] = (counts[status] ?? 0) + 1;
+    const vs = p.vesselPlan?.vesselStatus;
+    if (!vs || !(vs in counts)) continue;
+    counts[vs]++;
+    total++;
   }
-  const total = projects.length;
-  const sumStages = STATUS_CATEGORIES.reduce(
-    (acc, s) => acc + (counts[s.key] ?? 0),
-    0
-  );
+  const sumStages = total;
 
   return (
     <BentoTile
       title="Aktif Pipeline"
-      subtitle="Tüm operasyonel projeler"
+      subtitle="Voyage durumu · gemi planlı projeler"
       icon={ContainerIcon}
       iconTone={TONE_SEA}
       span={span}

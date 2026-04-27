@@ -1,6 +1,6 @@
 import * as React from "react";
 import { Outlet, useLocation } from "react-router-dom";
-import { Menu, Bell, Ship, Database, Search } from "lucide-react";
+import { Menu, Ship, Database, Search } from "lucide-react";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { Home01Icon } from "@hugeicons/core-free-icons";
 import { GlassPanel } from "@/components/glass/GlassPanel";
@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { AskAiButton } from "@/components/dashboard/AskAiButton";
 import { TyroWmsButton } from "@/components/layout/TyroWmsButton";
+import { NotificationButton } from "@/components/layout/NotificationButton";
 import { AppSidebar } from "./AppSidebar";
 import { SidebarProvider, useSidebar } from "./sidebar-context";
 import {
@@ -143,15 +144,7 @@ function TopBar({ title, pathname }: { title: string; pathname: string }) {
             >
               <Search />
             </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              aria-label="Bildirimler"
-              className="text-muted-foreground relative"
-            >
-              <Bell />
-              <span className="absolute top-1.5 right-1.5 size-1.5 rounded-full bg-rose-500" />
-            </Button>
+            <NotificationButton />
             <TyroWmsButton className="hidden sm:inline-flex" />
             <AskAiButton className="hidden sm:inline-flex" />
           </div>

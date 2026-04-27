@@ -12,13 +12,24 @@ interface EstimatedExpenseTileProps {
   rowSpan?: string;
 }
 
+type BucketKey = "freight" | "opex" | "other";
+
+interface BucketStat {
+  key: BucketKey;
+  label: string;
+  color: string;
+  value: number;
+}
+
 /**
- * Tahmini Gider tile — sums `costEstimateLines.totalUsd` grouped by the
- * actual F&O category name (`mserp_tryexpensetype@FormattedValue`, e.g.
- * "freight", "opex", "Operasyonel giderler"). No translation, no
- * bucketing — what F&O stores is what we render. Top-5 categories are
- * shown explicitly; anything beyond the top-5 collapses into "other"
- * so the visualisation stays scannable on a 4-col tile.
+ * Tahmini Gider tile — sums `costEstimateLines.totalUsd` across all
+ * projects, then collapses everything into three executive buckets:
+ *   - **Freight**: anything matching "freight" / "navlun"
+ *   - **Opex**: anything matching "opex" / "operasyonel"
+ *   - **Other**: everything else (insurance, customs, port charges, …)
+ *
+ * Three side-by-side colour-coded chips sit under the stacked bar so
+ * the dominant category is obvious without reading numbers.
  *
  * Domain colour: rose (cost / drag on margin).
  */
@@ -28,43 +39,38 @@ export function EstimatedExpenseTile({
   rowSpan,
 }: EstimatedExpenseTileProps) {
   const reduce = useReducedMotion();
-  const { categories, total } = React.useMemo(() => {
-    const map = new Map<string, number>();
+  const buckets = React.useMemo<BucketStat[]>(() => {
+    let freight = 0;
+    let opex = 0;
+    let other = 0;
     for (const p of projects) {
       const lines = p.costEstimateLines;
       if (!lines) continue;
       for (const l of lines) {
         if (!l.totalUsd) continue;
-        map.set(l.name, (map.get(l.name) ?? 0) + l.totalUsd);
+        const n = (l.name ?? "").toLowerCase();
+        if (n.includes("freight") || n.includes("navlun")) {
+          freight += l.totalUsd;
+        } else if (n.includes("opex") || n.includes("operasyonel")) {
+          opex += l.totalUsd;
+        } else {
+          other += l.totalUsd;
+        }
       }
     }
-    const sorted = [...map.entries()]
-      .map(([name, value]) => ({ name, value }))
-      .sort((a, b) => b.value - a.value);
-    const total = sorted.reduce((s, r) => s + r.value, 0);
-    // Top-5 explicit, rest collapsed
-    const top = sorted.slice(0, 5);
-    const restSum = sorted.slice(5).reduce((s, r) => s + r.value, 0);
-    const categories =
-      restSum > 0 ? [...top, { name: "other", value: restSum }] : top;
-    return { categories, total };
+    return [
+      { key: "freight", label: "Freight", color: "#f97316", value: freight },
+      { key: "opex", label: "Opex", color: "#a855f7", value: opex },
+      { key: "other", label: "Other", color: "#64748b", value: other },
+    ];
   }, [projects]);
 
-  // Distinct palette — rose-leaning but with enough variety so adjacent
-  // bars are clearly different in the stacked bar chart.
-  const PALETTE = [
-    "#f97316", // orange
-    "#a855f7", // purple
-    "#06b6d4", // cyan
-    "#10b981", // emerald
-    "#f59e0b", // amber
-    "#64748b", // slate (overflow / "other")
-  ];
+  const total = buckets.reduce((s, b) => s + b.value, 0);
 
   return (
     <BentoTile
       title="Tahmini Gider"
-      subtitle="F&O kategori dağılımı · USD"
+      subtitle="Freight · Opex · Other · USD"
       icon={Wallet01Icon}
       iconTone={TONE_EXPENSE}
       span={span}
@@ -77,9 +83,7 @@ export function EstimatedExpenseTile({
           </span>
         </div>
 
-        {/* Stacked bar — one segment per actual F&O category. Each segment
-            uses a top→bottom gradient + inset highlight so the bar reads
-            glossy rather than flat. */}
+        {/* Stacked bar — 3 segments, glossy gradient + inset highlight */}
         {total > 0 ? (
           <div className="mt-auto flex flex-col gap-2">
             <div
@@ -90,19 +94,18 @@ export function EstimatedExpenseTile({
                   "inset 0 1px 1px 0 rgba(15,23,42,0.08), inset 0 -1px 0 0 rgba(255,255,255,0.6)",
               }}
             >
-              {categories.map((c, i) => {
-                const offset = categories
+              {buckets.map((b, i) => {
+                const offset = buckets
                   .slice(0, i)
                   .reduce(
                     (acc, prev) => acc + (prev.value / total) * 100,
                     0
                   );
-                const pct = (c.value / total) * 100;
+                const pct = (b.value / total) * 100;
                 if (pct === 0) return null;
-                const color = PALETTE[i % PALETTE.length];
                 return (
                   <motion.span
-                    key={c.name}
+                    key={b.key}
                     initial={reduce ? { width: `${pct}%` } : { width: 0 }}
                     animate={{ width: `${pct}%` }}
                     transition={{
@@ -113,7 +116,7 @@ export function EstimatedExpenseTile({
                     className="absolute top-0 h-full"
                     style={{
                       left: `${offset}%`,
-                      background: `linear-gradient(180deg, ${color} 0%, ${color} 55%, color-mix(in oklab, ${color} 75%, black 25%) 100%)`,
+                      background: `linear-gradient(180deg, ${b.color} 0%, ${b.color} 55%, color-mix(in oklab, ${b.color} 75%, black 25%) 100%)`,
                       boxShadow:
                         "inset 0 1px 0 0 rgba(255,255,255,0.4), inset 0 -1px 0 0 rgba(0,0,0,0.08)",
                     }}
@@ -121,27 +124,34 @@ export function EstimatedExpenseTile({
                 );
               })}
             </div>
-            <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-[10px]">
-              {categories.map((c, i) => (
-                <div
-                  key={c.name}
-                  className="flex items-center gap-1.5 min-w-0"
-                  title={c.name}
-                >
-                  <span
-                    className="size-1.5 rounded-full shrink-0"
-                    style={{
-                      backgroundColor: PALETTE[i % PALETTE.length],
-                    }}
-                  />
-                  <span className="text-muted-foreground truncate">
-                    {c.name}
-                  </span>
-                  <span className="font-semibold tabular-nums text-foreground ml-auto shrink-0">
-                    {((c.value / total) * 100).toFixed(0)}%
-                  </span>
-                </div>
-              ))}
+            {/* 3-up legend chips under the bar */}
+            <div className="grid grid-cols-3 gap-1.5">
+              {buckets.map((b) => {
+                const pct = (b.value / total) * 100;
+                return (
+                  <div
+                    key={b.key}
+                    className="flex flex-col gap-0.5 min-w-0"
+                    title={b.label}
+                  >
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <span
+                        className="size-1.5 rounded-full shrink-0"
+                        style={{ backgroundColor: b.color }}
+                      />
+                      <span className="text-[10px] text-muted-foreground truncate">
+                        {b.label}
+                      </span>
+                    </div>
+                    <span
+                      className="text-[12px] font-bold tabular-nums leading-none"
+                      style={{ color: b.color }}
+                    >
+                      {pct.toFixed(0)}%
+                    </span>
+                  </div>
+                );
+              })}
             </div>
           </div>
         ) : (

@@ -9,7 +9,7 @@ import {
 } from "@/components/evilcharts/ui/chart";
 import {
   GridBarBackground,
-  GridBarShape,
+  type GridBarProps,
 } from "@/components/evilcharts/blocks/grid-bar-chart";
 import { selectTotalKg, selectTotalTons } from "@/lib/selectors/project";
 import { getFinancialYear } from "@/lib/dashboard/financialPeriod";
@@ -26,6 +26,9 @@ interface EstimatedQuantityTileProps {
 interface MonthRow {
   month: string;
   tons: number;
+  /** Pre-computed amber level (0=light, 1=mid, 2=deep) so the bar shape
+   *  callback doesn't need access to the global max. */
+  level: 0 | 1 | 2;
 }
 
 const TR_MONTHS = [
@@ -43,15 +46,50 @@ const TR_MONTHS = [
   "Aralık",
 ];
 
+// Three amber stops, light → deep. None black.
+const LEVEL_COLORS = ["#fcd34d", "#f59e0b", "#b45309"];
+
+/* ─────────── Tonnage formatter — handles bin/mn scale ─────────── */
+
+interface FormattedTonnage {
+  value: string;
+  unit: string;
+}
+
+function formatTonnage(tons: number): FormattedTonnage {
+  if (tons >= 1_000_000) {
+    return {
+      value: (tons / 1_000_000).toLocaleString("tr-TR", {
+        minimumFractionDigits: 1,
+        maximumFractionDigits: 1,
+      }),
+      unit: "mn t",
+    };
+  }
+  if (tons >= 1000) {
+    return {
+      value: (tons / 1000).toLocaleString("tr-TR", {
+        minimumFractionDigits: 1,
+        maximumFractionDigits: 1,
+      }),
+      unit: "bin t",
+    };
+  }
+  return {
+    value: tons.toLocaleString("tr-TR", { maximumFractionDigits: 0 }),
+    unit: "t",
+  };
+}
+
 /**
- * Tahmini Miktar tile — period-scoped tonnage with the full
- * `@evilcharts/grid-bar-chart` treatment (Total + Peak headers above
- * the grid bars). FY-aligned: months render Jul → Jun, peak month
- * surfaces the heaviest month inside the period.
+ * Tahmini Miktar tile — period-scoped tonnage with the
+ * `@evilcharts/grid-bar-chart` Total + Peak header pattern. Months are
+ * FY-aligned (Jul → Jun). Bars are the amber grid-bar shape, and each
+ * column's fill scales by its own tonnage level (light / mid / deep
+ * amber) so the heaviest months read as deeper colour without a
+ * separate legend.
  *
- * Domain colour: amber / cargo (TONE_CARGO). Grid bars use the same
- * amber so the visual hierarchy reads vertically: pill icon → headline
- * total → peak callout → bars.
+ * Domain colour: amber / cargo (TONE_CARGO).
  */
 export function EstimatedQuantityTile({
   projects,
@@ -64,15 +102,14 @@ export function EstimatedQuantityTile({
     [projects]
   );
 
-  // FY-aligned monthly tonnage. Aggregates `quantityKg` by the project's
-  // `projectDate` calendar month, so the chart bucketing matches the
-  // dashboard period filter (which uses the same field).
+  // FY-aligned monthly tonnage. Each row carries a pre-computed amber
+  // `level` (0/1/2) used by the per-bar shape callback below.
   const monthly = React.useMemo<MonthRow[]>(() => {
     const fy = getFinancialYear(now);
-    const buckets: MonthRow[] = [];
+    const buckets: Array<{ month: string; tons: number }> = [];
     const indexByKey = new Map<string, number>();
     for (let i = 0; i < 12; i++) {
-      const d = new Date(fy.startYear, 6 + i, 1); // Jul = 6
+      const d = new Date(fy.startYear, 6 + i, 1);
       const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
       buckets.push({ month: TR_MONTHS[d.getMonth()], tons: 0 });
       indexByKey.set(key, i);
@@ -84,32 +121,30 @@ export function EstimatedQuantityTile({
       const idx = indexByKey.get(key);
       if (idx !== undefined) buckets[idx].tons += selectTotalKg(p) / 1000;
     }
-    return buckets;
+    const max = buckets.reduce((m, b) => (b.tons > m ? b.tons : m), 0);
+    return buckets.map((b) => {
+      let level: 0 | 1 | 2 = 0;
+      if (max > 0) {
+        const r = b.tons / max;
+        level = r < 0.34 ? 0 : r < 0.67 ? 1 : 2;
+      }
+      return { ...b, level };
+    });
   }, [projects, now]);
 
   const peak = React.useMemo(
     () =>
       monthly.reduce(
-        (acc, b, i) => (b.tons > acc.tons ? { ...b, idx: i } : acc),
-        { month: monthly[0]?.month ?? "—", tons: 0, idx: 0 }
+        (acc, b) => (b.tons > acc.tons ? b : acc),
+        { month: monthly[0]?.month ?? "—", tons: 0, level: 0 as 0 | 1 | 2 }
       ),
     [monthly]
   );
 
-  // Compact total formatter — matches headline conventions elsewhere
-  // (e.g. "12.4 bin t", "847 t").
-  const totalLabel =
-    totalTons >= 1000
-      ? `${(totalTons / 1000).toLocaleString("tr-TR", {
-          minimumFractionDigits: 1,
-          maximumFractionDigits: 1,
-        })} bin`
-      : totalTons.toLocaleString("tr-TR", {
-          maximumFractionDigits: 0,
-        });
-  const totalUnit = totalTons >= 1000 ? "t" : "t";
+  const totalFmt = formatTonnage(totalTons);
 
-  // Single-series chart config — amber, theme-stable in light + dark.
+  // Single-series chart config — ChartContainer requires it but actual
+  // colours come from the per-row `level` via the custom shape callback.
   const chartConfig: ChartConfig = {
     tons: {
       label: "Tonaj",
@@ -130,32 +165,32 @@ export function EstimatedQuantityTile({
         {/* Total + Peak month strip — pattern from @evilcharts/grid-bar-chart */}
         <div className="flex items-stretch gap-3 mb-2">
           <div className="flex flex-col gap-0.5 min-w-0">
-            <span className="text-muted-foreground font-mono text-[10px]">
+            <span className="text-foreground/60 font-mono text-[10.5px] font-semibold uppercase tracking-wider">
               [Σ] Toplam
             </span>
-            <span className="text-amber-700 font-mono text-2xl tracking-tighter leading-none">
-              {totalLabel}
-              <span className="text-[11px] ml-0.5 text-muted-foreground">
-                {totalUnit}
+            <span className="text-amber-700 text-[22px] font-bold leading-none tabular-nums">
+              {totalFmt.value}
+              <span className="text-[12px] ml-1 text-foreground/60 font-semibold">
+                {totalFmt.unit}
               </span>
             </span>
           </div>
           <span className="border-l border-dashed border-border/70 self-stretch" />
           <div className="flex flex-col gap-0.5 min-w-0">
-            <span className="text-muted-foreground font-mono text-[10px]">
+            <span className="text-foreground/60 font-mono text-[10.5px] font-semibold uppercase tracking-wider">
               [⬆] Peak
             </span>
-            <span className="text-amber-700 font-mono text-2xl tracking-tighter leading-none truncate">
+            <span className="text-amber-700 text-[22px] font-bold leading-none tracking-tight truncate">
               {peak.tons > 0 ? peak.month.slice(0, 3) : "—"}
             </span>
           </div>
         </div>
         <hr className="border-t border-dashed border-border/70 mb-2" />
 
-        {/* Grid-bar chart — recharts BarChart with the GridBarShape +
-            GridBarBackground primitives from @evilcharts/grid-bar-chart. */}
+        {/* Grid-bar chart — recharts BarChart with a level-aware shape so
+            each column reads its own amber tone. */}
         {peak.tons > 0 ? (
-          <ChartContainer config={chartConfig} className="flex-1 min-h-[80px] w-full">
+          <ChartContainer config={chartConfig} className="flex-1 min-h-[60px] w-full">
             <BarChart
               accessibilityLayer
               data={monthly}
@@ -172,10 +207,9 @@ export function EstimatedQuantityTile({
               />
               <Bar
                 dataKey="tons"
-                fill="var(--color-tons-0)"
                 background={GridBarBackground}
-                shape={GridBarShape}
-                activeBar={GridBarShape}
+                shape={LeveledGridBarShape}
+                activeBar={LeveledGridBarShape}
               />
             </BarChart>
           </ChartContainer>
@@ -188,3 +222,50 @@ export function EstimatedQuantityTile({
     </BentoTile>
   );
 }
+
+/* ─────────── Per-bar amber-graded grid shape ─────────── */
+
+const SQUARE = 10;
+const GAP = 2;
+const STEP = SQUARE + GAP;
+
+/**
+ * Same square-stack pattern as the registry `GridBarShape`, but reads
+ * the bar's pre-computed `level` (0/1/2) from `payload` and picks the
+ * matching amber stop from `LEVEL_COLORS`. This restores the level-based
+ * colour variation that vanished when the tile switched from the inline
+ * mini chart to the registry primitives.
+ */
+const LeveledGridBarShape = (
+  props: GridBarProps & { payload?: { level?: 0 | 1 | 2 } }
+) => {
+  const { x, y, width, height, payload } = props;
+  const xPos = Number(x ?? 0);
+  const yPos = Number(y ?? 0);
+  const w = Number(width ?? 0);
+  const h = Number(height ?? 0);
+  if (h <= 0) return null;
+  const numSquares = Math.max(1, Math.floor(h / STEP));
+  const squareSize = Math.min(SQUARE, Math.max(2, w - 2));
+  const sx = xPos + Math.floor((w - squareSize) / 2);
+  const bottomY = yPos + h;
+  const fill = LEVEL_COLORS[payload?.level ?? 0];
+  return (
+    <>
+      {Array.from({ length: numSquares }, (_, i) => {
+        const sy = bottomY - (i + 1) * STEP + GAP;
+        return (
+          <rect
+            key={i}
+            x={sx}
+            y={sy}
+            width={squareSize}
+            height={squareSize}
+            fill={fill}
+            rx={1}
+          />
+        );
+      })}
+    </>
+  );
+};
