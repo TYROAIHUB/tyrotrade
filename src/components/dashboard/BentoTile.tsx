@@ -5,6 +5,7 @@ import type { IconSvgElement } from "@hugeicons/react";
 import { GlassPanel } from "@/components/glass/GlassPanel";
 import { cn } from "@/lib/utils";
 import { useThemeAccent } from "@/components/layout/theme-accent";
+import type { IconBadgeTone } from "@/components/details/AccentIconBadge";
 
 type Tone = "default" | "strong" | "subtle";
 
@@ -22,8 +23,9 @@ export interface BentoTileProps extends BentoTileSpan {
   subtitle?: string;
   /** HugeIcon glyph — passed straight to <HugeiconsIcon icon={...}> */
   icon?: IconSvgElement;
-  /** CSS color for the icon stroke. If omitted, falls back to current theme accent. */
-  iconColor?: string;
+  /** Optional fixed-color override for the icon pill. When omitted, the
+   *  badge follows the live sidebar theme via `useThemeAccent`. */
+  iconTone?: IconBadgeTone;
   /** Glass density for this tile */
   tone?: Tone;
   /** Override hover behavior — when false, no lift/scale */
@@ -63,7 +65,7 @@ export function BentoTile({
   title,
   subtitle,
   icon,
-  iconColor,
+  iconTone,
   tone = "default",
   interactive = true,
   onClick,
@@ -72,7 +74,13 @@ export function BentoTile({
 }: BentoTileProps) {
   const accent = useThemeAccent();
   const reduceMotion = useReducedMotion();
-  const color = iconColor ?? accent.solid;
+  // Default pill = live sidebar accent (theme-reactive). Tiles can override
+  // with a semantic tone (TONE_PL, TONE_EXPENSE, etc.) when the icon
+  // colour itself carries domain meaning.
+  const effectiveTone: IconBadgeTone = iconTone ?? {
+    gradient: accent.gradient,
+    ring: accent.ring,
+  };
 
   const hover =
     interactive && !reduceMotion
@@ -113,24 +121,26 @@ export function BentoTile({
             <header className="flex items-center justify-between gap-2 min-w-0">
               <div className="min-w-0 flex-1">
                 {title && (
-                  <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground truncate">
+                  <div className="text-[11px] font-bold uppercase tracking-[0.12em] text-foreground/75 truncate">
                     {title}
                   </div>
                 )}
                 {subtitle && (
-                  <div className="text-[10.5px] text-muted-foreground/80 truncate">
+                  <div className="text-[10.5px] text-muted-foreground/80 truncate mt-0.5">
                     {subtitle}
                   </div>
                 )}
               </div>
               {icon && (
-                <HugeiconsIcon
-                  icon={icon}
-                  size={18}
-                  strokeWidth={1.75}
-                  style={{ color }}
-                  className="shrink-0"
-                />
+                <span
+                  className="size-8 rounded-xl grid place-items-center shrink-0 shadow-sm text-white"
+                  style={{
+                    background: effectiveTone.gradient,
+                    boxShadow: `0 4px 12px -4px ${effectiveTone.ring}, inset 0 1px 0 0 rgba(255,255,255,0.25)`,
+                  }}
+                >
+                  <HugeiconsIcon icon={icon} size={16} strokeWidth={2} />
+                </span>
               )}
             </header>
           )}

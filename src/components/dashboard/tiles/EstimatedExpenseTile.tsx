@@ -3,6 +3,7 @@ import { motion, useReducedMotion } from "framer-motion";
 import { Wallet01Icon } from "@hugeicons/core-free-icons";
 import { BentoTile } from "../BentoTile";
 import { AnimatedNumber } from "../AnimatedNumber";
+import { TONE_EXPENSE } from "@/components/details/AccentIconBadge";
 import type { Project } from "@/lib/dataverse/entities";
 
 interface EstimatedExpenseTileProps {
@@ -65,7 +66,7 @@ export function EstimatedExpenseTile({
       title="Tahmini Gider"
       subtitle="F&O kategori dağılımı · USD"
       icon={Wallet01Icon}
-      iconColor="rgb(244 63 94)"
+      iconTone={TONE_EXPENSE}
       span={span}
       rowSpan={rowSpan}
     >
@@ -76,10 +77,19 @@ export function EstimatedExpenseTile({
           </span>
         </div>
 
-        {/* Stacked bar — one segment per actual F&O category */}
+        {/* Stacked bar — one segment per actual F&O category. Each segment
+            uses a top→bottom gradient + inset highlight so the bar reads
+            glossy rather than flat. */}
         {total > 0 ? (
           <div className="mt-auto flex flex-col gap-2">
-            <div className="relative h-2 w-full rounded-full overflow-hidden bg-foreground/[0.06]">
+            <div
+              className="relative h-2.5 w-full rounded-full overflow-hidden"
+              style={{
+                background: "rgba(15,23,42,0.06)",
+                boxShadow:
+                  "inset 0 1px 1px 0 rgba(15,23,42,0.08), inset 0 -1px 0 0 rgba(255,255,255,0.6)",
+              }}
+            >
               {categories.map((c, i) => {
                 const offset = categories
                   .slice(0, i)
@@ -89,6 +99,7 @@ export function EstimatedExpenseTile({
                   );
                 const pct = (c.value / total) * 100;
                 if (pct === 0) return null;
+                const color = PALETTE[i % PALETTE.length];
                 return (
                   <motion.span
                     key={c.name}
@@ -102,7 +113,9 @@ export function EstimatedExpenseTile({
                     className="absolute top-0 h-full"
                     style={{
                       left: `${offset}%`,
-                      backgroundColor: PALETTE[i % PALETTE.length],
+                      background: `linear-gradient(180deg, ${color} 0%, ${color} 55%, color-mix(in oklab, ${color} 75%, black 25%) 100%)`,
+                      boxShadow:
+                        "inset 0 1px 0 0 rgba(255,255,255,0.4), inset 0 -1px 0 0 rgba(0,0,0,0.08)",
                     }}
                   />
                 );

@@ -2,6 +2,7 @@ import * as React from "react";
 import { CubeIcon } from "@hugeicons/core-free-icons";
 import { BentoTile } from "../BentoTile";
 import { AnimatedNumber } from "../AnimatedNumber";
+import { TONE_PL } from "@/components/details/AccentIconBadge";
 import { selectTotalKg, selectTotalTons } from "@/lib/selectors/project";
 import type { Project } from "@/lib/dataverse/entities";
 
@@ -53,7 +54,7 @@ export function EstimatedQuantityTile({
       title="Tahmini Miktar"
       subtitle="Toplam tonaj · ürün dağılımı"
       icon={CubeIcon}
-      iconColor="rgb(16 185 129)"
+      iconTone={TONE_PL}
       span={span}
       rowSpan={rowSpan}
     >
@@ -80,13 +81,22 @@ export function EstimatedQuantityTile({
                         : `${row.tons.toFixed(0)} t`}
                     </span>
                   </div>
-                  <div className="h-1.5 w-full rounded-full bg-foreground/[0.06] overflow-hidden">
+                  <div
+                    className="h-2 w-full rounded-full overflow-hidden"
+                    style={{
+                      background: "rgba(15,23,42,0.06)",
+                      boxShadow:
+                        "inset 0 1px 1px 0 rgba(15,23,42,0.08), inset 0 -1px 0 0 rgba(255,255,255,0.6)",
+                    }}
+                  >
                     <span
                       className="block h-full rounded-full"
                       style={{
                         width: `${pct}%`,
                         background:
-                          "linear-gradient(90deg, #10b981, #34d399)",
+                          "linear-gradient(180deg, #34d399 0%, #10b981 55%, #047857 100%)",
+                        boxShadow:
+                          "inset 0 1px 0 0 rgba(255,255,255,0.4), inset 0 -1px 0 0 rgba(0,0,0,0.08)",
                       }}
                     />
                   </div>

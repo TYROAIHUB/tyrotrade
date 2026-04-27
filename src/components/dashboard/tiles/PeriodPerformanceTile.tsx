@@ -13,6 +13,7 @@ import { AnimatedNumber } from "../AnimatedNumber";
 import { useThemeAccent } from "@/components/layout/theme-accent";
 import { aggregateEstimatedPL } from "@/lib/selectors/aggregate";
 import { selectCargoValueUsd } from "@/lib/selectors/project";
+import { getFinancialYear } from "@/lib/dashboard/financialPeriod";
 import type { Project } from "@/lib/dataverse/entities";
 
 interface PeriodPerformanceTileProps {
@@ -53,12 +54,15 @@ export function PeriodPerformanceTile({
   );
   const pl = React.useMemo(() => aggregateEstimatedPL(projects), [projects]);
 
-  // 12-month rolling sparkline anchored at `now`. Each bucket counts how
-  // many projects in `projects` were created in that calendar month.
+  // Financial-year-aligned 12-month sparkline: Jul (start of FY) → Jun
+  // (end of FY). Anchored at the FY containing `now` so the timeline
+  // always reads in Tiryaki convention regardless of when the user
+  // opens the dashboard.
   const sparkline = React.useMemo<SparkPoint[]>(() => {
+    const fy = getFinancialYear(now);
     const buckets: SparkPoint[] = [];
-    for (let i = 11; i >= 0; i--) {
-      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    for (let i = 0; i < 12; i++) {
+      const d = new Date(fy.startYear, 6 + i, 1); // Jul = month 6
       const monthKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
       const monthLabel = new Intl.DateTimeFormat("tr-TR", {
         month: "short",
@@ -94,7 +98,6 @@ export function PeriodPerformanceTile({
       title="Dönem Performansı"
       subtitle="Seçili dönem · finansal bakış"
       icon={ChartLineData01Icon}
-      iconColor={accent.solid}
       span={span}
       rowSpan={rowSpan}
     >

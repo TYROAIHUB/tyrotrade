@@ -1,7 +1,6 @@
 import * as React from "react";
 import { UserGroupIcon } from "@hugeicons/core-free-icons";
 import { BentoTile } from "../BentoTile";
-import { useThemeAccent } from "@/components/layout/theme-accent";
 import { aggregateCounterpartyMix } from "@/lib/selectors/aggregate";
 import type { Project } from "@/lib/dataverse/entities";
 
@@ -21,7 +20,6 @@ export function CounterpartyMixTile({
   span,
   rowSpan,
 }: CounterpartyMixTileProps) {
-  const accent = useThemeAccent();
   const mix = React.useMemo(
     () => aggregateCounterpartyMix(projects),
     [projects]
@@ -46,7 +44,6 @@ export function CounterpartyMixTile({
       title="Karşı Taraf Dağılımı"
       subtitle="Tedarikçi + alıcı konsantrasyonu"
       icon={UserGroupIcon}
-      iconColor={accent.solid}
       span={span}
       rowSpan={rowSpan}
     >

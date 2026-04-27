@@ -4,10 +4,20 @@ import { Coins02Icon } from "@hugeicons/core-free-icons";
 import { BentoTile } from "../BentoTile";
 import { AnimatedNumber } from "../AnimatedNumber";
 import {
+  TONE_PL,
+  TONE_EXPENSE,
+  type IconBadgeTone,
+} from "@/components/details/AccentIconBadge";
+import {
   aggregateEstimatedPL,
   aggregateMarginDistribution,
 } from "@/lib/selectors/aggregate";
 import type { Project } from "@/lib/dataverse/entities";
+
+const TONE_NEUTRAL: IconBadgeTone = {
+  gradient: "linear-gradient(135deg, #94a3b8 0%, #64748b 55%, #334155 100%)",
+  ring: "rgba(100, 116, 139, 0.55)",
+};
 
 interface EstimatedPLTileProps {
   projects: Project[];
@@ -40,11 +50,14 @@ export function EstimatedPLTile({
     : negative
       ? "rgb(159 18 57)"
       : "rgb(71 85 105)";
-  const iconColor = positive
-    ? "rgb(16 185 129)"
+  // Pill colour follows P&L sign — emerald (good), rose (loss), slate
+  // (break-even). Carries the same domain meaning as the headline
+  // number tint, just rendered as a gradient pill instead of a stroke.
+  const iconTone: IconBadgeTone = positive
+    ? TONE_PL
     : negative
-      ? "rgb(244 63 94)"
-      : "rgb(100 116 139)";
+      ? TONE_EXPENSE
+      : TONE_NEUTRAL;
 
   const totalDist =
     dist.positive + dist.marginal + dist.negative + dist.unknown;
@@ -62,7 +75,7 @@ export function EstimatedPLTile({
       title="Tahmini K&Z"
       subtitle={`USD bazlı · ${pl.contributingCount} proje`}
       icon={Coins02Icon}
-      iconColor={iconColor}
+      iconTone={iconTone}
       span={span}
       rowSpan={rowSpan}
     >
@@ -97,7 +110,14 @@ export function EstimatedPLTile({
         {/* Margin distribution stacked bar */}
         {segs && (
           <div className="mt-auto flex flex-col gap-1.5">
-            <div className="relative h-1.5 w-full rounded-full overflow-hidden bg-foreground/[0.06]">
+            <div
+              className="relative h-2 w-full rounded-full overflow-hidden"
+              style={{
+                background: "rgba(15,23,42,0.06)",
+                boxShadow:
+                  "inset 0 1px 1px 0 rgba(15,23,42,0.08), inset 0 -1px 0 0 rgba(255,255,255,0.6)",
+              }}
+            >
               {segs.map((s, i) => {
                 const offset = segs
                   .slice(0, i)
@@ -118,7 +138,12 @@ export function EstimatedPLTile({
                       ease: [0.22, 1, 0.36, 1],
                     }}
                     className="absolute top-0 h-full"
-                    style={{ left: `${offset}%`, backgroundColor: s.color }}
+                    style={{
+                      left: `${offset}%`,
+                      background: `linear-gradient(180deg, ${s.color} 0%, ${s.color} 55%, color-mix(in oklab, ${s.color} 75%, black 25%) 100%)`,
+                      boxShadow:
+                        "inset 0 1px 0 0 rgba(255,255,255,0.4), inset 0 -1px 0 0 rgba(0,0,0,0.08)",
+                    }}
                   />
                 );
               })}

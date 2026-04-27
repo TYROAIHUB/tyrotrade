@@ -1,7 +1,6 @@
 import * as React from "react";
 import { MoneyExchange01Icon } from "@hugeicons/core-free-icons";
 import { BentoTile } from "../BentoTile";
-import { useThemeAccent } from "@/components/layout/theme-accent";
 import {
   aggregateCurrencyExposure,
   type CurrencyCode,
@@ -35,7 +34,6 @@ export function CurrencyExposureTile({
   span,
   rowSpan,
 }: CurrencyExposureTileProps) {
-  const accent = useThemeAccent();
   const exposure = React.useMemo(
     () => aggregateCurrencyExposure(projects),
     [projects]
@@ -55,7 +53,6 @@ export function CurrencyExposureTile({
       title="Para Birimi Maruziyeti"
       subtitle="FX riski yoğunluğu"
       icon={MoneyExchange01Icon}
-      iconColor={accent.solid}
       span={span}
       rowSpan={rowSpan}
     >
@@ -92,12 +89,21 @@ export function CurrencyExposureTile({
                     {cnt} proje · {pct.toFixed(0)}%
                   </span>
                 </div>
-                <div className="h-1.5 w-full rounded-full bg-foreground/[0.06] overflow-hidden">
+                <div
+                  className="h-2 w-full rounded-full overflow-hidden"
+                  style={{
+                    background: "rgba(15,23,42,0.06)",
+                    boxShadow:
+                      "inset 0 1px 1px 0 rgba(15,23,42,0.08), inset 0 -1px 0 0 rgba(255,255,255,0.6)",
+                  }}
+                >
                   <span
                     className="block h-full rounded-full"
                     style={{
                       width: `${pct}%`,
-                      backgroundColor: COLORS[c],
+                      background: `linear-gradient(180deg, ${COLORS[c]} 0%, ${COLORS[c]} 55%, color-mix(in oklab, ${COLORS[c]} 75%, black 25%) 100%)`,
+                      boxShadow:
+                        "inset 0 1px 0 0 rgba(255,255,255,0.4), inset 0 -1px 0 0 rgba(0,0,0,0.08)",
                     }}
                   />
                 </div>

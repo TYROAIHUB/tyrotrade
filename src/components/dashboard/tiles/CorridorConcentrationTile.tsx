@@ -1,7 +1,6 @@
 import * as React from "react";
 import { Route01Icon } from "@hugeicons/core-free-icons";
 import { BentoTile } from "../BentoTile";
-import { useThemeAccent } from "@/components/layout/theme-accent";
 import { aggregateByCorridor } from "@/lib/selectors/aggregate";
 import type { Project } from "@/lib/dataverse/entities";
 
@@ -25,7 +24,6 @@ export function CorridorConcentrationTile({
   span,
   rowSpan,
 }: CorridorConcentrationTileProps) {
-  const accent = useThemeAccent();
   const corridors = React.useMemo(() => aggregateByCorridor(projects), [projects]);
   const totalRoutedProjects = React.useMemo(
     () => corridors.reduce((sum, c) => sum + c.count, 0),
@@ -61,7 +59,6 @@ export function CorridorConcentrationTile({
       title="Koridor Konsantrasyonu"
       subtitle="LP→DP yoğunluğu"
       icon={Route01Icon}
-      iconColor={accent.solid}
       span={span}
       rowSpan={rowSpan}
     >

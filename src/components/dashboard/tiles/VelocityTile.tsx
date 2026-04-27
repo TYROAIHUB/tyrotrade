@@ -2,7 +2,6 @@ import * as React from "react";
 import { Clock01Icon } from "@hugeicons/core-free-icons";
 import { BentoTile } from "../BentoTile";
 import { AnimatedNumber } from "../AnimatedNumber";
-import { useThemeAccent } from "@/components/layout/theme-accent";
 import { aggregateAvgTransitDays } from "@/lib/selectors/aggregate";
 import type { Project } from "@/lib/dataverse/entities";
 
@@ -24,7 +23,6 @@ export function VelocityTile({
   span,
   rowSpan,
 }: VelocityTileProps) {
-  const accent = useThemeAccent();
   const stats = React.useMemo(
     () => aggregateAvgTransitDays(projects),
     [projects]
@@ -35,7 +33,6 @@ export function VelocityTile({
       title="Ortalama Transit"
       subtitle="LP-(ED) → DP-ETA"
       icon={Clock01Icon}
-      iconColor={accent.solid}
       span={span}
       rowSpan={rowSpan}
     >

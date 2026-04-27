@@ -2,7 +2,6 @@ import { motion, useReducedMotion } from "framer-motion";
 import { ContainerIcon } from "@hugeicons/core-free-icons";
 import { BentoTile } from "../BentoTile";
 import { AnimatedNumber } from "../AnimatedNumber";
-import { useThemeAccent } from "@/components/layout/theme-accent";
 import type { Project } from "@/lib/dataverse/entities";
 
 interface ActivePipelineTileProps {
@@ -45,7 +44,6 @@ export function ActivePipelineTile({
   span,
   rowSpan,
 }: ActivePipelineTileProps) {
-  const accent = useThemeAccent();
   const reduceMotion = useReducedMotion();
 
   const counts: Record<string, number> = Object.fromEntries(
@@ -67,7 +65,6 @@ export function ActivePipelineTile({
       title="Aktif Pipeline"
       subtitle="Tüm operasyonel projeler"
       icon={ContainerIcon}
-      iconColor={accent.solid}
       span={span}
       rowSpan={rowSpan}
     >
@@ -84,7 +81,12 @@ export function ActivePipelineTile({
         {/* Stacked status bar */}
         <div className="flex flex-col gap-2 mt-auto">
           <div
-            className="relative h-2 w-full rounded-full overflow-hidden bg-foreground/[0.06]"
+            className="relative h-2.5 w-full rounded-full overflow-hidden"
+            style={{
+              background: "rgba(15,23,42,0.06)",
+              boxShadow:
+                "inset 0 1px 1px 0 rgba(15,23,42,0.08), inset 0 -1px 0 0 rgba(255,255,255,0.6)",
+            }}
             role="progressbar"
             aria-label="Pipeline durum dağılımı"
           >
@@ -112,7 +114,9 @@ export function ActivePipelineTile({
                     className="absolute top-0 h-full"
                     style={{
                       left: `${offsetPct}%`,
-                      backgroundColor: s.color,
+                      background: `linear-gradient(180deg, ${s.color} 0%, ${s.color} 55%, color-mix(in oklab, ${s.color} 75%, black 25%) 100%)`,
+                      boxShadow:
+                        "inset 0 1px 0 0 rgba(255,255,255,0.4), inset 0 -1px 0 0 rgba(0,0,0,0.08)",
                     }}
                   />
                 );
