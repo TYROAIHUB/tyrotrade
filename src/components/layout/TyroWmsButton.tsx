@@ -8,13 +8,12 @@ interface TyroWmsButtonProps {
 
 /**
  * Sister-app shortcut — opens TYROWMS (warehouse management) in a new
- * tab. Mirrors `AskAiButton`'s pill proportions but wears the official
- * tyrowms.github.io aurora gradient (sky-blue → violet → cyan) so the
- * two AI/WMS buttons read as a colour pair on the topbar.
+ * tab. Wears the official tyrowms.github.io aurora gradient (sky →
+ * violet → cyan) so it reads as a colour pair with the TYRO AI button.
  *
- *   - Background: aurora gradient (vibrant identity)
- *   - Logo: same origami T mark, white-on-color so it pops
- *   - Wordmark: "tyrowms" in solid white, font-bold tracks tighter
+ * Collapsed-by-default: at rest the button is a circular icon-only
+ * pill (9×9) so it doesn't crowd the topbar. On hover it animates the
+ * width open to reveal the "tyrowms" wordmark — full button visible.
  */
 
 const AURORA_GRADIENT =
@@ -30,13 +29,19 @@ export function TyroWmsButton({ className }: TyroWmsButtonProps) {
       rel="noopener noreferrer"
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
+      onFocus={() => setHovered(true)}
+      onBlur={() => setHovered(false)}
       className={cn(
-        "group relative inline-flex items-center gap-2 shrink-0",
-        "rounded-full pl-2 pr-3.5 h-9 text-[13px] font-semibold lowercase text-white",
+        "group relative inline-flex items-center shrink-0 overflow-hidden",
+        "rounded-full h-9 text-[13px] font-semibold lowercase text-white",
         "ring-1 ring-white/20 hover:ring-white/40",
-        "transition-all duration-200 hover:scale-[1.04] active:scale-95",
+        // Width animation: 36px collapsed → 116px expanded (icon + label
+        // + right padding). The transition is on `width` so layout
+        // doesn't shift adjacent topbar buttons mid-animation.
+        "transition-[width,box-shadow,transform] duration-300 ease-out",
+        hovered ? "w-[116px]" : "w-9",
+        "active:scale-95",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
-        "overflow-hidden",
         className
       )}
       style={{
@@ -55,13 +60,25 @@ export function TyroWmsButton({ className }: TyroWmsButtonProps) {
           hovered && "before:translate-x-[120%]"
         )}
       />
-      {/* Origami T sits inside a white badge so it stays legible against
-          the aurora — the Logo's own palettes can't outpunch the
-          background gradient otherwise. */}
-      <span className="relative z-[1] size-6 rounded-full grid place-items-center bg-white/95 shrink-0 shadow-sm">
-        <Logo size={16} palette="aurora" />
+
+      {/* Origami T badge — pinned to the left, always 36×36 so the
+          collapsed pill is a perfect circle. */}
+      <span className="relative z-[1] size-9 grid place-items-center shrink-0">
+        <span className="size-6 rounded-full grid place-items-center bg-white/95 shadow-sm">
+          <Logo size={16} palette="aurora" />
+        </span>
       </span>
-      <span className="relative z-[1] tracking-tight">
+
+      {/* Wordmark fades in alongside the width animation. `whitespace-
+          nowrap` + width-clipping by the parent's `overflow-hidden`
+          keeps it from wrapping while the pill is still narrow. */}
+      <span
+        className={cn(
+          "relative z-[1] tracking-tight whitespace-nowrap pr-3",
+          "transition-opacity duration-200",
+          hovered ? "opacity-100 delay-100" : "opacity-0"
+        )}
+      >
         <span className="text-white">tyro</span>
         <span className="text-white font-bold">wms</span>
       </span>

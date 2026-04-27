@@ -132,14 +132,14 @@ export function TyroAiDrawer({ open, onOpenChange }: TyroAiDrawerProps) {
       <SheetContent
         side="right"
         className={cn(
-          // Drawer sits 12px in from the viewport edges so the rounded
-          // corners on every side actually breathe. `h-auto` overrides
-          // the variant's `h-full` so the inset is symmetrical.
-          "fixed top-3 right-3 bottom-3 inset-y-auto h-auto",
-          "w-[calc(100vw-1.5rem)] sm:max-w-[420px] p-0 flex flex-col gap-0",
-          "rounded-3xl overflow-hidden",
+          // The base `right` variant ships with `inset-y-0 right-0 h-full
+          // rounded-l-3xl`. We don't fight the positioning — that breaks
+          // the slide-in animation — and just layer in our own surface
+          // styling: opaque white glass + a heavier outer shadow so the
+          // rounded left corners read against the page behind.
+          "w-full sm:max-w-[420px] p-0 flex flex-col gap-0",
           "bg-white/95 backdrop-blur-2xl backdrop-saturate-150",
-          "border border-border/60",
+          "border-l border-border/60",
           "shadow-[0_30px_80px_-16px_rgba(15,23,42,0.45)]"
         )}
         aria-describedby={undefined}

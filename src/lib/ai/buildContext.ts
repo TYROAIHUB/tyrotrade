@@ -20,14 +20,24 @@ import type { Project } from "@/lib/dataverse/entities";
 
 /**
  * Serialize the active project set into a compact Turkish summary that
- * Gemini can quote directly when answering. Output stays well under 4K
- * tokens (target ~1500) so the model has plenty of headroom for the
- * user prompt + system instruction + its own response.
+ * Gemini can use to answer questions about specific vessels, projects,
+ * segments, statuses, and time windows.
  *
- * The bundle is intentionally redundant in places (totals + ratios +
- * named examples) — small LLMs answer numeric questions much more
- * reliably when both the headline number AND its components are
- * spelled out.
+ * Sections:
+ *   1. Headline portfolio + K&Z (rolled-up KPIs)
+ *   2. Pipeline / voyage stage / currency / velocity
+ *   3. Top-N rankings (value, sales actual, margin↑↓, corridors,
+ *      counterparties, segments)
+ *   4. PROJECTS DIRECTORY — one line per project with the searchable
+ *      handles (projectNo, projectName, vessel, status, route, marj)
+ *      so the model can resolve subject-matching queries
+ *   5. ACTIVE VOYAGES — Commenced projects with their next milestone
+ *   6. UPCOMING MILESTONES — projects with milestones due in the next
+ *      14 days, useful for "bu hafta tahliye" / "yarın yükleme" queries
+ *
+ * Gemini 2.5 Flash supports a 1M-token window so we don't need to
+ * trim aggressively, but keep redundancy out of the directory rows
+ * so the user can scroll the prompt without slogging.
  */
 export function buildDashboardContext(
   projects: Project[],
@@ -170,6 +180,16 @@ NOT: Şu anki filtre boş bir set döndürdü. Sağ üstteki Filtre seçimini ge
     .filter(Boolean)
     .join(" · ");
 
+  // PROJECTS DIRECTORY — one line per project, used by Gemini to
+  // resolve subject-matching queries (vessel name, projectNo, segment).
+  const directory = buildProjectDirectory(projects);
+
+  // ACTIVE VOYAGES — Commenced ships only, with their next milestone
+  const activeVoyages = buildActiveVoyages(projects, now);
+
+  // UPCOMING MILESTONES — anything due in the next 14 days
+  const upcoming = buildUpcomingMilestones(projects, now);
+
   return `=== TYRO INTERNATIONAL TRADE — VERİ ÖZETİ ===
 Tarih: ${formatDayMonth(now)}
 Filtre kapsamı: ${totalProjects} proje · Finansal yıl: ${fy.fullLabel}
@@ -247,10 +267,170 @@ ${top3Buyers || "(alıcı verisi yok)"}
 EN BÜYÜK 3 SEGMENT (K&Z)
 ${top3SegmentsByPL || "(segment verisi yok)"}
 
+═══ AKTİF SEFERLER (Commenced — şu an yolda/yüklemede/tahliyede) ═══
+${activeVoyages || "(şu anda Commenced statüde proje yok)"}
+
+═══ YAKLAŞAN MILESTONE'LAR (önümüzdeki 14 gün) ═══
+${upcoming || "(önümüzdeki 14 gün içinde planlı milestone yok)"}
+
+═══ PROJELER DİZİNİ (her satırda 1 proje — vessel/projectNo/segment ile arama yap) ═══
+${directory}
+
 NOT: Yukarıdaki tüm sayılar kullanıcının sağ üstteki Filtre'de seçtiği projelerin alt kümesinde hesaplandı. "Tüm portföy" sorulursa filtreyi gevşetmesi gerekebilir.`;
 }
 
+/* ─────────── Projects directory ─────────── */
+
+/**
+ * One compact line per project. Format:
+ *   [PRJ000002443] 55KMT BRZ SOYBEAN | Vessel: XIN HAI TONG 29 (Commenced) |
+ *     Santarem→Umm Qasr | Seg: International | Sup: BTG · Buy: SAMA |
+ *     Marj +8.4% · K&Z $1.2M
+ *
+ * The model uses these rows to resolve a query like "XIN HAI TONG 29 hangi
+ * projede?" by matching the vessel name in this directory and reading the
+ * corresponding projectNo + status. Same goes for projectName, supplier,
+ * buyer, segment, route. Truncation is conservative (60 chars on the
+ * project name) so most names survive intact.
+ */
+function buildProjectDirectory(projects: Project[]): string {
+  const lines: string[] = [];
+  for (const p of projects) {
+    const vp = p.vesselPlan;
+    const vessel = vp?.vesselName?.trim()
+      ? `${vp.vesselName}${vp.vesselStatus ? ` (${vp.vesselStatus})` : ""}`
+      : "Vessel: —";
+    const route =
+      vp?.loadingPort?.name && vp?.dischargePort?.name
+        ? `${vp.loadingPort.name}→${vp.dischargePort.name}`
+        : "Rota: —";
+    const supplier = vp?.supplier?.trim() || "—";
+    const buyer = vp?.buyer?.trim() || "—";
+    const seg = (p.segment ?? "").trim() || "—";
+    const grp = (p.projectGroup ?? "").trim() || "—";
+    const cargoProduct = vp?.cargoProduct?.trim() || "—";
+
+    const pl = selectProjectPL(p);
+    const margin =
+      pl.marginPct === null
+        ? "marj —"
+        : `marj ${pl.marginPct >= 0 ? "+" : ""}${pl.marginPct.toFixed(1)}%`;
+    const cargoValue = selectCargoValueUsd(p);
+
+    lines.push(
+      `[${p.projectNo}] ${truncate(p.projectName, 60)} | Gemi: ${vessel} | ${route} | Ürün: ${cargoProduct} | Seg: ${seg}/${grp} | Sup: ${truncate(supplier, 25)} · Buy: ${truncate(buyer, 25)} | ${margin} · ${formatCompactCurrency(cargoValue, "USD")} · Status: ${p.status}`
+    );
+  }
+  return lines.join("\n");
+}
+
+/* ─────────── Active voyages (Commenced) ─────────── */
+
+/**
+ * Commenced ships with their *next* milestone (whichever pending date is
+ * closest to today). Useful for "şu an yolda olan gemiler" / "hangi
+ * gemiler yüklemede" style queries.
+ */
+function buildActiveVoyages(projects: Project[], now: Date): string {
+  const rows: string[] = [];
+  for (const p of projects) {
+    const vp = p.vesselPlan;
+    if (!vp || vp.vesselStatus !== "Commenced") continue;
+    const stage = selectStage(p, now);
+    const nextMs = nextPendingMilestone(vp.milestones, now);
+    const route =
+      vp.loadingPort?.name && vp.dischargePort?.name
+        ? `${vp.loadingPort.name}→${vp.dischargePort.name}`
+        : "—";
+    rows.push(
+      `[${p.projectNo}] ${truncate(p.projectName, 50)} | Gemi: ${vp.vesselName} | ${route} | Stage: ${stage ?? "—"}${nextMs ? ` | Sonraki: ${nextMs.label} ${formatDate(nextMs.date)}` : ""}`
+    );
+  }
+  return rows.join("\n");
+}
+
+/* ─────────── Upcoming milestones (next 14 days) ─────────── */
+
+const MILESTONE_LABELS: Record<keyof import("@/lib/dataverse/entities").VesselMilestones, string> = {
+  lpEta: "LP-ETA (yükleme limanına varış)",
+  lpNorAccepted: "LP-NOR Kabul",
+  lpSd: "Yükleme başlangıcı",
+  lpEd: "Yükleme bitişi",
+  blDate: "BL düzenleme",
+  dpEta: "DP-ETA (varış tahminleri)",
+  dpNorAccepted: "DP-NOR Kabul",
+  dpSd: "Tahliye başlangıcı",
+  dpEd: "Tahliye bitişi",
+};
+
+interface UpcomingRow {
+  projectNo: string;
+  projectName: string;
+  vessel: string;
+  label: string;
+  date: Date;
+  daysFromNow: number;
+}
+
+function buildUpcomingMilestones(projects: Project[], now: Date): string {
+  const horizon = now.getTime() + 14 * 24 * 60 * 60 * 1000;
+  const rows: UpcomingRow[] = [];
+  for (const p of projects) {
+    const vp = p.vesselPlan;
+    if (!vp) continue;
+    const ms = vp.milestones;
+    for (const key of Object.keys(MILESTONE_LABELS) as Array<
+      keyof typeof MILESTONE_LABELS
+    >) {
+      const iso = ms[key];
+      if (!iso) continue;
+      const t = new Date(iso);
+      if (Number.isNaN(t.getTime())) continue;
+      if (t.getTime() < now.getTime() || t.getTime() > horizon) continue;
+      const daysFromNow = Math.round(
+        (t.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
+      );
+      rows.push({
+        projectNo: p.projectNo,
+        projectName: truncate(p.projectName, 45),
+        vessel: vp.vesselName ?? "—",
+        label: MILESTONE_LABELS[key],
+        date: t,
+        daysFromNow,
+      });
+    }
+  }
+  rows.sort((a, b) => a.date.getTime() - b.date.getTime());
+  return rows
+    .slice(0, 30) // cap so the bundle stays compact
+    .map(
+      (r) =>
+        `${formatDate(r.date)} (+${r.daysFromNow}g) — [${r.projectNo}] ${r.projectName} | Gemi: ${r.vessel} | ${r.label}`
+    )
+    .join("\n");
+}
+
 /* ─────────── helpers ─────────── */
+
+function nextPendingMilestone(
+  ms: import("@/lib/dataverse/entities").VesselMilestones,
+  now: Date
+): { label: string; date: Date } | null {
+  let best: { label: string; date: Date } | null = null;
+  for (const key of Object.keys(MILESTONE_LABELS) as Array<
+    keyof typeof MILESTONE_LABELS
+  >) {
+    const iso = ms[key];
+    if (!iso) continue;
+    const t = new Date(iso);
+    if (Number.isNaN(t.getTime())) continue;
+    if (t.getTime() < now.getTime()) continue;
+    if (!best || t.getTime() < best.date.getTime()) {
+      best = { label: MILESTONE_LABELS[key], date: t };
+    }
+  }
+  return best;
+}
 
 function truncate(s: string, max: number): string {
   const t = (s ?? "").trim();
@@ -262,6 +442,14 @@ function formatDayMonth(d: Date): string {
   return new Intl.DateTimeFormat("tr-TR", {
     day: "numeric",
     month: "long",
+    year: "numeric",
+  }).format(d);
+}
+
+function formatDate(d: Date): string {
+  return new Intl.DateTimeFormat("tr-TR", {
+    day: "2-digit",
+    month: "2-digit",
     year: "numeric",
   }).format(d);
 }
