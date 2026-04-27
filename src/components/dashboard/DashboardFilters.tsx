@@ -161,14 +161,17 @@ export function DashboardFilters({
   return (
     <Popover>
       <PopoverTrigger asChild>
-        {/* Square accent-gradient pill — same dialect as the ProjectList
-            FilterPopover trigger. White stroke HugeIcon, accent shadow,
-            count badge on the corner when active. */}
+        {/* Accent-gradient pill — HugeIcon stroke + "Filtre" label so the
+            trigger reads at a glance even before the user knows the icon
+            grammar. Square-icon variant lives on the ProjectList sidebar;
+            here the dashboard topbar has room for the lockup. Count badge
+            still pops in the corner when filters are active. */}
         <button
           type="button"
           aria-label="Gelişmiş filtre"
           className={cn(
-            "size-9 rounded-xl grid place-items-center shrink-0 shadow-sm relative transition-transform",
+            "h-9 rounded-xl pl-2.5 pr-3.5 inline-flex items-center gap-2 shrink-0 shadow-sm relative transition-transform",
+            "text-[12.5px] font-semibold tracking-tight",
             "hover:scale-[1.04] active:scale-95",
             "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2",
             className
@@ -184,13 +187,14 @@ export function DashboardFilters({
             size={16}
             strokeWidth={2}
           />
+          <span>Filtre</span>
           {activeCount > 0 && (
             <span
-              className="absolute -top-1 -right-1 size-4 grid place-items-center rounded-full text-[9px] font-bold tabular-nums"
+              className="ml-0.5 h-5 min-w-5 px-1.5 inline-flex items-center justify-center rounded-full text-[10.5px] font-bold tabular-nums"
               style={{
                 background: "white",
                 color: accent.solid,
-                boxShadow: `0 0 0 1.5px ${accent.solid}, 0 2px 6px -1px ${accent.ring}`,
+                boxShadow: `inset 0 0 0 1.5px ${accent.solid}, 0 2px 6px -1px ${accent.ring}`,
               }}
             >
               {activeCount}
