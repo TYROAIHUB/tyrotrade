@@ -9,7 +9,7 @@ import type { Project, VesselMilestones } from "@/lib/dataverse/entities";
 interface EventsPanelProps {
   projects: Project[];
   now?: Date;
-  /** Days back from `now` for the "Recent" section (default 7). */
+  /** Days back from `now` for the "Recent" section (default 30). */
   recentWindowDays?: number;
   /** Days forward from `now` for "Upcoming" section (default 30). */
   upcomingWindowDays?: number;
@@ -94,7 +94,7 @@ const STAGE_COLORS: Record<string, { bg: string; fg: string }> = {
 export function EventsPanel({
   projects,
   now = new Date(),
-  recentWindowDays = 7,
+  recentWindowDays = 30,
   upcomingWindowDays = 30,
   perSectionLimit = 5,
 }: EventsPanelProps) {

@@ -14,7 +14,7 @@ import { formatDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import type { Project, VesselMilestones } from "@/lib/dataverse/entities";
 
-const RECENT_DAYS = 7;
+const RECENT_DAYS = 30;
 const UPCOMING_DAYS = 30;
 
 interface EventItem {

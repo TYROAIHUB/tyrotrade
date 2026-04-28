@@ -182,7 +182,13 @@ export function AdvancedFilter({
         )}
       </PopoverTrigger>
       <PopoverContent
-        align="end"
+        // ProjectList sits in the left column with the map on its
+        // right — opening the popover to the right lets it land over
+        // the map rather than the (clipped) viewport edge. Other
+        // surfaces (Dashboard, Veri Yönetimi) keep the default
+        // bottom-end placement.
+        side={iconOnly ? "right" : "bottom"}
+        align={iconOnly ? "start" : "end"}
         sideOffset={10}
         collisionPadding={12}
         className={cn(
