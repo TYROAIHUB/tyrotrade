@@ -10,6 +10,7 @@ interface VelocityTileProps {
   projects: Project[];
   span?: string;
   rowSpan?: string;
+  onClick?: () => void;
 }
 
 /**
@@ -23,6 +24,7 @@ export function VelocityTile({
   projects,
   span,
   rowSpan,
+  onClick,
 }: VelocityTileProps) {
   const stats = React.useMemo(
     () => aggregateAvgTransitDays(projects),
@@ -37,6 +39,7 @@ export function VelocityTile({
       iconTone={TONE_VELOCITY}
       span={span}
       rowSpan={rowSpan}
+      onClick={onClick}
     >
       <div className="flex flex-col gap-2 h-full">
         <div

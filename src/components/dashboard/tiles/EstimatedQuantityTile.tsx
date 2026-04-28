@@ -21,6 +21,7 @@ interface EstimatedQuantityTileProps {
   now?: Date;
   span?: string;
   rowSpan?: string;
+  onClick?: () => void;
 }
 
 interface MonthRow {
@@ -96,6 +97,7 @@ export function EstimatedQuantityTile({
   now = new Date(),
   span,
   rowSpan,
+  onClick,
 }: EstimatedQuantityTileProps) {
   const totalTons = React.useMemo(
     () => projects.reduce((sum, p) => sum + selectTotalTons(p), 0),
@@ -160,6 +162,7 @@ export function EstimatedQuantityTile({
       iconTone={TONE_CARGO}
       span={span}
       rowSpan={rowSpan}
+      onClick={onClick}
     >
       <div className="flex flex-col h-full min-w-0">
         {/* Total + Peak (Zirve) header strip — labels follow the same

@@ -6,6 +6,45 @@ import { LeaderboardSegmentsPanel } from "@/components/dashboard/LeaderboardSegm
 import { EventsPanel } from "@/components/dashboard/EventsPanel";
 import { AdvancedFilter } from "@/components/filters/AdvancedFilter";
 import {
+  KpiDetailDrawer,
+  type KpiId,
+} from "@/components/dashboard/KpiDetailDrawer";
+import {
+  ExpenseBreakdown,
+  PipelineBreakdown,
+  CurrencyBreakdown,
+  CorridorBreakdown,
+  VelocityBreakdown,
+  CounterpartyBreakdown,
+  PeriodPerformanceBreakdown,
+  EstimatedPLBreakdown,
+  QuantityBreakdown,
+} from "@/components/dashboard/kpiBreakdowns";
+import {
+  TONE_FORECAST,
+  TONE_PL,
+  TONE_CARGO,
+  TONE_EXPENSE,
+  TONE_SEA,
+  TONE_CURRENCY,
+  TONE_CORRIDOR,
+  TONE_VELOCITY,
+  TONE_COUNTERPARTY,
+  type IconBadgeTone,
+} from "@/components/details/AccentIconBadge";
+import type { IconSvgElement } from "@hugeicons/react";
+import {
+  ChartLineData01Icon,
+  Coins02Icon,
+  WeightScale01Icon,
+  Wallet01Icon,
+  ContainerIcon,
+  MoneyExchange01Icon,
+  Route01Icon,
+  Clock01Icon,
+  UserGroupIcon,
+} from "@hugeicons/core-free-icons";
+import {
   applyProjectFilter,
   makeEmptyFilters,
   projectFilterCount,
@@ -16,6 +55,7 @@ import { useProjects } from "@/hooks/useProjects";
 import { ProjectsEmptyState } from "@/components/projects/ProjectsEmptyState";
 import { aggregatePipelineBuckets } from "@/lib/selectors/aggregate";
 import { getFinancialYear } from "@/lib/dashboard/financialPeriod";
+import type { Project } from "@/lib/dataverse/entities";
 
 // Dashboard default = inclusive (all projects flow into KPIs unless
 // the user explicitly toggles ship-plan-only). Vessel Projects uses
@@ -28,6 +68,11 @@ export function DashboardPage() {
   const [filters, setFilters] = React.useState<ProjectFilterState>(() =>
     makeEmptyFilters({ includeWithoutShipPlan: DASHBOARD_SHIP_PLAN_DEFAULT })
   );
+  // Active KPI drawer — `null` when no tile is open. Each click on a
+  // BentoGrid tile fires `onSelectKpi(id)` and we render the matching
+  // breakdown component inside the shared KpiDetailDrawer chrome.
+  const [drawerKpi, setDrawerKpi] = React.useState<KpiId | null>(null);
+  const closeDrawer = React.useCallback(() => setDrawerKpi(null), []);
 
   // 🔒 Read-only — composes Project[] from cached Dataverse entities (real
   // mode) or returns mockProjects (mock mode). isEmpty cues the empty state
@@ -130,7 +175,11 @@ export function DashboardPage() {
           </div>
         </GlassPanel>
 
-        <BentoGrid projects={projects} now={now} />
+        <BentoGrid
+          projects={projects}
+          now={now}
+          onSelectKpi={setDrawerKpi}
+        />
 
         {/* Bottom 12-col grid: Kral Projeler + Kral Segmentler stacked
             in the left 9 cols (matches BentoGrid's wider tiles above);
@@ -147,9 +196,123 @@ export function DashboardPage() {
           </div>
         </div>
       </div>
+
+      {/* KPI detail drawer — renders the breakdown component matching
+          the active tile id. The drawer keeps mounted across switches
+          so the slide-in animation only plays on first open; switching
+          KPI IDs swaps the children content in-place. */}
+      <KpiDetailDrawer
+        open={drawerKpi !== null}
+        onOpenChange={(open) => !open && closeDrawer()}
+        title={drawerKpi ? KPI_META[drawerKpi].title : ""}
+        subtitle={
+          drawerKpi
+            ? KPI_META[drawerKpi].subtitle?.(projects)
+            : undefined
+        }
+        icon={drawerKpi ? KPI_META[drawerKpi].icon : undefined}
+        iconTone={drawerKpi ? KPI_META[drawerKpi].tone : undefined}
+      >
+        {drawerKpi === "period" && (
+          <PeriodPerformanceBreakdown projects={projects} onClose={closeDrawer} now={now} />
+        )}
+        {drawerKpi === "pl" && (
+          <EstimatedPLBreakdown projects={projects} onClose={closeDrawer} />
+        )}
+        {drawerKpi === "quantity" && (
+          <QuantityBreakdown projects={projects} onClose={closeDrawer} />
+        )}
+        {drawerKpi === "expense" && (
+          <ExpenseBreakdown projects={projects} onClose={closeDrawer} />
+        )}
+        {drawerKpi === "pipeline" && (
+          <PipelineBreakdown projects={projects} onClose={closeDrawer} />
+        )}
+        {drawerKpi === "currency" && (
+          <CurrencyBreakdown projects={projects} onClose={closeDrawer} />
+        )}
+        {drawerKpi === "corridor" && (
+          <CorridorBreakdown projects={projects} onClose={closeDrawer} />
+        )}
+        {drawerKpi === "velocity" && (
+          <VelocityBreakdown projects={projects} onClose={closeDrawer} now={now} />
+        )}
+        {drawerKpi === "counterparty" && (
+          <CounterpartyBreakdown projects={projects} onClose={closeDrawer} />
+        )}
+      </KpiDetailDrawer>
     </ScrollArea>
   );
 }
+
+/* ─────────── KPI metadata ─────────── */
+
+interface KpiMeta {
+  title: string;
+  /** Subtitle factory — receives the filtered project set so it can
+   *  surface a count or context fragment that matches the data the
+   *  drawer is about to render. */
+  subtitle?: (projects: Project[]) => string;
+  icon: IconSvgElement;
+  tone: IconBadgeTone;
+}
+
+const KPI_META: Record<KpiId, KpiMeta> = {
+  period: {
+    title: "Dönem Performansı",
+    subtitle: (p) => `${p.length} proje · finansal görünüm`,
+    icon: ChartLineData01Icon,
+    tone: TONE_FORECAST,
+  },
+  pl: {
+    title: "Tahmini Kâr & Zarar",
+    subtitle: (p) => `${p.length} proje · USD eşdeğeri`,
+    icon: Coins02Icon,
+    tone: TONE_PL,
+  },
+  quantity: {
+    title: "Tahmini Miktar",
+    subtitle: (p) => `${p.length} proje · toplam tonaj dağılımı`,
+    icon: WeightScale01Icon,
+    tone: TONE_CARGO,
+  },
+  expense: {
+    title: "Tahmini Gider",
+    subtitle: (p) => `${p.length} proje · USD bazlı kalemler`,
+    icon: Wallet01Icon,
+    tone: TONE_EXPENSE,
+  },
+  pipeline: {
+    title: "Aktif Pipeline",
+    subtitle: (p) => `${p.length} proje · sefer durumuna göre`,
+    icon: ContainerIcon,
+    tone: TONE_SEA,
+  },
+  currency: {
+    title: "Para Birimi Maruziyeti",
+    subtitle: (p) => `${p.length} proje · USD / EUR / TRY`,
+    icon: MoneyExchange01Icon,
+    tone: TONE_CURRENCY,
+  },
+  corridor: {
+    title: "Koridor Konsantrasyonu",
+    subtitle: (p) => `${p.length} proje · LP → DP dağılımı`,
+    icon: Route01Icon,
+    tone: TONE_CORRIDOR,
+  },
+  velocity: {
+    title: "Ortalama Transit",
+    subtitle: (p) => `${p.length} proje · LP-(ED) → DP-ETA`,
+    icon: Clock01Icon,
+    tone: TONE_VELOCITY,
+  },
+  counterparty: {
+    title: "Karşı Taraf Dağılımı",
+    subtitle: (p) => `${p.length} proje · tedarikçi & alıcı`,
+    icon: UserGroupIcon,
+    tone: TONE_COUNTERPARTY,
+  },
+};
 
 function getGreeting(): string {
   const h = new Date().getHours();

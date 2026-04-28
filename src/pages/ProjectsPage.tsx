@@ -1,5 +1,5 @@
 import * as React from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { Layers, ChevronLeft } from "lucide-react";
 import { useProjects } from "@/hooks/useProjects";
 import { ProjectList } from "@/components/projects/ProjectList";
@@ -30,6 +30,7 @@ const PROJECTS_SHIP_PLAN_DEFAULT = false;
 export function ProjectsPage() {
   const { projectId } = useParams<{ projectId?: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const isMobile = useIsMobile();
   const { projects: rawProjects, isEmpty } = useProjects();
   const now = new Date();
@@ -41,6 +42,24 @@ export function ProjectsPage() {
   const [filters, setFilters] = React.useState<ProjectFilterState>(() =>
     makeEmptyFilters({ includeWithoutShipPlan: PROJECTS_SHIP_PLAN_DEFAULT })
   );
+
+  // Deep-link from the dashboard KPI drawer (or any other page) — when
+  // we land here with `state.focusProjectNo`, swap the filter into a
+  // single-project view so the list only shows that one row. The state
+  // is consumed once and then wiped via `window.history.replaceState`
+  // so a casual re-render doesn't re-apply the filter; the user can
+  // clear the projectNos chip from the popover at any time.
+  React.useEffect(() => {
+    const focusNo = (location.state as { focusProjectNo?: string } | null)
+      ?.focusProjectNo;
+    if (!focusNo) return;
+    setFilters((f) => ({ ...f, projectNos: new Set([focusNo]) }));
+    // Drop the navigation state so a back-button round trip / hot reload
+    // doesn't re-trigger this effect. `replaceState` preserves the URL
+    // (including the hash for HashRouter) and clears the state slot.
+    window.history.replaceState({}, "");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.state]);
 
   const projects = React.useMemo(
     () => applyProjectFilter(rawProjects, filters, now),

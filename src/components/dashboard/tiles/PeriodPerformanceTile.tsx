@@ -22,6 +22,7 @@ interface PeriodPerformanceTileProps {
   now?: Date;
   span?: string;
   rowSpan?: string;
+  onClick?: () => void;
 }
 
 interface SparkPoint {
@@ -45,6 +46,7 @@ export function PeriodPerformanceTile({
   now = new Date(),
   span,
   rowSpan,
+  onClick,
 }: PeriodPerformanceTileProps) {
   const accent = useThemeAccent();
 
@@ -102,6 +104,7 @@ export function PeriodPerformanceTile({
       iconTone={TONE_FORECAST}
       span={span}
       rowSpan={rowSpan}
+      onClick={onClick}
     >
       <div className="flex flex-col gap-2 h-full">
         {/* 4-up KPI row */}

@@ -23,6 +23,7 @@ interface EstimatedPLTileProps {
   projects: Project[];
   span?: string;
   rowSpan?: string;
+  onClick?: () => void;
 }
 
 /**
@@ -43,6 +44,7 @@ export function EstimatedPLTile({
   projects,
   span,
   rowSpan,
+  onClick,
 }: EstimatedPLTileProps) {
   const pl = React.useMemo(() => aggregateEstimatedPL(projects), [projects]);
 
@@ -100,6 +102,7 @@ export function EstimatedPLTile({
       iconTone={iconTone}
       span={span}
       rowSpan={rowSpan}
+      onClick={onClick}
     >
       <div className="flex flex-col gap-1 h-full min-h-0">
         {/* Headline net P&L + margin */}

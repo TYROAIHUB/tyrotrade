@@ -8,11 +8,16 @@ import { CurrencyExposureTile } from "./tiles/CurrencyExposureTile";
 import { CorridorConcentrationTile } from "./tiles/CorridorConcentrationTile";
 import { VelocityTile } from "./tiles/VelocityTile";
 import { CounterpartyMixTile } from "./tiles/CounterpartyMixTile";
+import type { KpiId } from "./KpiDetailDrawer";
 import type { Project } from "@/lib/dataverse/entities";
 
 interface BentoGridProps {
   projects: Project[];
   now?: Date;
+  /** Tile click handler — opens the KPI detail drawer. Each tile
+   *  fires this with its identifier; DashboardPage uses it to render
+   *  the appropriate breakdown view. */
+  onSelectKpi?: (id: KpiId) => void;
 }
 
 const containerVariants: Variants = {
@@ -31,16 +36,10 @@ const containerVariants: Variants = {
  *   Row 2: [EstimatedExpense 3]       [ActivePipeline 9]
  *   Row 3: [CurrencyExp 3] [Corridor 3] [Velocity 3] [Counterparty 3]
  *
- * Tahmini Gider was previously col-span-4 — visually disproportionate
- * to the 3-col risk row underneath. Pulled back to col-span-3 so all
- * "small-card" tiles share the same width, and ActivePipeline picks
- * up the freed col to dominate row 2.
- *
- * Container `motion.div` orchestrates a staggered fade-up-blur reveal.
- * All tiles consume the same period-filtered `projects` array — no
- * separate state — so a filter change ripples uniformly.
+ * Each tile fires `onSelectKpi(id)` on click — the parent renders a
+ * `KpiDetailDrawer` with the matching breakdown component.
  */
-export function BentoGrid({ projects, now = new Date() }: BentoGridProps) {
+export function BentoGrid({ projects, now = new Date(), onSelectKpi }: BentoGridProps) {
   const reduceMotion = useReducedMotion();
 
   return (
@@ -56,44 +55,53 @@ export function BentoGrid({ projects, now = new Date() }: BentoGridProps) {
         projects={projects}
         now={now}
         span="col-span-12 sm:col-span-12 lg:col-span-6"
+        onClick={onSelectKpi ? () => onSelectKpi("period") : undefined}
       />
       <EstimatedPLTile
         projects={projects}
         span="col-span-12 sm:col-span-6 lg:col-span-3"
+        onClick={onSelectKpi ? () => onSelectKpi("pl") : undefined}
       />
       <EstimatedQuantityTile
         projects={projects}
         now={now}
         span="col-span-12 sm:col-span-6 lg:col-span-3"
+        onClick={onSelectKpi ? () => onSelectKpi("quantity") : undefined}
       />
 
       {/* Row 2 — Expense breakdown + pipeline */}
       <EstimatedExpenseTile
         projects={projects}
         span="col-span-12 sm:col-span-6 lg:col-span-3"
+        onClick={onSelectKpi ? () => onSelectKpi("expense") : undefined}
       />
       <ActivePipelineTile
         projects={projects}
         now={now}
         span="col-span-12 sm:col-span-6 lg:col-span-9"
+        onClick={onSelectKpi ? () => onSelectKpi("pipeline") : undefined}
       />
 
       {/* Row 3 — Risk / portfolio composition KPIs */}
       <CurrencyExposureTile
         projects={projects}
         span="col-span-12 sm:col-span-6 lg:col-span-3"
+        onClick={onSelectKpi ? () => onSelectKpi("currency") : undefined}
       />
       <CorridorConcentrationTile
         projects={projects}
         span="col-span-12 sm:col-span-6 lg:col-span-3"
+        onClick={onSelectKpi ? () => onSelectKpi("corridor") : undefined}
       />
       <VelocityTile
         projects={projects}
         span="col-span-12 sm:col-span-6 lg:col-span-3"
+        onClick={onSelectKpi ? () => onSelectKpi("velocity") : undefined}
       />
       <CounterpartyMixTile
         projects={projects}
         span="col-span-12 sm:col-span-6 lg:col-span-3"
+        onClick={onSelectKpi ? () => onSelectKpi("counterparty") : undefined}
       />
     </motion.section>
   );

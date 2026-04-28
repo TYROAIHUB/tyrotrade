@@ -10,6 +10,7 @@ interface ActivePipelineTileProps {
   now?: Date;
   span?: string;
   rowSpan?: string;
+  onClick?: () => void;
 }
 
 /**
@@ -35,6 +36,7 @@ export function ActivePipelineTile({
   projects,
   span,
   rowSpan,
+  onClick,
 }: ActivePipelineTileProps) {
   const reduceMotion = useReducedMotion();
 
@@ -61,6 +63,7 @@ export function ActivePipelineTile({
       iconTone={TONE_SEA}
       span={span}
       rowSpan={rowSpan}
+      onClick={onClick}
     >
       <div className="flex flex-col gap-3 h-full">
         <div

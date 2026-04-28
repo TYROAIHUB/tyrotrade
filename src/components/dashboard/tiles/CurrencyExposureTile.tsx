@@ -12,6 +12,7 @@ interface CurrencyExposureTileProps {
   projects: Project[];
   span?: string;
   rowSpan?: string;
+  onClick?: () => void;
 }
 
 const ORDER: CurrencyCode[] = ["USD", "EUR", "TRY", "OTHER"];
@@ -34,6 +35,7 @@ export function CurrencyExposureTile({
   projects,
   span,
   rowSpan,
+  onClick,
 }: CurrencyExposureTileProps) {
   const exposure = React.useMemo(
     () => aggregateCurrencyExposure(projects),
@@ -57,6 +59,7 @@ export function CurrencyExposureTile({
       iconTone={TONE_CURRENCY}
       span={span}
       rowSpan={rowSpan}
+      onClick={onClick}
     >
       <div className="flex flex-col gap-2 h-full">
         {/* Dominant currency callout */}

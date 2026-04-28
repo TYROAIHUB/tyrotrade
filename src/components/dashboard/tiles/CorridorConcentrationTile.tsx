@@ -9,6 +9,7 @@ interface CorridorConcentrationTileProps {
   projects: Project[];
   span?: string;
   rowSpan?: string;
+  onClick?: () => void;
 }
 
 /**
@@ -24,6 +25,7 @@ export function CorridorConcentrationTile({
   projects,
   span,
   rowSpan,
+  onClick,
 }: CorridorConcentrationTileProps) {
   const corridors = React.useMemo(() => aggregateByCorridor(projects), [projects]);
   const totalRoutedProjects = React.useMemo(
@@ -63,6 +65,7 @@ export function CorridorConcentrationTile({
       iconTone={TONE_CORRIDOR}
       span={span}
       rowSpan={rowSpan}
+      onClick={onClick}
     >
       <div className="flex flex-col gap-2 h-full">
         <div

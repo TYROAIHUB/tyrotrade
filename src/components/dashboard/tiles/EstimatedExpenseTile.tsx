@@ -12,6 +12,7 @@ interface EstimatedExpenseTileProps {
   projects: Project[];
   span?: string;
   rowSpan?: string;
+  onClick?: () => void;
 }
 
 type BucketKey = "freight" | "opex" | "other";
@@ -41,6 +42,7 @@ export function EstimatedExpenseTile({
   projects,
   span,
   rowSpan,
+  onClick,
 }: EstimatedExpenseTileProps) {
   const reduce = useReducedMotion();
   const { buckets, contributingCount } = React.useMemo(() => {
@@ -87,6 +89,7 @@ export function EstimatedExpenseTile({
       iconTone={TONE_EXPENSE}
       span={span}
       rowSpan={rowSpan}
+      onClick={onClick}
     >
       <div className="flex flex-col gap-2.5 h-full">
         <div

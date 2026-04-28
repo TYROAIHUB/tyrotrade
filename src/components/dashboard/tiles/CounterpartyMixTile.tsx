@@ -9,6 +9,7 @@ interface CounterpartyMixTileProps {
   projects: Project[];
   span?: string;
   rowSpan?: string;
+  onClick?: () => void;
 }
 
 /**
@@ -20,6 +21,7 @@ export function CounterpartyMixTile({
   projects,
   span,
   rowSpan,
+  onClick,
 }: CounterpartyMixTileProps) {
   const mix = React.useMemo(
     () => aggregateCounterpartyMix(projects),
@@ -48,6 +50,7 @@ export function CounterpartyMixTile({
       iconTone={TONE_COUNTERPARTY}
       span={span}
       rowSpan={rowSpan}
+      onClick={onClick}
     >
       <div className="flex flex-col gap-2 h-full text-[10.5px]">
         {/* Top supplier row */}
