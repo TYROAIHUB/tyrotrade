@@ -231,13 +231,16 @@ export function AdvancedFilter({
           } as React.CSSProperties
         }
       >
-        {/* Header */}
+        {/* Header — pill follows the same tone as the trigger so the
+            opened popover reads as a continuation of the button it
+            sprung from (muted slate on the dashboard, live accent on
+            ProjectList / Veri Yönetimi). */}
         <div className="px-4 py-3 flex items-center gap-3 shrink-0 border-b border-border/40">
           <span
             className="size-9 rounded-xl grid place-items-center shrink-0 text-white shadow-sm"
             style={{
-              background: accent.gradient,
-              boxShadow: `0 4px 12px -4px ${accent.ring}, inset 0 1px 0 0 rgba(255,255,255,0.25)`,
+              background: triggerTone.gradient,
+              boxShadow: `0 4px 12px -4px ${triggerTone.ring}, inset 0 1px 0 0 rgba(255,255,255,0.25)`,
             }}
           >
             <HugeiconsIcon
