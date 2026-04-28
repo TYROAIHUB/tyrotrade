@@ -138,7 +138,10 @@ export function TyroAiDrawer({ open, onOpenChange }: TyroAiDrawerProps) {
           // the slide-in animation — and just layer in our own surface
           // styling: opaque white glass + a heavier outer shadow so the
           // rounded left corners read against the page behind.
-          "w-full sm:max-w-[420px] p-0 flex flex-col gap-0",
+          // `overflow-hidden` clips the top accent strip + footer ring
+          // into the rounded-l-3xl corners; without it the strip cuts
+          // straight across the curve.
+          "w-full sm:max-w-[420px] p-0 flex flex-col gap-0 overflow-hidden",
           "bg-white/95 backdrop-blur-2xl backdrop-saturate-150",
           "border-l border-border/60",
           "shadow-[0_30px_80px_-16px_rgba(15,23,42,0.45)]"

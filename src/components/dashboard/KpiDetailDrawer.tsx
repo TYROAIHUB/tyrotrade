@@ -81,7 +81,11 @@ export function KpiDetailDrawer({
       <SheetContent
         side="right"
         className={cn(
-          "w-full sm:max-w-[480px] p-0 flex flex-col gap-0",
+          // `overflow-hidden` is required so the top accent strip
+          // (first child) honours the parent's `rounded-l-3xl` —
+          // without it the strip cuts straight across the rounded
+          // top-left corner instead of curving into it.
+          "w-full sm:max-w-[480px] p-0 flex flex-col gap-0 overflow-hidden",
           "bg-white/95 backdrop-blur-2xl backdrop-saturate-150",
           "border-l border-border/60",
           "shadow-[0_30px_80px_-16px_rgba(15,23,42,0.45)]"
