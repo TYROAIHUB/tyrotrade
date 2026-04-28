@@ -9,6 +9,7 @@ import {
   KpiDetailDrawer,
   type KpiId,
 } from "@/components/dashboard/KpiDetailDrawer";
+import { KpiDrawerToolbar } from "@/components/dashboard/KpiDrawerToolbar";
 import {
   ExpenseBreakdown,
   PipelineBreakdown,
@@ -19,6 +20,7 @@ import {
   PeriodPerformanceBreakdown,
   EstimatedPLBreakdown,
   QuantityBreakdown,
+  filterProject,
 } from "@/components/dashboard/kpiBreakdowns";
 import {
   TONE_FORECAST,
@@ -74,6 +76,16 @@ export function DashboardPage() {
   const [drawerKpi, setDrawerKpi] = React.useState<KpiId | null>(null);
   const closeDrawer = React.useCallback(() => setDrawerKpi(null), []);
 
+  // Drawer toolbar state (search query + sort flip). Resets every time
+  // the user opens a different KPI so each drawer starts from a fresh
+  // slate — sticky search across KPIs would be confusing.
+  const [drawerQuery, setDrawerQuery] = React.useState("");
+  const [drawerSortReversed, setDrawerSortReversed] = React.useState(false);
+  React.useEffect(() => {
+    setDrawerQuery("");
+    setDrawerSortReversed(false);
+  }, [drawerKpi]);
+
   // 🔒 Read-only — composes Project[] from cached Dataverse entities (real
   // mode) or returns mockProjects (mock mode). isEmpty cues the empty state
   // when the user hasn't run "Güncelle" yet.
@@ -98,6 +110,19 @@ export function DashboardPage() {
   const inTransit = buckets.inTransit;
   const loading = buckets.loading;
   const atDischarge = buckets.atDischarge;
+
+  // Approximate "rows visible after search" — counts projects passing
+  // the toolbar's free-text query. Matches the per-breakdown filter so
+  // the toolbar's `12/437` counter is honest. Specific breakdowns may
+  // drop additional rows (no expense, no transit dates) but the search
+  // count is what users care about most when typing.
+  const visibleDrawerCount = React.useMemo(() => {
+    if (!drawerKpi) return 0;
+    if (!drawerQuery.trim()) return projects.length;
+    let n = 0;
+    for (const p of projects) if (filterProject(p, drawerQuery)) n++;
+    return n;
+  }, [projects, drawerQuery, drawerKpi]);
 
   const greeting = getGreeting();
   const fy = getFinancialYear(now);
@@ -198,9 +223,9 @@ export function DashboardPage() {
       </div>
 
       {/* KPI detail drawer — renders the breakdown component matching
-          the active tile id. The drawer keeps mounted across switches
-          so the slide-in animation only plays on first open; switching
-          KPI IDs swaps the children content in-place. */}
+          the active tile id. Toolbar (search + sort) lives inside the
+          drawer chrome between header and body, so it stays pinned
+          while rows scroll under it. */}
       <KpiDetailDrawer
         open={drawerKpi !== null}
         onOpenChange={(open) => !open && closeDrawer()}
@@ -212,33 +237,98 @@ export function DashboardPage() {
         }
         icon={drawerKpi ? KPI_META[drawerKpi].icon : undefined}
         iconTone={drawerKpi ? KPI_META[drawerKpi].tone : undefined}
+        toolbar={
+          drawerKpi ? (
+            <KpiDrawerToolbar
+              query={drawerQuery}
+              onQueryChange={setDrawerQuery}
+              resultCount={visibleDrawerCount}
+              totalCount={projects.length}
+              sort={
+                KPI_META[drawerKpi].sort
+                  ? {
+                      value: drawerSortReversed ? "reverse" : "default",
+                      onChange: (v) => setDrawerSortReversed(v === "reverse"),
+                      defaultLabel: KPI_META[drawerKpi].sort!.default,
+                      reverseLabel: KPI_META[drawerKpi].sort!.reverse,
+                    }
+                  : undefined
+              }
+            />
+          ) : null
+        }
       >
         {drawerKpi === "period" && (
-          <PeriodPerformanceBreakdown projects={projects} onClose={closeDrawer} now={now} />
+          <PeriodPerformanceBreakdown
+            projects={projects}
+            onClose={closeDrawer}
+            now={now}
+            query={drawerQuery}
+            sortReversed={drawerSortReversed}
+          />
         )}
         {drawerKpi === "pl" && (
-          <EstimatedPLBreakdown projects={projects} onClose={closeDrawer} />
+          <EstimatedPLBreakdown
+            projects={projects}
+            onClose={closeDrawer}
+            query={drawerQuery}
+            sortReversed={drawerSortReversed}
+          />
         )}
         {drawerKpi === "quantity" && (
-          <QuantityBreakdown projects={projects} onClose={closeDrawer} />
+          <QuantityBreakdown
+            projects={projects}
+            onClose={closeDrawer}
+            query={drawerQuery}
+            sortReversed={drawerSortReversed}
+          />
         )}
         {drawerKpi === "expense" && (
-          <ExpenseBreakdown projects={projects} onClose={closeDrawer} />
+          <ExpenseBreakdown
+            projects={projects}
+            onClose={closeDrawer}
+            query={drawerQuery}
+            sortReversed={drawerSortReversed}
+          />
         )}
         {drawerKpi === "pipeline" && (
-          <PipelineBreakdown projects={projects} onClose={closeDrawer} />
+          <PipelineBreakdown
+            projects={projects}
+            onClose={closeDrawer}
+            query={drawerQuery}
+          />
         )}
         {drawerKpi === "currency" && (
-          <CurrencyBreakdown projects={projects} onClose={closeDrawer} />
+          <CurrencyBreakdown
+            projects={projects}
+            onClose={closeDrawer}
+            query={drawerQuery}
+          />
         )}
         {drawerKpi === "corridor" && (
-          <CorridorBreakdown projects={projects} onClose={closeDrawer} />
+          <CorridorBreakdown
+            projects={projects}
+            onClose={closeDrawer}
+            query={drawerQuery}
+            sortReversed={drawerSortReversed}
+          />
         )}
         {drawerKpi === "velocity" && (
-          <VelocityBreakdown projects={projects} onClose={closeDrawer} now={now} />
+          <VelocityBreakdown
+            projects={projects}
+            onClose={closeDrawer}
+            now={now}
+            query={drawerQuery}
+            sortReversed={drawerSortReversed}
+          />
         )}
         {drawerKpi === "counterparty" && (
-          <CounterpartyBreakdown projects={projects} onClose={closeDrawer} />
+          <CounterpartyBreakdown
+            projects={projects}
+            onClose={closeDrawer}
+            query={drawerQuery}
+            sortReversed={drawerSortReversed}
+          />
         )}
       </KpiDetailDrawer>
     </ScrollArea>
@@ -255,6 +345,9 @@ interface KpiMeta {
   subtitle?: (projects: Project[]) => string;
   icon: IconSvgElement;
   tone: IconBadgeTone;
+  /** Optional sort flip labels — when omitted the toolbar's sort
+   *  toggle is hidden (Pipeline / Currency keep their canonical order). */
+  sort?: { default: string; reverse: string };
 }
 
 const KPI_META: Record<KpiId, KpiMeta> = {
@@ -263,54 +356,63 @@ const KPI_META: Record<KpiId, KpiMeta> = {
     subtitle: (p) => `${p.length} proje · finansal görünüm`,
     icon: ChartLineData01Icon,
     tone: TONE_FORECAST,
+    sort: { default: "En değerliden", reverse: "En düşük değerden" },
   },
   pl: {
     title: "Tahmini Kâr & Zarar",
     subtitle: (p) => `${p.length} proje · USD eşdeğeri`,
     icon: Coins02Icon,
     tone: TONE_PL,
+    sort: { default: "En kârlıdan", reverse: "En zararlıdan" },
   },
   quantity: {
     title: "Tahmini Miktar",
     subtitle: (p) => `${p.length} proje · toplam tonaj dağılımı`,
     icon: WeightScale01Icon,
     tone: TONE_CARGO,
+    sort: { default: "En çok tonajdan", reverse: "En az tonajdan" },
   },
   expense: {
     title: "Tahmini Gider",
     subtitle: (p) => `${p.length} proje · USD bazlı kalemler`,
     icon: Wallet01Icon,
     tone: TONE_EXPENSE,
+    sort: { default: "En pahalıdan", reverse: "En ucuzdan" },
   },
   pipeline: {
     title: "Aktif Pipeline",
     subtitle: (p) => `${p.length} proje · sefer durumuna göre`,
     icon: ContainerIcon,
     tone: TONE_SEA,
+    // Pipeline order is workflow-driven; no flip.
   },
   currency: {
     title: "Para Birimi Maruziyeti",
     subtitle: (p) => `${p.length} proje · USD / EUR / TRY`,
     icon: MoneyExchange01Icon,
     tone: TONE_CURRENCY,
+    // Currency order is canonical (USD → EUR → TRY); no flip.
   },
   corridor: {
     title: "Koridor Konsantrasyonu",
     subtitle: (p) => `${p.length} proje · LP → DP dağılımı`,
     icon: Route01Icon,
     tone: TONE_CORRIDOR,
+    sort: { default: "En çok projeli koridor", reverse: "En az projeli koridor" },
   },
   velocity: {
     title: "Ortalama Transit",
     subtitle: (p) => `${p.length} proje · LP-(ED) → DP-ETA`,
     icon: Clock01Icon,
     tone: TONE_VELOCITY,
+    sort: { default: "En yavaştan", reverse: "En hızlıdan" },
   },
   counterparty: {
     title: "Karşı Taraf Dağılımı",
     subtitle: (p) => `${p.length} proje · tedarikçi & alıcı`,
     icon: UserGroupIcon,
     tone: TONE_COUNTERPARTY,
+    sort: { default: "En çok projeli", reverse: "En az projeli" },
   },
 };
 

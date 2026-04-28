@@ -42,6 +42,11 @@ interface KpiDetailDrawerProps {
   icon?: IconSvgElement;
   /** Header pill colour — usually the same tone the source tile uses. */
   iconTone?: IconBadgeTone;
+  /** Optional toolbar (search + sort) that renders **outside** ScrollArea
+   *  so it stays pinned to the top of the body while rows scroll under
+   *  it. Pass a `<KpiDrawerToolbar />` element here — drawer doesn't own
+   *  the search/sort state because it changes per-KPI. */
+  toolbar?: React.ReactNode;
   children?: React.ReactNode;
 }
 
@@ -58,6 +63,7 @@ export function KpiDetailDrawer({
   subtitle,
   icon,
   iconTone,
+  toolbar,
   children,
 }: KpiDetailDrawerProps) {
   const accent = useThemeAccent();
@@ -115,9 +121,13 @@ export function KpiDetailDrawer({
           </div>
         </div>
 
+        {/* Toolbar (search + sort) — pinned outside ScrollArea so the
+            input stays accessible regardless of row scroll position. */}
+        {toolbar}
+
         {/* Body */}
         <ScrollArea className="flex-1 min-h-0">
-          <div className="px-3 py-3">{children}</div>
+          <div className="px-2 py-2">{children}</div>
         </ScrollArea>
       </SheetContent>
     </Sheet>
@@ -130,6 +140,11 @@ export function KpiDetailDrawer({
  * Header for a group of project rows (e.g. "Commenced · 11" inside the
  * Pipeline drawer). Optional value chip on the right for the group's
  * total metric.
+ *
+ * Premium hierarchy: each group separated by a subtle `border-t` and
+ * extra top padding so the eye finds its way through dense lists. The
+ * count renders as a pill-shaped badge, not flat text, to read as a
+ * deliberate UI element rather than a continuation of the label.
  */
 export function KpiGroupHeader({
   label,
@@ -144,17 +159,29 @@ export function KpiGroupHeader({
   toneColor?: string;
 }) {
   return (
-    <div className="flex items-center gap-2 mb-1.5 mt-3 first:mt-0 px-2">
+    <div
+      className={cn(
+        "flex items-center gap-2 px-3 pt-5 pb-2 mt-2",
+        "first:mt-0 first:pt-3 first:border-t-0",
+        "border-t border-border/35"
+      )}
+    >
       {toneColor && (
         <span
           className="size-2 rounded-full shrink-0"
           style={{ backgroundColor: toneColor }}
         />
       )}
-      <span className="text-[10.5px] font-bold uppercase tracking-[0.12em] text-foreground/75">
+      <span className="text-[10.5px] font-bold uppercase tracking-[0.14em] text-foreground/80">
         {label}
       </span>
-      <span className="text-[10px] tabular-nums text-muted-foreground">
+      <span
+        className={cn(
+          "inline-flex items-center justify-center min-w-5 h-4 px-1.5 rounded-full",
+          "text-[9.5px] font-semibold tabular-nums",
+          "bg-foreground/[0.06] text-foreground/70"
+        )}
+      >
         {count}
       </span>
       <div className="flex-1" />
@@ -163,15 +190,46 @@ export function KpiGroupHeader({
   );
 }
 
+/* ─────────── Segment chip ─────────── */
+
+/**
+ * Small tinted pill that surfaces a project's segment (e.g.
+ * "International") next to the projectNo. Neutral palette so any
+ * drawer's tone keeps dominance; truncate-safe so long segment names
+ * never push the metric out of view.
+ */
+export function SegmentChip({ segment }: { segment: string }) {
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center h-4 px-1.5 rounded-md shrink-0",
+        "text-[9.5px] font-semibold uppercase tracking-wide",
+        "text-foreground/75 bg-foreground/[0.06]",
+        "border border-foreground/10"
+      )}
+    >
+      {segment}
+    </span>
+  );
+}
+
 /**
  * Single project row inside the drawer body. Click → close drawer +
  * navigate to the Vessel Projects page with that project filtered
  * down to a single-project list AND selected. The `state` payload is
  * read by `ProjectsPage` once on mount/transition.
+ *
+ * Two-line layout (premium hierarchy):
+ *   • Line 1 — projectNo (mono) · projectName (semi-bold)
+ *   • Line 2 — segment chip (when present) · vessel ⚓ name
+ *
+ * Segment chip is rendered when a value is supplied; falls back gracefully
+ * for projects with no segment data.
  */
 export function KpiProjectRow({
   projectNo,
   projectName,
+  segment,
   vesselName,
   metric,
   metricColor,
@@ -179,6 +237,8 @@ export function KpiProjectRow({
 }: {
   projectNo: string;
   projectName?: string;
+  /** Project segment (e.g. "International"). Rendered as a tinted pill on line 2. */
+  segment?: string;
   vesselName?: string;
   /** Right-aligned headline metric (e.g. "$1.2M", "+%8.4", "12 gün"). */
   metric?: string;
@@ -187,6 +247,7 @@ export function KpiProjectRow({
   onClose: () => void;
 }) {
   const navigate = useNavigate();
+  const hasSubLine = Boolean(segment) || Boolean(vesselName);
   return (
     <button
       type="button"
@@ -197,36 +258,49 @@ export function KpiProjectRow({
         });
       }}
       className={cn(
-        "w-full flex items-center gap-2.5 rounded-lg px-2 py-1.5 text-left",
+        "w-full grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3",
+        "rounded-xl px-3 py-2.5 text-left",
         "hover:bg-foreground/[0.04] transition-colors group"
       )}
     >
-      <div className="min-w-0 flex-1">
+      <div className="min-w-0 flex flex-col gap-1">
+        {/* Line 1 — projectNo + projectName */}
         <div className="flex items-baseline gap-1.5 min-w-0">
           <span className="font-mono text-[11px] tabular-nums text-foreground/65 shrink-0">
             {projectNo}
           </span>
           {projectName && (
-            <span className="text-[12px] font-medium text-foreground truncate">
+            <span className="text-[12.5px] font-semibold text-foreground truncate leading-tight">
               {projectName}
             </span>
           )}
         </div>
-        {vesselName && (
-          <div className="text-[10.5px] text-muted-foreground truncate mt-0.5">
-            Gemi: {vesselName}
+        {/* Line 2 — segment chip + vessel name */}
+        {hasSubLine && (
+          <div className="flex items-center gap-1.5 min-w-0">
+            {segment && <SegmentChip segment={segment} />}
+            {vesselName && (
+              <span className="text-[10.5px] text-muted-foreground truncate min-w-0">
+                <span aria-hidden className="mr-0.5">
+                  ⚓
+                </span>
+                {vesselName}
+              </span>
+            )}
           </div>
         )}
       </div>
-      {metric && (
-        <span
-          className="shrink-0 text-[12px] font-semibold tabular-nums"
-          style={metricColor ? { color: metricColor } : undefined}
-        >
-          {metric}
-        </span>
-      )}
-      <ChevronRight className="size-3.5 shrink-0 text-muted-foreground/60 group-hover:text-muted-foreground transition-colors" />
+      <div className="flex items-center gap-1.5 shrink-0">
+        {metric && (
+          <span
+            className="text-[12.5px] font-bold tabular-nums"
+            style={metricColor ? { color: metricColor } : undefined}
+          >
+            {metric}
+          </span>
+        )}
+        <ChevronRight className="size-3.5 text-muted-foreground/60 group-hover:text-muted-foreground transition-colors" />
+      </div>
     </button>
   );
 }

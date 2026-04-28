@@ -165,3 +165,34 @@ export function selectDaysToDischargeEta(
   const eta = new Date(dpEta);
   return Math.ceil((eta.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
 }
+
+/* ─────────── Transit days ─────────── */
+
+/**
+ * Per-project transit days (LP-ED → DP-ETA, with documented fallbacks).
+ *
+ * Returns rounded integer days, or `null` when either endpoint is missing
+ * or the interval is non-positive.
+ *
+ * **Single source of truth** — both the VelocityTile aggregate AND the
+ * VelocityBreakdown rows call this so the tile's "Min 5 / Max 89 / Avg 24"
+ * always matches the breakdown's shortest/longest/average row exactly.
+ *
+ * Milestone fallback chain (matches D365 F&O voyage workflow):
+ * - Start: `lpEd` (loading end) → `blDate` (Bill of Lading)
+ * - End:   `dpEta` (discharge ETA) → `dpNorAccepted` (NOR accepted)
+ */
+export function selectTransitDays(
+  p: Pick<Project, "vesselPlan">
+): number | null {
+  const ms = p.vesselPlan?.milestones;
+  if (!ms) return null;
+  const startIso = ms.lpEd ?? ms.blDate ?? null;
+  const endIso = ms.dpEta ?? ms.dpNorAccepted ?? null;
+  if (!startIso || !endIso) return null;
+  const start = new Date(startIso).getTime();
+  const end = new Date(endIso).getTime();
+  if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start)
+    return null;
+  return Math.round((end - start) / (1000 * 60 * 60 * 24));
+}

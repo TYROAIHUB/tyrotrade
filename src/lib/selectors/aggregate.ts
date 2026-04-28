@@ -5,6 +5,7 @@ import {
   selectEstimateTotal,
   selectStage,
   selectTotalKg,
+  selectTransitDays,
   type RouteStage,
 } from "./project";
 import { selectProjectPL } from "./profitLoss";
@@ -332,32 +333,32 @@ export interface VelocityStats {
  * preferred, blDate fallback) and the discharge-arrival milestone (dpEta
  * preferred, dpNorAccepted fallback). Projects missing either endpoint
  * are skipped.
+ *
+ * Uses `selectTransitDays(p)` for every per-project value so the tile and
+ * the VelocityBreakdown drawer stay perfectly in sync — same rounding,
+ * same milestone fallbacks, same skip rules. A user clicking through
+ * the tile must see exactly the same min/max/avg numbers as the rows.
  */
 export function aggregateAvgTransitDays(projects: Project[]): VelocityStats {
-  let sum = 0;
-  let min = Infinity;
-  let max = -Infinity;
-  let sampleSize = 0;
+  const days: number[] = [];
   for (const p of projects) {
-    const ms = p.vesselPlan?.milestones;
-    if (!ms) continue;
-    const startIso = ms.lpEd ?? ms.blDate ?? null;
-    const endIso = ms.dpEta ?? ms.dpNorAccepted ?? null;
-    if (!startIso || !endIso) continue;
-    const start = new Date(startIso).getTime();
-    const end = new Date(endIso).getTime();
-    if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) continue;
-    const days = (end - start) / (1000 * 60 * 60 * 24);
-    sum += days;
-    if (days < min) min = days;
-    if (days > max) max = days;
-    sampleSize++;
+    const d = selectTransitDays(p);
+    if (d != null) days.push(d);
+  }
+  if (days.length === 0)
+    return { avgDays: 0, minDays: 0, maxDays: 0, sampleSize: 0 };
+  const sum = days.reduce((a, b) => a + b, 0);
+  let min = days[0];
+  let max = days[0];
+  for (const d of days) {
+    if (d < min) min = d;
+    if (d > max) max = d;
   }
   return {
-    avgDays: sampleSize > 0 ? sum / sampleSize : 0,
-    minDays: sampleSize > 0 ? min : 0,
-    maxDays: sampleSize > 0 ? max : 0,
-    sampleSize,
+    avgDays: Math.round(sum / days.length),
+    minDays: min,
+    maxDays: max,
+    sampleSize: days.length,
   };
 }
 
