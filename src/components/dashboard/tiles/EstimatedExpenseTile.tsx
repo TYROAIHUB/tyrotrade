@@ -91,13 +91,24 @@ export function EstimatedExpenseTile({
       rowSpan={rowSpan}
       onClick={onClick}
     >
-      <div className="flex flex-col gap-2.5 h-full">
+      {/*
+        Layout mirrors ActivePipelineTile (sibling on the same row): same
+        outer `flex-col gap-3`, same headline size (40px primary + 11px
+        supporting label, baseline-aligned), same `mt-auto` bar block,
+        same single-row inline legend. When the two tiles sit side-by-
+        side the headlines, bars, and legend rows all read on the same
+        horizontal Y — symmetric.
+      */}
+      <div className="flex flex-col gap-3 h-full">
         <div
-          className="flex items-baseline gap-1.5"
+          className="flex items-baseline gap-3"
           title={`Tahmini toplam gider — ${formatCompactCurrency(total, "USD")} · ${contributingCount} proje. Gider kalemleri zaten USD bazlı (mserp_expamountusdd).`}
         >
-          <span className="text-[26px] font-semibold leading-none tracking-tight text-rose-700">
+          <span className="text-[40px] font-semibold leading-none tracking-tight text-rose-700">
             <AnimatedNumber value={total} preset="currency" currency="USD" />
+          </span>
+          <span className="text-[11px] text-muted-foreground">
+            toplam gider
           </span>
         </div>
 
@@ -143,30 +154,32 @@ export function EstimatedExpenseTile({
                 );
               })}
             </div>
-            {/* 3-up legend chips under the bar */}
-            <div className="grid grid-cols-3 gap-1.5">
+            {/* Single-row inline legend — dot · label · value, identical
+                structural classes to ActivePipelineTile so labels and
+                percent values land on the same baseline across the two
+                tiles. Value keeps the bucket colour for semantic
+                emphasis (vs Pipeline's neutral foreground). */}
+            <div className="flex items-center justify-between gap-2 text-[10.5px] flex-wrap">
               {buckets.map((b) => {
                 const pct = (b.value / total) * 100;
                 return (
                   <div
                     key={b.key}
-                    className="flex flex-col gap-0.5 min-w-0"
+                    className="flex items-center gap-1.5 min-w-0 truncate"
                     title={`${b.label}: ${formatCompactCurrency(b.value, "USD")} · %${pct.toFixed(1)} pay`}
                   >
-                    <div className="flex items-center gap-1.5 min-w-0">
-                      <span
-                        className="size-1.5 rounded-full shrink-0"
-                        style={{ backgroundColor: b.color }}
-                      />
-                      <span className="text-[10px] text-muted-foreground truncate">
-                        {b.label}
-                      </span>
-                    </div>
                     <span
-                      className="text-[12px] font-bold tabular-nums leading-none"
+                      className="size-1.5 rounded-full shrink-0"
+                      style={{ backgroundColor: b.color }}
+                    />
+                    <span className="text-muted-foreground truncate">
+                      {b.label}
+                    </span>
+                    <span
+                      className="font-semibold tabular-nums"
                       style={{ color: b.color }}
                     >
-                      {pct.toFixed(0)}%
+                      %{pct.toFixed(0)}
                     </span>
                   </div>
                 );
