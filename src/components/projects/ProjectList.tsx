@@ -67,8 +67,18 @@ interface FilterState {
   traders: Set<string>;
   /** Company codes (`vesselPlan.companyId`). */
   companies: Set<string>;
+  /** Supplier names (`vesselPlan.supplier`, sourced from mserp_tryseller). */
+  suppliers: Set<string>;
+  /** Buyer names (`vesselPlan.buyer`, sourced from mserp_trybuyer). */
+  buyers: Set<string>;
+  /** Vessel names (`vesselPlan.vesselName`). */
+  vessels: Set<string>;
   /** Single-select preset for `project.projectDate`. `null` = no filter. */
   dateRange: DateRangeKey | null;
+  /** Custom date-range bounds (ISO yyyy-MM-dd). When either is set,
+   *  overrides `dateRange` preset. Both inclusive. */
+  dateFrom: string | null;
+  dateTo: string | null;
   /** When false (default), projects without `vesselPlan` are hidden. */
   includeWithoutShipPlan: boolean;
 }
@@ -82,7 +92,12 @@ const EMPTY_FILTERS: FilterState = {
   voyageStatuses: new Set(),
   traders: new Set(),
   companies: new Set(),
+  suppliers: new Set(),
+  buyers: new Set(),
+  vessels: new Set(),
   dateRange: null,
+  dateFrom: null,
+  dateTo: null,
   includeWithoutShipPlan: false,
 };
 
@@ -104,6 +119,9 @@ export function ProjectList({ projects, selectedId, onSelect }: ProjectListProps
     availableVoyageStatuses,
     availableTraders,
     availableCompanies,
+    availableSuppliers,
+    availableBuyers,
+    availableVessels,
   } = React.useMemo(() => {
     const s = new Set<string>();
     const g = new Set<string>();
@@ -112,6 +130,9 @@ export function ProjectList({ projects, selectedId, onSelect }: ProjectListProps
     const vs = new Set<string>();
     const tr = new Set<string>();
     const co = new Set<string>();
+    const sup = new Set<string>();
+    const buy = new Set<string>();
+    const ves = new Set<string>();
     for (const p of projects) {
       if (p.status) s.add(p.status);
       if (p.projectGroup) g.add(p.projectGroup);
@@ -120,6 +141,12 @@ export function ProjectList({ projects, selectedId, onSelect }: ProjectListProps
       if (p.vesselPlan?.vesselStatus) vs.add(p.vesselPlan.vesselStatus);
       if (p.traderNo) tr.add(p.traderNo);
       if (p.vesselPlan?.companyId) co.add(p.vesselPlan.companyId);
+      const supplier = p.vesselPlan?.supplier?.trim();
+      if (supplier) sup.add(supplier);
+      const buyer = p.vesselPlan?.buyer?.trim();
+      if (buyer) buy.add(buyer);
+      const vessel = p.vesselPlan?.vesselName?.trim();
+      if (vessel && vessel !== "—") ves.add(vessel);
     }
     return {
       availableStatuses: [...s].sort(),
@@ -129,6 +156,9 @@ export function ProjectList({ projects, selectedId, onSelect }: ProjectListProps
       availableVoyageStatuses: [...vs].sort(),
       availableTraders: [...tr].sort(),
       availableCompanies: [...co].sort(),
+      availableSuppliers: [...sup].sort(),
+      availableBuyers: [...buy].sort(),
+      availableVessels: [...ves].sort(),
     };
   }, [projects]);
 
@@ -158,8 +188,29 @@ export function ProjectList({ projects, selectedId, onSelect }: ProjectListProps
         !filters.companies.has(p.vesselPlan?.companyId ?? "")
       )
         return false;
-      if (dateCutoff && (!p.projectDate || p.projectDate < dateCutoff))
+      if (filters.suppliers.size > 0) {
+        const sup = (p.vesselPlan?.supplier ?? "").trim();
+        if (!filters.suppliers.has(sup)) return false;
+      }
+      if (filters.buyers.size > 0) {
+        const buy = (p.vesselPlan?.buyer ?? "").trim();
+        if (!filters.buyers.has(buy)) return false;
+      }
+      if (filters.vessels.size > 0) {
+        const ves = (p.vesselPlan?.vesselName ?? "").trim();
+        if (!filters.vessels.has(ves)) return false;
+      }
+      // Custom date range overrides the preset cutoff. Both `from` and
+      // `to` are inclusive ISO yyyy-MM-dd strings — projectDate strings
+      // are also yyyy-MM-dd, so direct lexicographic comparison works.
+      if (filters.dateFrom || filters.dateTo) {
+        const pd = p.projectDate?.slice(0, 10) ?? "";
+        if (!pd) return false;
+        if (filters.dateFrom && pd < filters.dateFrom) return false;
+        if (filters.dateTo && pd > filters.dateTo) return false;
+      } else if (dateCutoff && (!p.projectDate || p.projectDate < dateCutoff)) {
         return false;
+      }
       if (!q) return true;
       const haystack = [
         p.projectNo,
@@ -188,7 +239,11 @@ export function ProjectList({ projects, selectedId, onSelect }: ProjectListProps
     filters.voyageStatuses.size +
     filters.traders.size +
     filters.companies.size +
+    filters.suppliers.size +
+    filters.buyers.size +
+    filters.vessels.size +
     (filters.dateRange ? 1 : 0) +
+    (filters.dateFrom || filters.dateTo ? 1 : 0) +
     (filters.includeWithoutShipPlan ? 1 : 0);
 
   const clearAll = () =>
@@ -201,7 +256,12 @@ export function ProjectList({ projects, selectedId, onSelect }: ProjectListProps
       voyageStatuses: new Set(),
       traders: new Set(),
       companies: new Set(),
+      suppliers: new Set(),
+      buyers: new Set(),
+      vessels: new Set(),
       dateRange: null,
+      dateFrom: null,
+      dateTo: null,
       includeWithoutShipPlan: false,
     });
 
@@ -278,6 +338,9 @@ export function ProjectList({ projects, selectedId, onSelect }: ProjectListProps
             availableVoyageStatuses={availableVoyageStatuses}
             availableTraders={availableTraders}
             availableCompanies={availableCompanies}
+            availableSuppliers={availableSuppliers}
+            availableBuyers={availableBuyers}
+            availableVessels={availableVessels}
             onClearAll={clearAll}
           />
         </div>
@@ -313,6 +376,9 @@ function FilterPopover({
   availableVoyageStatuses,
   availableTraders,
   availableCompanies,
+  availableSuppliers,
+  availableBuyers,
+  availableVessels,
   onClearAll,
 }: {
   filters: FilterState;
@@ -325,6 +391,9 @@ function FilterPopover({
   availableVoyageStatuses: string[];
   availableTraders: string[];
   availableCompanies: string[];
+  availableSuppliers: string[];
+  availableBuyers: string[];
+  availableVessels: string[];
   onClearAll: () => void;
 }) {
   const accent = useThemeAccent();
@@ -450,6 +519,19 @@ function FilterPopover({
             selected={filters.dateRange}
             onSelect={(k) => setFilters({ ...filters, dateRange: k })}
           />
+          {/* Custom project date range (yyyy-MM-dd) — overrides the preset
+              cutoff above. Both inputs are independent: leaving one empty
+              creates a one-sided window. */}
+          <DateRangeSection
+            title="Aralık (Proje Tarihi)"
+            count={filters.dateFrom || filters.dateTo ? 1 : 0}
+            from={filters.dateFrom}
+            to={filters.dateTo}
+            onChange={(from, to) =>
+              setFilters({ ...filters, dateFrom: from, dateTo: to })
+            }
+            accent={accent}
+          />
           {availableVoyageStatuses.length > 0 && (
             <FilterSection
               title="Sefer Durumu"
@@ -486,6 +568,42 @@ function FilterPopover({
                   ...filters,
                   companies: toggle(filters.companies, v),
                 })
+              }
+            />
+          )}
+          {availableVessels.length > 0 && (
+            <FilterSection
+              title="Gemi"
+              count={filters.vessels.size}
+              options={availableVessels}
+              selected={filters.vessels}
+              onToggle={(v) =>
+                setFilters({ ...filters, vessels: toggle(filters.vessels, v) })
+              }
+            />
+          )}
+          {availableSuppliers.length > 0 && (
+            <FilterSection
+              title="Tedarikçi"
+              count={filters.suppliers.size}
+              options={availableSuppliers}
+              selected={filters.suppliers}
+              onToggle={(v) =>
+                setFilters({
+                  ...filters,
+                  suppliers: toggle(filters.suppliers, v),
+                })
+              }
+            />
+          )}
+          {availableBuyers.length > 0 && (
+            <FilterSection
+              title="Müşteri / Alıcı"
+              count={filters.buyers.size}
+              options={availableBuyers}
+              selected={filters.buyers}
+              onToggle={(v) =>
+                setFilters({ ...filters, buyers: toggle(filters.buyers, v) })
               }
             />
           )}
@@ -561,6 +679,90 @@ function FilterPopover({
 /** Single-select chip group — picking the same chip twice clears it.
  *  Shares the `FilterSection` look so the popover stays visually
  *  consistent. */
+
+/* DateRangeSection — two `<input type="date">` fields for a custom
+ *  project-date window. Both inclusive; either can be left blank for
+ *  a one-sided window (since X / before Y). Active when at least one
+ *  bound is set; takes precedence over the preset row above. */
+function DateRangeSection({
+  title,
+  count,
+  from,
+  to,
+  onChange,
+  accent,
+}: {
+  title: string;
+  count: number;
+  from: string | null;
+  to: string | null;
+  onChange: (from: string | null, to: string | null) => void;
+  accent: { solid: string; ring: string };
+}) {
+  return (
+    <div className="flex flex-col gap-1.5">
+      <div className="flex items-center justify-between text-[10.5px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+        <span>{title}</span>
+        <div className="flex items-center gap-1.5">
+          {count > 0 && (
+            <button
+              type="button"
+              onClick={() => onChange(null, null)}
+              className="text-[10.5px] font-medium text-muted-foreground hover:text-foreground"
+              title="Aralığı temizle"
+            >
+              temizle
+            </button>
+          )}
+          {count > 0 && (
+            <span
+              className="h-[18px] min-w-[18px] inline-flex items-center justify-center rounded-full px-1.5 text-[10px] font-bold tabular-nums"
+              style={{
+                backgroundColor: "var(--filter-active-bg)",
+                color: "var(--filter-active-fg)",
+              }}
+            >
+              {count}
+            </span>
+          )}
+        </div>
+      </div>
+      <div className="grid grid-cols-2 gap-1.5">
+        <label className="flex flex-col gap-0.5">
+          <span className="text-[10px] text-muted-foreground/85 font-medium">
+            Başlangıç
+          </span>
+          <input
+            type="date"
+            value={from ?? ""}
+            onChange={(e) => onChange(e.target.value || null, to)}
+            className="h-7 rounded-md border border-input bg-background px-2 text-[11.5px] outline-none focus:border-ring focus:ring-1 focus:ring-ring tabular-nums"
+            style={
+              from
+                ? { borderColor: accent.solid, color: "#0f172a" }
+                : undefined
+            }
+          />
+        </label>
+        <label className="flex flex-col gap-0.5">
+          <span className="text-[10px] text-muted-foreground/85 font-medium">
+            Bitiş
+          </span>
+          <input
+            type="date"
+            value={to ?? ""}
+            onChange={(e) => onChange(from, e.target.value || null)}
+            className="h-7 rounded-md border border-input bg-background px-2 text-[11.5px] outline-none focus:border-ring focus:ring-1 focus:ring-ring tabular-nums"
+            style={
+              to ? { borderColor: accent.solid, color: "#0f172a" } : undefined
+            }
+          />
+        </label>
+      </div>
+    </div>
+  );
+}
+
 function SingleSelectSection({
   title,
   count,
