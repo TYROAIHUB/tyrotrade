@@ -1,4 +1,10 @@
-import { TrendingUp, TrendingDown, Minus } from "lucide-react";
+import * as React from "react";
+import {
+  TrendingUp,
+  TrendingDown,
+  Minus,
+  ChevronDown,
+} from "lucide-react";
 import { GlassPanel } from "@/components/glass/GlassPanel";
 import { AccentIconBadge, TONE_PL } from "./AccentIconBadge";
 import { formatCurrency } from "@/lib/format";
@@ -28,6 +34,11 @@ interface Props {
 export function BudgetSalesCard({ project }: Props) {
   const lines = project.lines ?? [];
   const currency = lines[0]?.currency ?? project.currency ?? "USD";
+
+  // Expand/collapse — closed by default like the ProfitLossCard
+  // above. Operators see the bottom-line delta + progress at a
+  // glance; click the chevron to drill into the per-side stat rows.
+  const [open, setOpen] = React.useState(false);
 
   const tahminiSatis = selectSalesTotal(project);
   const gerceklesenSatis = project.salesActualUsd ?? 0;
@@ -70,7 +81,15 @@ export function BudgetSalesCard({ project }: Props) {
   return (
     <GlassPanel tone="default" className="rounded-2xl">
       <div className="p-4">
-        <div className="flex items-center gap-2.5 mb-3">
+        {/* Header doubles as the expand/collapse toggle — same pattern
+            as the ProfitLossCard above so the right rail behaves
+            consistently across both forecast cards. */}
+        <button
+          type="button"
+          onClick={() => setOpen((v) => !v)}
+          aria-expanded={open}
+          className="w-full flex items-center gap-2.5 mb-3 text-left cursor-pointer hover:opacity-90 transition-colors"
+        >
           <AccentIconBadge size="sm" tone={TONE_PL}>
             <Icon className="size-4" strokeWidth={2} />
           </AccentIconBadge>
@@ -82,21 +101,32 @@ export function BudgetSalesCard({ project }: Props) {
               Tahmini × Gerçekleşen Satış
             </div>
           </div>
-        </div>
+          <ChevronDown
+            className={cn(
+              "size-4 shrink-0 text-muted-foreground transition-transform",
+              open && "rotate-180"
+            )}
+          />
+        </button>
 
         <div className="rounded-xl border border-border/40 overflow-hidden">
-          {/* Two side-by-side stat rows: Tahmini, then Gerçekleşen. */}
-          <StatRow
-            label="Tahmini Satış"
-            sub="Σ (ton × birim fiyat)"
-            value={formatCurrency(tahminiSatis, currency)}
-            muted
-          />
-          <StatRow
-            label="Gerçekleşen Satış"
-            sub="Σ faturalı satışlar (USD)"
-            value={formatCurrency(gerceklesenSatis, "USD")}
-          />
+          {/* Stat rows revealed only when the user expands the card —
+              the bottom-line delta + achievement bar always show. */}
+          {open && (
+            <>
+              <StatRow
+                label="Tahmini Satış"
+                sub="Σ (ton × birim fiyat)"
+                value={formatCurrency(tahminiSatis, currency)}
+                muted
+              />
+              <StatRow
+                label="Gerçekleşen Satış"
+                sub="Σ faturalı satışlar (USD)"
+                value={formatCurrency(gerceklesenSatis, "USD")}
+              />
+            </>
+          )}
           {/* Delta row — sign-coloured, % vs estimate */}
           <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-x-3 px-3 py-2.5 bg-foreground/[0.04] items-baseline">
             <div className="min-w-0">
