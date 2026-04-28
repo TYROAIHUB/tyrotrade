@@ -409,9 +409,15 @@ function toVesselPlan(s: Record<string, unknown>): VesselPlan {
     dpEd: isoDate(s["mserp_trydischargeenddate"]),
   };
 
+  // Supplier (Tedarikçi Firma) lives on `mserp_tryseller`. The earlier
+  // mapping preferred `mserp_charterepartyname` (Gemiyi Kiralayan) which
+  // is the *charterer*, not the supplier — so the dashboard's "En büyük
+  // tedarikçi" rollup was effectively counting carriers. Read tryseller
+  // first; fall back to charterepartyname only when seller is absent so
+  // legacy rows still render something rather than blank.
   const supplier =
-    readString(s, "mserp_charterepartyname") ||
     readString(s, "mserp_tryseller") ||
+    readString(s, "mserp_charterepartyname") ||
     "";
 
   const description = readVesselDescription(s);

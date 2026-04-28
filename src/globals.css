@@ -429,6 +429,25 @@
   border: 2px solid transparent;
 }
 
+/* MapLibre attribution — collapse to (i) icon by default.
+ *
+ * The Carto + OSM licence requires attribution to be visible on demand,
+ * not always-on. MapLibre's `compact` mode forces an info-icon trigger,
+ * but on wider viewports it still renders the full text alongside.
+ * These overrides hide the inner attribution string until the user
+ * clicks the (i) — same UX as Google/Mapbox compact controls — while
+ * preserving full hover/click reveal for compliance. */
+.maplibregl-ctrl-attrib.maplibregl-compact:not(.maplibregl-compact-show)
+  .maplibregl-ctrl-attrib-inner {
+  display: none !important;
+}
+.maplibregl-ctrl-attrib.maplibregl-compact:not(.maplibregl-compact-show) {
+  background: rgba(255, 255, 255, 0.85);
+  padding: 2px 24px 2px 4px;
+  min-height: 24px;
+  min-width: 24px;
+}
+
 .dark {
   --background: oklch(0.145 0 0);
   --foreground: oklch(0.985 0 0);
