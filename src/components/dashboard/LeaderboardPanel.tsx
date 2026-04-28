@@ -403,15 +403,6 @@ export function LeaderboardPanel({ projects }: LeaderboardPanelProps) {
               layout="vertical"
               margin={{ left: 8, right: 80, top: 4, bottom: 4 }}
               barCategoryGap="35%"
-              onClick={(state) => {
-                const s = state as unknown as {
-                  activePayload?: Array<{ payload?: ChartRow }>;
-                };
-                const payload = s.activePayload?.[0]?.payload;
-                if (payload?.projectNo) {
-                  navigate(`/projects/${payload.projectNo}`);
-                }
-              }}
             >
               <CartesianGrid horizontal={false} strokeDasharray="3 3" />
               <XAxis
@@ -453,7 +444,20 @@ export function LeaderboardPanel({ projects }: LeaderboardPanelProps) {
                   />
                 }
               />
-              <Bar dataKey="value" shape={<StripedBar />} cursor="pointer">
+              <Bar
+                dataKey="value"
+                shape={<StripedBar />}
+                cursor="pointer"
+                onClick={(payload) => {
+                  // recharts hands the row's payload directly — far
+                  // more reliable than BarChart-level activePayload
+                  // sniffing when a custom `shape` is in play.
+                  const row = payload as unknown as ChartRow | undefined;
+                  if (row?.projectNo) {
+                    navigate(`/projects/${row.projectNo}`);
+                  }
+                }}
+              >
                 {data.map((_, i) => (
                   <Cell key={i} fill={rankColor(board, i)} />
                 ))}
