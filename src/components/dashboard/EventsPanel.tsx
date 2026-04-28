@@ -148,7 +148,7 @@ export function EventsPanel({
   return (
     <GlassPanel tone="default" className="rounded-2xl h-full flex flex-col">
       <div className="px-4 pt-4 pb-2">
-        <h3 className="text-sm font-semibold">Olaylar</h3>
+        <h3 className="text-sm font-bold text-slate-900">Olaylar</h3>
         <p className="text-[11px] text-muted-foreground">
           Son {recentWindowDays} gün
           {isUsingFallback

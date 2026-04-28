@@ -70,7 +70,10 @@ export function ActivePipelineTile({
           className="flex items-baseline gap-3"
           title={`${total} proje takipte — sadece vesselPlan.vesselStatus tanımlı projeler. Voyage durumlarına göre dağılım çubukta.`}
         >
-          <span className="text-[40px] font-semibold leading-none tracking-tight">
+          {/* 30px matches Tahmini Gider's headline so the two tiles on
+              this row read as size-paired siblings; "proje takipte"
+              supporting label keeps its 11px scale and baseline. */}
+          <span className="text-[30px] font-semibold leading-none tracking-tight">
             <AnimatedNumber value={total} preset="count" />
           </span>
           <span className="text-[11px] text-muted-foreground">

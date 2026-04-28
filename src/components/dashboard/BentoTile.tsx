@@ -122,7 +122,12 @@ export function BentoTile({
             <header className="flex items-center justify-between gap-2 min-w-0">
               <div className="min-w-0 flex-1">
                 {title && (
-                  <div className="text-[11px] font-bold uppercase tracking-[0.12em] text-foreground/75 truncate">
+                  // Dark navy ink (`text-slate-900`) instead of the
+                  // earlier muted `text-foreground/75` — gives KPI tile
+                  // titles a deliberate weight that lifts them off the
+                  // glass surface without competing with the headline
+                  // numbers below.
+                  <div className="text-[11px] font-bold uppercase tracking-[0.12em] text-slate-900 truncate">
                     {title}
                   </div>
                 )}

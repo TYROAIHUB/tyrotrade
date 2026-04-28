@@ -324,7 +324,7 @@ export function LeaderboardSegmentsPanel({
   return (
     <Card className="overflow-hidden">
       <CardHeader className="flex flex-col gap-3 space-y-0 pb-3">
-        <CardTitle className="flex items-center gap-2 text-base">
+        <CardTitle className="flex items-center gap-2 text-base font-bold text-slate-900">
           <HugeiconsIcon
             icon={Crown02Icon}
             size={20}
