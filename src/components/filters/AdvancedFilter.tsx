@@ -58,14 +58,17 @@ interface AdvancedFilterProps {
   className?: string;
 }
 
-/** Cool medium-dark slate gradient — used when `tone="muted"`. Kept
- *  in module scope so both the icon-only and pill variants pull from
- *  the same source of truth. */
+/** Cool light-to-dark slate gradient — used when `tone="muted"`. Same
+ *  3-stop sweep dialect as the TYRO AI emerald gradient, but in a
+ *  neutral grey palette so the dashboard's filter pill reads as a
+ *  calm sibling rather than a competing accent. Slate-400 → slate-500
+ *  → slate-800 gives a visible light-to-dark sheen without going
+ *  black. Active-count badge stays slate-800 ink. */
 const MUTED_TONE = {
   gradient:
-    "linear-gradient(135deg, #64748b 0%, #475569 55%, #334155 100%)",
-  ring: "rgba(51, 65, 85, 0.55)",
-  solid: "#334155",
+    "linear-gradient(135deg, #94a3b8 0%, #64748b 55%, #1e293b 100%)",
+  ring: "rgba(30, 41, 59, 0.55)",
+  solid: "#1e293b",
 };
 
 /**
