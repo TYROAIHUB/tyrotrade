@@ -37,6 +37,11 @@ export interface ProjectFilterState {
   suppliers: Set<string>;
   buyers: Set<string>;
   vessels: Set<string>;
+  /** Specific project codes (PRJ.../TRK...). Lets the user narrow
+   *  down to a hand-picked list when they know exactly which projects
+   *  they care about. Independent of route-driven `selectedId` —
+   *  navigation never auto-populates this set. */
+  projectNos: Set<string>;
 
   /** When false, projects without `vesselPlan` are dropped. Default
    *  varies per page — the dashboard wants inclusive (true), the
@@ -65,6 +70,7 @@ export function makeEmptyFilters(
     suppliers: new Set(),
     buyers: new Set(),
     vessels: new Set(),
+    projectNos: new Set(),
     includeWithoutShipPlan: opts.includeWithoutShipPlan ?? true,
   };
 }
@@ -108,6 +114,7 @@ export function applyProjectFilter(
       const ves = (p.vesselPlan?.vesselName ?? "").trim();
       if (!f.vessels.has(ves)) return false;
     }
+    if (f.projectNos.size > 0 && !f.projectNos.has(p.projectNo)) return false;
     return true;
   });
 }
@@ -133,6 +140,7 @@ export function projectFilterCount(
     f.suppliers.size +
     f.buyers.size +
     f.vessels.size +
+    f.projectNos.size +
     (f.includeWithoutShipPlan === shipPlanDefault ? 0 : 1) +
     (periodActive ? 1 : 0)
   );
@@ -151,6 +159,11 @@ export interface AvailableOptions {
   suppliers: string[];
   buyers: string[];
   vessels: string[];
+  /** Project options carry the full {value, label, keywords} shape so
+   *  the combobox can show "PRJ000123 — 55KMT BRZ SOY" as the label
+   *  while storing only the projectNo in the selection Set, and
+   *  cmdk's search matches against both code and name keywords. */
+  projects: Array<{ value: string; label: string; keywords: string[]; sub?: string }>;
 }
 
 export function extractAvailableOptions(
@@ -181,6 +194,27 @@ export function extractAvailableOptions(
     const vessel = p.vesselPlan?.vesselName?.trim();
     if (vessel && vessel !== "—") ves.add(vessel);
   }
+  // Project options — sorted by projectNo descending (newest IDs
+  // surface first; F&O assigns these monotonically). Keywords mix
+  // projectNo + projectName + segment so a search for "soybean" or
+  // "international" or "PRJ123" all hit.
+  const projectOptions = projects
+    .map((p) => ({
+      value: p.projectNo,
+      label: `${p.projectNo} — ${truncate(p.projectName, 60)}`,
+      keywords: [
+        p.projectNo,
+        p.projectName,
+        p.segment ?? "",
+        p.projectGroup ?? "",
+        p.vesselPlan?.vesselName ?? "",
+      ].filter(Boolean),
+      sub: p.vesselPlan?.vesselName
+        ? `Gemi: ${p.vesselPlan.vesselName}`
+        : undefined,
+    }))
+    .sort((a, b) => b.value.localeCompare(a.value));
+
   return {
     statuses: [...s].sort(),
     groups: [...g].sort(),
@@ -192,5 +226,12 @@ export function extractAvailableOptions(
     suppliers: [...sup].sort(),
     buyers: [...buy].sort(),
     vessels: [...ves].sort(),
+    projects: projectOptions,
   };
+}
+
+function truncate(s: string, max: number): string {
+  const t = (s ?? "").trim();
+  if (t.length <= max) return t;
+  return t.slice(0, max - 1) + "…";
 }

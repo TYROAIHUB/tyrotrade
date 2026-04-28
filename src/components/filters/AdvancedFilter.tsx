@@ -14,7 +14,10 @@ import {
   ToggleGroupItem,
 } from "@/components/ui/toggle-group";
 import { Button } from "@/components/ui/button";
-import { MultiSelectCombobox } from "@/components/ui/multi-select-combobox";
+import {
+  MultiSelectCombobox,
+  type MultiSelectOption,
+} from "@/components/ui/multi-select-combobox";
 import { useThemeAccent } from "@/components/layout/theme-accent";
 import {
   extractAvailableOptions,
@@ -104,6 +107,7 @@ export function AdvancedFilter({
       suppliers: new Set(),
       buyers: new Set(),
       vessels: new Set(),
+      projectNos: new Set(),
       includeWithoutShipPlan: shipPlanDefault,
     });
   }
@@ -330,6 +334,23 @@ export function AdvancedFilter({
               selected={filters.segments}
               onChange={(next) => onChange({ ...filters, segments: next })}
               placeholder="Tüm segmentler"
+              accent={accent}
+            />
+          )}
+
+          {/* 4b. Proje No — combobox with rich {value, label, keywords}
+              options so the user can type either a project code, a
+              fragment of the name, vessel name, segment, or group and
+              hit the right rows. Search is fuzzy via cmdk. */}
+          {options.projects.length > 0 && (
+            <ComboboxSection
+              title="Proje No"
+              count={filters.projectNos.size}
+              options={options.projects}
+              selected={filters.projectNos}
+              onChange={(next) => onChange({ ...filters, projectNos: next })}
+              placeholder="Tüm projeler"
+              searchPlaceholder="Proje no, ad, gemi, segment ara…"
               accent={accent}
             />
           )}
@@ -638,7 +659,7 @@ function ComboboxSection({
 }: {
   title: string;
   count: number;
-  options: string[];
+  options: ReadonlyArray<MultiSelectOption>;
   selected: Set<string>;
   onChange: (next: Set<string>) => void;
   placeholder?: string;

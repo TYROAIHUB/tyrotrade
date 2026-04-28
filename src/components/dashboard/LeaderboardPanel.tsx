@@ -272,8 +272,9 @@ function LeftAlignedTick(props: {
   x?: number;
   y?: number;
   payload?: { value?: string | number };
+  onProjectClick?: (projectNo: string) => void;
 }) {
-  const { x = 0, y = 0, payload } = props;
+  const { x = 0, y = 0, payload, onProjectClick } = props;
   const value = String(payload?.value ?? "");
   const sepIdx = value.indexOf("␟");
   const code = sepIdx > 0 ? value.slice(0, sepIdx) : value;
@@ -283,6 +284,7 @@ function LeftAlignedTick(props: {
   const foX = safeLeft;
   const foWidth = Math.max(0, x - safeLeft - safeRight);
   const blockHeight = 48;
+  const handleClick = onProjectClick && code ? () => onProjectClick(code) : undefined;
   return (
     <foreignObject
       x={foX}
@@ -292,6 +294,19 @@ function LeftAlignedTick(props: {
       style={{ overflow: "hidden" }}
     >
       <div
+        onClick={handleClick}
+        role={handleClick ? "button" : undefined}
+        tabIndex={handleClick ? 0 : undefined}
+        onKeyDown={
+          handleClick
+            ? (e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  handleClick();
+                }
+              }
+            : undefined
+        }
         style={{
           display: "flex",
           flexDirection: "column",
@@ -300,6 +315,7 @@ function LeftAlignedTick(props: {
           gap: 2,
           overflow: "hidden",
           color: "var(--foreground)",
+          cursor: handleClick ? "pointer" : undefined,
         }}
       >
         <span
@@ -436,7 +452,11 @@ export function LeaderboardPanel({ projects }: LeaderboardPanelProps) {
                 tickMargin={12}
                 width={300}
                 interval={0}
-                tick={<LeftAlignedTick />}
+                tick={
+                  <LeftAlignedTick
+                    onProjectClick={(no) => navigate(`/projects/${no}`)}
+                  />
+                }
               />
               <ChartTooltip
                 cursor={{ fill: "var(--muted)", opacity: 0.4 }}

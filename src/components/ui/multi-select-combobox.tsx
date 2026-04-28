@@ -16,9 +16,17 @@ import {
 } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 
+/** Option as either a bare string (value === label) or a rich object
+ *  with separate value / label / keywords for searchable comboboxes
+ *  where the display string is richer than the underlying selection
+ *  value (e.g. "PRJ000123 — 55KMT BRZ SOY" with value `PRJ000123`). */
+export type MultiSelectOption =
+  | string
+  | { value: string; label: string; keywords?: string[]; sub?: string };
+
 interface MultiSelectComboboxProps {
-  /** Plain string options. The component handles its own search. */
-  options: string[];
+  /** Options — strings OR rich {value, label, keywords, sub} objects. */
+  options: ReadonlyArray<MultiSelectOption>;
   /** Currently-selected values (Set for O(1) toggle). */
   selected: Set<string>;
   /** Callback receives the next Set when toggled. */
@@ -35,6 +43,15 @@ interface MultiSelectComboboxProps {
   triggerClassName?: string;
   /** Optional max-height override on the list (default 240px). */
   maxListHeight?: number;
+}
+
+function normalizeOption(o: MultiSelectOption): {
+  value: string;
+  label: string;
+  keywords?: string[];
+  sub?: string;
+} {
+  return typeof o === "string" ? { value: o, label: o } : o;
 }
 
 /**
@@ -74,6 +91,18 @@ export function MultiSelectCombobox({
   const count = selected.size;
   const hasSelection = count > 0;
 
+  // Build a value→label lookup so trigger chips can render the
+  // friendlier label instead of the raw value when rich options are
+  // supplied. Bare-string options collapse value === label.
+  const labelByValue = React.useMemo(() => {
+    const m = new Map<string, string>();
+    for (const o of options) {
+      const n = normalizeOption(o);
+      m.set(n.value, n.label);
+    }
+    return m;
+  }, [options]);
+
   return (
     <div className={className}>
       <Popover open={open} onOpenChange={setOpen}>
@@ -112,7 +141,7 @@ export function MultiSelectCombobox({
                       boxShadow: `inset 0 0 0 1px ${accent.ring}`,
                     }}
                   >
-                    <span className="truncate">{v}</span>
+                    <span className="truncate">{labelByValue.get(v) ?? v}</span>
                     <X
                       className="size-2.5 shrink-0 opacity-70 hover:opacity-100"
                       onClick={(e) => {
@@ -153,12 +182,18 @@ export function MultiSelectCombobox({
               <CommandEmpty>{emptyText}</CommandEmpty>
               <CommandGroup>
                 {options.map((opt) => {
-                  const isSelected = selected.has(opt);
+                  const n = normalizeOption(opt);
+                  const isSelected = selected.has(n.value);
+                  // cmdk filters by `value` + `keywords` — so rich
+                  // options can surface in a search even when the
+                  // visible label doesn't match the query (e.g. type
+                  // "soybean" to find a project whose name has it).
                   return (
                     <CommandItem
-                      key={opt}
-                      value={opt}
-                      onSelect={() => toggle(opt)}
+                      key={n.value}
+                      value={n.value}
+                      keywords={n.keywords}
+                      onSelect={() => toggle(n.value)}
                       className="cursor-pointer"
                     >
                       <span
@@ -174,7 +209,16 @@ export function MultiSelectCombobox({
                           <Check className="size-3 text-white" strokeWidth={3} />
                         )}
                       </span>
-                      <span className="truncate text-foreground/90">{opt}</span>
+                      <div className="min-w-0 flex-1">
+                        <div className="truncate text-foreground/90">
+                          {n.label}
+                        </div>
+                        {n.sub && (
+                          <div className="truncate text-[10.5px] text-muted-foreground/80">
+                            {n.sub}
+                          </div>
+                        )}
+                      </div>
                     </CommandItem>
                   );
                 })}
