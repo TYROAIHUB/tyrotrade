@@ -2,7 +2,7 @@ import * as React from "react";
 import { Link } from "react-router-dom";
 import { Eraser } from "lucide-react";
 import { HugeiconsIcon } from "@hugeicons/react";
-import { AiBrain02Icon, FlashIcon } from "@hugeicons/core-free-icons";
+import { AiBrain02Icon, Robot01Icon } from "@hugeicons/core-free-icons";
 import {
   Sheet,
   SheetContent,
@@ -251,7 +251,7 @@ function WelcomeState({
             color: accent.solid,
           }}
         >
-          <HugeiconsIcon icon={FlashIcon} size={22} strokeWidth={1.75} />
+          <HugeiconsIcon icon={Robot01Icon} size={22} strokeWidth={1.75} />
         </span>
         <div className="text-center">
           <h3 className="text-[15px] font-semibold tracking-tight">
