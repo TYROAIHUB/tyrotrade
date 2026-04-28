@@ -1,7 +1,7 @@
 import * as React from "react";
 import { HugeiconsIcon } from "@hugeicons/react";
 import {
-  CrownIcon,
+  LaurelWreathFirst01Icon,
   Wallet01Icon,
   ChartDownIcon,
   ChartUpIcon,
@@ -63,7 +63,7 @@ interface ChartRow {
 interface BoardConfig {
   key: BoardKey;
   label: string;
-  icon: typeof CrownIcon;
+  icon: typeof LaurelWreathFirst01Icon;
   iconColor: string;
   emptyMessage: string;
   build: (rollups: SegmentRollup[]) => ChartRow[];
@@ -75,7 +75,7 @@ const BOARDS: BoardConfig[] = [
   {
     key: "top-sales",
     label: "Satış Liderleri | Gerçekleşen",
-    icon: CrownIcon,
+    icon: LaurelWreathFirst01Icon,
     iconColor: "#e0ad3e",
     emptyMessage: "Bu filtrede faturalı segment yok.",
     build: (rollups) =>

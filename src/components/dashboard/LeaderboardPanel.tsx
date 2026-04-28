@@ -2,7 +2,7 @@ import * as React from "react";
 import { useNavigate } from "react-router-dom";
 import { HugeiconsIcon } from "@hugeicons/react";
 import {
-  CrownIcon,
+  LaurelWreathFirst01Icon,
   Wallet01Icon,
   ChartDownIcon,
   ChartUpIcon,
@@ -52,7 +52,7 @@ type BoardKey =
 interface BoardConfig {
   key: BoardKey;
   label: string;
-  icon: typeof CrownIcon;
+  icon: typeof LaurelWreathFirst01Icon;
   iconColor: string;
   emptyMessage: string;
   /** Returns the top-N rows for this board, given a period-filtered set. */
@@ -83,7 +83,7 @@ const BOARDS: BoardConfig[] = [
   {
     key: "top-sales",
     label: "Satış Liderleri | Gerçekleşen",
-    icon: CrownIcon,
+    icon: LaurelWreathFirst01Icon,
     iconColor: "#e0ad3e",
     emptyMessage: "Bu dönemde faturalı satış yok.",
     build: (filtered) =>
