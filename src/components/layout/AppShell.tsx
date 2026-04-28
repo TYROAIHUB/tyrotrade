@@ -24,7 +24,7 @@ import { cn } from "@/lib/utils";
 
 const PAGE_TITLES: Record<string, string> = {
   "/": "Dashboard",
-  "/projects": "Projeler",
+  "/projects": "Vessel Projects",
   "/data": "Veri Yönetimi",
   "/settings": "Ayarlar",
 };
@@ -43,7 +43,7 @@ function ShellInner() {
   const location = useLocation();
   const title =
     PAGE_TITLES[location.pathname] ||
-    (location.pathname.startsWith("/projects") ? "Projeler" : "tyrotrade");
+    (location.pathname.startsWith("/projects") ? "Vessel Projects" : "tyrotrade");
 
   return (
     <div className="h-screen w-screen flex overflow-hidden">
@@ -198,7 +198,7 @@ const PAGE_TITLE_CONFIGS: Array<{
     config: {
       // Sidebar uses lucide Ship for Projects
       renderIcon: () => <Ship className="size-4" strokeWidth={2} />,
-      label: "Projeler",
+      label: "Vessel Projects",
       title: "Sefer Takibi",
     },
   },

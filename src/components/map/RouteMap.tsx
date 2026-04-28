@@ -148,6 +148,25 @@ export function RouteMap({ project }: RouteMapProps) {
     fitToRoute(true);
   }, [mapReady, fitToRoute]);
 
+  // Force the MapLibre attribution control into its collapsed (i)
+  // state on mount — CSS overrides alone weren't enough because
+  // newer maplibre versions pre-apply `maplibregl-compact-show` to
+  // satisfy attribution-on-first-paint requirements. Strip the class
+  // ourselves so the control reads as a single icon at rest;
+  // attribution is still one click away (the user toggles the (i)).
+  React.useEffect(() => {
+    if (!mapReady) return;
+    const map = mapRef.current?.getMap?.();
+    if (!map) return;
+    const container = map.getContainer();
+    const attrib = container.querySelector<HTMLElement>(
+      ".maplibregl-ctrl-attrib"
+    );
+    if (!attrib) return;
+    attrib.classList.remove("maplibregl-compact-show");
+    attrib.classList.add("maplibregl-compact");
+  }, [mapReady]);
+
   const { completedLine, position, headingDeg } = React.useMemo(() => {
     if (!geom) {
       return { completedLine: null, position: null as Position | null, headingDeg: 0 };
@@ -342,18 +361,18 @@ export function RouteMap({ project }: RouteMapProps) {
                 </Marker>
               )}
 
-              {/* Attribution must stay (Carto + OSM licence). Compact
-                  mode collapses it to an info pill, and we position it
-                  bottom-right above the discharge PortChip stack so it
-                  no longer bleeds through the loading-side chip on the
-                  left. marginBottom is computed to clear the timeline
-                  strip when it's open. */}
+              {/* Attribution must stay (Carto + OSM licence). Forced
+                  collapsed-(i) state via the useEffect above + the
+                  globals.css override; we anchor it flush to the
+                  bottom-right corner so the (i) icon sits in dead
+                  space below the discharge PortChip — no overlap with
+                  the chip row or the timeline strip. */}
               <AttributionControl
                 compact
                 position="bottom-right"
                 style={{
-                  marginRight: 12,
-                  marginBottom: timelineOpen ? 188 : 96,
+                  marginRight: 4,
+                  marginBottom: 4,
                 }}
               />
             </Map>
