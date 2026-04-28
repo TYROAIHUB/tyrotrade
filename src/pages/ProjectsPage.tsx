@@ -72,8 +72,14 @@ export function ProjectsPage() {
     return <ProjectsEmptyState />;
   }
 
+  // Look the selected project up in the UNFILTERED rawProjects so the
+  // right panel + map keep working when the user lands here via an
+  // EventsPanel / NotificationButton click — the deep-linked project
+  // might be outside the current filter scope (different FY, different
+  // status), and we don't want a blank right rail when the URL
+  // explicitly asked for that project.
   const selected =
-    projects.find((p) => p.projectNo === selectedId) ?? null;
+    rawProjects.find((p) => p.projectNo === selectedId) ?? null;
 
   const handleSelect = (id: string) => {
     setSelectedId(id);
