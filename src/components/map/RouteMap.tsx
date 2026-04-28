@@ -342,10 +342,19 @@ export function RouteMap({ project }: RouteMapProps) {
                 </Marker>
               )}
 
+              {/* Attribution must stay (Carto + OSM licence). Compact
+                  mode collapses it to an info pill, and we position it
+                  bottom-right above the discharge PortChip stack so it
+                  no longer bleeds through the loading-side chip on the
+                  left. marginBottom is computed to clear the timeline
+                  strip when it's open. */}
               <AttributionControl
                 compact
-                position="bottom-left"
-                style={{ marginLeft: 12, marginBottom: 12 }}
+                position="bottom-right"
+                style={{
+                  marginRight: 12,
+                  marginBottom: timelineOpen ? 188 : 96,
+                }}
               />
             </Map>
           ) : (
