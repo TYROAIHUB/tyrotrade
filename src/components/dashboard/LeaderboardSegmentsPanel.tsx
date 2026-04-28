@@ -5,7 +5,7 @@ import {
   Wallet01Icon,
   ChartDownIcon,
   ChartUpIcon,
-  MapingIcon,
+  DashboardCircleIcon,
 } from "@hugeicons/core-free-icons";
 import {
   Bar,
@@ -326,7 +326,7 @@ export function LeaderboardSegmentsPanel({
       <CardHeader className="flex flex-col gap-3 space-y-0 pb-3">
         <CardTitle className="flex items-center gap-2 text-base font-bold text-slate-900">
           <HugeiconsIcon
-            icon={MapingIcon}
+            icon={DashboardCircleIcon}
             size={20}
             strokeWidth={1.75}
             className="shrink-0"
