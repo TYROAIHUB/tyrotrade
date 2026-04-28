@@ -13,7 +13,6 @@ import {
 import { RefreshAllButton } from "@/components/data-management/RefreshAllButton";
 import { TabStrip, type TabItem } from "@/components/data-management/TabStrip";
 import { AdvancedFilter } from "@/components/filters/AdvancedFilter";
-import { PeriodFilter } from "@/components/filters/PeriodFilter";
 import {
   applyProjectFilter,
   makeEmptyFilters,
@@ -388,24 +387,14 @@ export function DataManagementPage() {
               />
             </div>
             {topTab === "projects" && (
-              <div className="flex items-center gap-2">
-                <PeriodFilter
-                  period={projectFilters.period}
-                  fyKey={projectFilters.fyKey}
-                  onChange={(period, fyKey) =>
-                    setProjectFilters({ ...projectFilters, period, fyKey })
-                  }
-                  variant="compact"
-                />
-                <AdvancedFilter
-                  projects={domainProjects}
-                  filters={projectFilters}
-                  onChange={setProjectFilters}
-                  shipPlanDefault={true}
-                  resultCount={visibleProjects.length}
-                  totalCount={projects.rows.length}
-                />
-              </div>
+              <AdvancedFilter
+                projects={domainProjects}
+                filters={projectFilters}
+                onChange={setProjectFilters}
+                shipPlanDefault={true}
+                resultCount={visibleProjects.length}
+                totalCount={projects.rows.length}
+              />
             )}
             <RefreshAllButton steps={refreshSteps} />
           </div>

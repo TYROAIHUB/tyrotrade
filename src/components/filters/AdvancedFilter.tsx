@@ -21,6 +21,11 @@ import {
   projectFilterCount,
   type ProjectFilterState,
 } from "@/lib/filters/projectFilters";
+import { PERIODS, type PeriodKey } from "@/lib/dashboard/periods";
+import {
+  getCurrentFyKey,
+  lastNFinancialYears,
+} from "@/lib/dashboard/financialPeriod";
 import { cn } from "@/lib/utils";
 import type { Project } from "@/lib/dataverse/entities";
 
@@ -187,6 +192,17 @@ export function AdvancedFilter({
 
         {/* Body */}
         <div className="flex-1 min-h-0 overflow-y-auto px-4 py-3 flex flex-col gap-3">
+          {/* Dönem (period + financial year) — first section so it sets
+              the time scope before the user dives into categorical
+              filters. */}
+          <PeriodSection
+            period={filters.period}
+            fyKey={filters.fyKey}
+            onChange={(period, fyKey) =>
+              onChange({ ...filters, period, fyKey })
+            }
+          />
+
           {/* Ship-plan inclusion toggle */}
           <label className="flex items-start gap-2.5 cursor-pointer group">
             <input
@@ -441,6 +457,86 @@ function SectionHeader({ title, count }: { title: string; count: number }) {
         >
           {count}
         </span>
+      )}
+    </div>
+  );
+}
+
+/* PeriodSection — period (Aylık · Çeyreklik · Yıllık · Finansal
+ *  Dönem · Tüm Zamanlar) chip group + last-3-FY chip row when "fy"
+ *  is active. Lives inside the AdvancedFilter popover so the time
+ *  scope and categorical scope are managed in one surface. */
+function PeriodSection({
+  period,
+  fyKey,
+  onChange,
+}: {
+  period: PeriodKey;
+  fyKey: string | null;
+  onChange: (period: PeriodKey, fyKey: string | null) => void;
+}) {
+  const fyOptions = React.useMemo(() => lastNFinancialYears(new Date(), 3), []);
+  const showFyOptions = period === "fy";
+  return (
+    <div className="flex flex-col gap-1.5">
+      <SectionHeader
+        title="Dönem"
+        count={
+          period === "fy" && (fyKey ?? getCurrentFyKey()) === getCurrentFyKey()
+            ? 0
+            : period !== "fy" || fyKey !== getCurrentFyKey()
+              ? 1
+              : 0
+        }
+      />
+      <ToggleGroup
+        type="single"
+        value={period}
+        onValueChange={(v) => {
+          if (!v) return;
+          const next = v as PeriodKey;
+          const nextFy = next === "fy" ? fyKey ?? getCurrentFyKey() : null;
+          onChange(next, nextFy);
+        }}
+        variant="outline"
+        size="sm"
+        spacing={4}
+        className="flex-wrap"
+      >
+        {PERIODS.map((p) => (
+          <ToggleGroupItem key={p.key} value={p.key} className={CHIP_CLASS}>
+            {p.label}
+          </ToggleGroupItem>
+        ))}
+      </ToggleGroup>
+      {showFyOptions && (
+        <div className="mt-1.5">
+          <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground mb-1">
+            Finansal Yıl
+          </div>
+          <ToggleGroup
+            type="single"
+            value={fyKey ?? getCurrentFyKey()}
+            onValueChange={(v) => {
+              if (!v) return;
+              onChange("fy", v);
+            }}
+            variant="outline"
+            size="sm"
+            spacing={4}
+            className="flex-wrap"
+          >
+            {fyOptions.map((fy) => (
+              <ToggleGroupItem
+                key={fy.key}
+                value={fy.key}
+                className={CHIP_CLASS}
+              >
+                {fy.label}
+              </ToggleGroupItem>
+            ))}
+          </ToggleGroup>
+        </div>
       )}
     </div>
   );

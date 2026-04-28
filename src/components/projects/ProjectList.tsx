@@ -15,6 +15,10 @@ interface ProjectListProps {
   totalCount?: number;
   selectedId: string | null;
   onSelect: (id: string) => void;
+  /** Slot rendered to the right of the search input — Vessel Projects
+   *  passes the AdvancedFilter trigger here. Optional so other callers
+   *  can keep the header search-only. */
+  filterTrigger?: React.ReactNode;
 }
 
 /**
@@ -28,6 +32,7 @@ export function ProjectList({
   totalCount,
   selectedId,
   onSelect,
+  filterTrigger,
 }: ProjectListProps) {
   const accent = useThemeAccent();
   const [query, setQuery] = React.useState("");
@@ -81,40 +86,43 @@ export function ProjectList({
             </span>
           </h2>
         </div>
-        <div className="relative">
-          <HugeiconsIcon
-            icon={Search01Icon}
-            size={15}
-            strokeWidth={2.25}
-            className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none z-[1]"
-            style={{ color: accent.solid }}
-          />
-          <input
-            type="text"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Proje, gemi, liman, tedarikçi..."
-            className={cn(
-              "w-full h-9 pl-9 pr-7 rounded-full text-[13px] outline-none",
-              "bg-white/70 backdrop-blur-xl backdrop-saturate-150",
-              "ring-1 ring-foreground/15 hover:ring-foreground/30 focus:ring-2 focus:ring-ring",
-              "placeholder:text-muted-foreground/70 transition-shadow"
+        <div className="flex items-center gap-2">
+          <div className="relative flex-1 min-w-0">
+            <HugeiconsIcon
+              icon={Search01Icon}
+              size={15}
+              strokeWidth={2.25}
+              className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none z-[1]"
+              style={{ color: accent.solid }}
+            />
+            <input
+              type="text"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Proje, gemi, liman, tedarikçi..."
+              className={cn(
+                "w-full h-9 pl-9 pr-7 rounded-full text-[13px] outline-none",
+                "bg-white/70 backdrop-blur-xl backdrop-saturate-150",
+                "ring-1 ring-foreground/15 hover:ring-foreground/30 focus:ring-2 focus:ring-ring",
+                "placeholder:text-muted-foreground/70 transition-shadow"
+              )}
+              style={{
+                boxShadow:
+                  "0 4px 12px -4px rgba(15,23,42,0.18), inset 0 1px 0 0 rgba(255,255,255,0.85)",
+              }}
+            />
+            {query && (
+              <button
+                type="button"
+                onClick={() => setQuery("")}
+                aria-label="Aramayı temizle"
+                className="absolute right-2 top-1/2 -translate-y-1/2 size-5 grid place-items-center rounded-md text-muted-foreground hover:text-foreground hover:bg-foreground/[0.06] z-[1]"
+              >
+                <HugeiconsIcon icon={Cancel01Icon} size={11} strokeWidth={2.5} />
+              </button>
             )}
-            style={{
-              boxShadow:
-                "0 4px 12px -4px rgba(15,23,42,0.18), inset 0 1px 0 0 rgba(255,255,255,0.85)",
-            }}
-          />
-          {query && (
-            <button
-              type="button"
-              onClick={() => setQuery("")}
-              aria-label="Aramayı temizle"
-              className="absolute right-2 top-1/2 -translate-y-1/2 size-5 grid place-items-center rounded-md text-muted-foreground hover:text-foreground hover:bg-foreground/[0.06] z-[1]"
-            >
-              <HugeiconsIcon icon={Cancel01Icon} size={11} strokeWidth={2.5} />
-            </button>
-          )}
+          </div>
+          {filterTrigger}
         </div>
       </div>
 

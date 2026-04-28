@@ -5,7 +5,6 @@ import { LeaderboardPanel } from "@/components/dashboard/LeaderboardPanel";
 import { LeaderboardSegmentsPanel } from "@/components/dashboard/LeaderboardSegmentsPanel";
 import { EventsPanel } from "@/components/dashboard/EventsPanel";
 import { AdvancedFilter } from "@/components/filters/AdvancedFilter";
-import { PeriodFilter } from "@/components/filters/PeriodFilter";
 import {
   applyProjectFilter,
   makeEmptyFilters,
@@ -120,24 +119,14 @@ export function DashboardPage() {
                 )}
               </p>
             </div>
-            <div className="flex items-center gap-3">
-              <PeriodFilter
-                period={filters.period}
-                fyKey={filters.fyKey}
-                onChange={(period, fyKey) =>
-                  setFilters({ ...filters, period, fyKey })
-                }
-                variant="compact"
-              />
-              <AdvancedFilter
-                projects={allProjects}
-                filters={filters}
-                onChange={setFilters}
-                shipPlanDefault={DASHBOARD_SHIP_PLAN_DEFAULT}
-                resultCount={projects.length}
-                totalCount={totalAvailable}
-              />
-            </div>
+            <AdvancedFilter
+              projects={allProjects}
+              filters={filters}
+              onChange={setFilters}
+              shipPlanDefault={DASHBOARD_SHIP_PLAN_DEFAULT}
+              resultCount={projects.length}
+              totalCount={totalAvailable}
+            />
           </div>
         </GlassPanel>
 
