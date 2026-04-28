@@ -11,6 +11,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { MultiSelectCombobox } from "@/components/ui/multi-select-combobox";
 import { GlassPanel } from "@/components/glass/GlassPanel";
 import { ProjectCard } from "./ProjectCard";
 import type { Project } from "@/lib/dataverse/entities";
@@ -547,64 +548,61 @@ function FilterPopover({
             />
           )}
           {availableTraders.length > 0 && (
-            <FilterSection
+            <ComboboxSection
               title="Trader"
               count={filters.traders.size}
               options={availableTraders}
               selected={filters.traders}
-              onToggle={(v) =>
-                setFilters({ ...filters, traders: toggle(filters.traders, v) })
-              }
+              onChange={(next) => setFilters({ ...filters, traders: next })}
+              placeholder="Tüm trader'lar"
+              accent={accent}
             />
           )}
           {availableCompanies.length > 0 && (
-            <FilterSection
+            <ComboboxSection
               title="Şirket"
               count={filters.companies.size}
               options={availableCompanies}
               selected={filters.companies}
-              onToggle={(v) =>
-                setFilters({
-                  ...filters,
-                  companies: toggle(filters.companies, v),
-                })
-              }
+              onChange={(next) => setFilters({ ...filters, companies: next })}
+              placeholder="Tüm şirketler"
+              accent={accent}
             />
           )}
           {availableVessels.length > 0 && (
-            <FilterSection
+            <ComboboxSection
               title="Gemi"
               count={filters.vessels.size}
               options={availableVessels}
               selected={filters.vessels}
-              onToggle={(v) =>
-                setFilters({ ...filters, vessels: toggle(filters.vessels, v) })
-              }
+              onChange={(next) => setFilters({ ...filters, vessels: next })}
+              placeholder="Tüm gemiler"
+              searchPlaceholder="Gemi ara…"
+              accent={accent}
             />
           )}
           {availableSuppliers.length > 0 && (
-            <FilterSection
+            <ComboboxSection
               title="Tedarikçi"
               count={filters.suppliers.size}
               options={availableSuppliers}
               selected={filters.suppliers}
-              onToggle={(v) =>
-                setFilters({
-                  ...filters,
-                  suppliers: toggle(filters.suppliers, v),
-                })
-              }
+              onChange={(next) => setFilters({ ...filters, suppliers: next })}
+              placeholder="Tüm tedarikçiler"
+              searchPlaceholder="Tedarikçi ara…"
+              accent={accent}
             />
           )}
           {availableBuyers.length > 0 && (
-            <FilterSection
+            <ComboboxSection
               title="Müşteri / Alıcı"
               count={filters.buyers.size}
               options={availableBuyers}
               selected={filters.buyers}
-              onToggle={(v) =>
-                setFilters({ ...filters, buyers: toggle(filters.buyers, v) })
-              }
+              onChange={(next) => setFilters({ ...filters, buyers: next })}
+              placeholder="Tüm müşteriler"
+              searchPlaceholder="Müşteri ara…"
+              accent={accent}
             />
           )}
           <FilterSection
@@ -616,14 +614,14 @@ function FilterPopover({
               setFilters({ ...filters, statuses: toggle(filters.statuses, v) })
             }
           />
-          <FilterSection
+          <ComboboxSection
             title="Proje Grubu"
             count={filters.groups.size}
             options={availableGroups}
             selected={filters.groups}
-            onToggle={(v) =>
-              setFilters({ ...filters, groups: toggle(filters.groups, v) })
-            }
+            onChange={(next) => setFilters({ ...filters, groups: next })}
+            placeholder="Tüm gruplar"
+            accent={accent}
           />
           <FilterSection
             title="Teslimat Koşulu"
@@ -635,17 +633,14 @@ function FilterPopover({
             }
           />
           {availableSegments.length > 0 && (
-            <FilterSection
+            <ComboboxSection
               title="Segment"
               count={filters.segments.size}
               options={availableSegments}
               selected={filters.segments}
-              onToggle={(v) =>
-                setFilters({
-                  ...filters,
-                  segments: toggle(filters.segments, v),
-                })
-              }
+              onChange={(next) => setFilters({ ...filters, segments: next })}
+              placeholder="Tüm segmentler"
+              accent={accent}
             />
           )}
         </div>
@@ -821,6 +816,58 @@ function SingleSelectSection({
           );
         })}
       </div>
+    </div>
+  );
+}
+
+/* ComboboxSection — title + count header on top, MultiSelectCombobox
+ * underneath. Used for high-cardinality filters (vessel, supplier,
+ * buyer, trader, group, segment) where chip rows would scroll the
+ * popover and force the user to eyeball-scan dozens of options. The
+ * combobox lets them type a fragment and tick boxes. */
+function ComboboxSection({
+  title,
+  count,
+  options,
+  selected,
+  onChange,
+  placeholder,
+  searchPlaceholder,
+  accent,
+}: {
+  title: string;
+  count: number;
+  options: string[];
+  selected: Set<string>;
+  onChange: (next: Set<string>) => void;
+  placeholder?: string;
+  searchPlaceholder?: string;
+  accent: { solid: string; ring: string; tint: string };
+}) {
+  return (
+    <div className="flex flex-col gap-1.5">
+      <div className="flex items-center justify-between text-[10.5px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+        <span>{title}</span>
+        {count > 0 && (
+          <span
+            className="h-[18px] min-w-[18px] inline-flex items-center justify-center rounded-full px-1.5 text-[10px] font-bold tabular-nums"
+            style={{
+              backgroundColor: "var(--filter-active-bg)",
+              color: "var(--filter-active-fg)",
+            }}
+          >
+            {count}
+          </span>
+        )}
+      </div>
+      <MultiSelectCombobox
+        options={options}
+        selected={selected}
+        onChange={onChange}
+        placeholder={placeholder}
+        searchPlaceholder={searchPlaceholder}
+        accent={accent}
+      />
     </div>
   );
 }

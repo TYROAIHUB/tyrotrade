@@ -36,6 +36,7 @@
     "@turf/line-slice-along": "^7.3.5",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "cmdk": "^1.1.1",
     "framer-motion": "^11.11.0",
     "lucide-react": "^0.460.0",
     "maplibre-gl": "^5.24.0",
