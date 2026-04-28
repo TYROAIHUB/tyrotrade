@@ -16,7 +16,8 @@ import {
   Plus,
   Minus,
   Crosshair,
-  GitCommitHorizontal,
+  CalendarClock,
+  ChevronDown,
   X,
   Check,
   Clock,
@@ -98,30 +99,48 @@ const FALLBACK_STAGE_TONE = STAGE_TONE["in-transit"];
 export function RouteMap({ project }: RouteMapProps) {
   const mapRef = React.useRef<MapRef>(null);
   const [mapReady, setMapReady] = React.useState(false);
-  const [timelineOpen, setTimelineOpen] = React.useState(false);
+  // Timeline open by default — every project landing has the strip
+  // visible. User can dismiss with the toggle (X icon when open),
+  // and switching projects re-opens it so the new project's milestone
+  // history is the first thing they see on the map.
+  const [timelineOpen, setTimelineOpen] = React.useState(true);
   const accent = useThemeAccent();
   const geom = useRouteGeometry(project);
   const { progress, stage } = useRouteProgress(project);
 
-  // Close timeline when project changes
+  // Re-open timeline when project changes — fresh project, fresh
+  // milestone view.
   React.useEffect(() => {
-    setTimelineOpen(false);
+    setTimelineOpen(true);
   }, [project?.projectNo]);
 
+  // Fit padding is asymmetric so the route never sits under the
+  // floating overlays:
+  //   - top: leaves room for the "Rota Haritası" status pill (top-left)
+  //   - right: clears the zoom controls column (top-right)
+  //   - left: clears the loading PortChip
+  //   - bottom: depends on the timeline strip — when open it's
+  //     PortChips (52) + toggle pill (44) + MilestoneStrip (~74) +
+  //     gaps; when closed only the chip row.
   const fitToRoute = React.useCallback(
     (animate: boolean) => {
       const map = mapRef.current;
       if (!map || !geom) return;
       const [west, south, east, north] = geom.bbox;
+      const bottomPad = timelineOpen ? 200 : 110;
       map.fitBounds(
         [
           [west, south],
           [east, north],
         ],
-        { padding: 50, duration: animate ? 900 : 0, maxZoom: 4.5 }
+        {
+          padding: { top: 80, right: 80, bottom: bottomPad, left: 80 },
+          duration: animate ? 900 : 0,
+          maxZoom: 4.5,
+        }
       );
     },
-    [geom]
+    [geom, timelineOpen]
   );
 
   React.useEffect(() => {
@@ -467,9 +486,15 @@ export function RouteMap({ project }: RouteMapProps) {
                 }}
               >
                 {timelineOpen ? (
-                  <X className="size-4" />
+                  // Chevron-down on open = "tuck the strip away". More
+                  // natural than an X close glyph for a panel that's
+                  // always available — it's collapsing, not dismissing.
+                  <ChevronDown className="size-4" />
                 ) : (
-                  <GitCommitHorizontal className="size-4" />
+                  // CalendarClock = "open timeline". Reads as a date /
+                  // schedule trigger, which is exactly what the strip
+                  // shows (LP-ETA → DP-ED milestone dates).
+                  <CalendarClock className="size-4" />
                 )}
               </button>
               <PortChip
