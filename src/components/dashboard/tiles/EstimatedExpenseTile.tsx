@@ -104,7 +104,12 @@ export function EstimatedExpenseTile({
           className="flex items-baseline gap-3"
           title={`Tahmini toplam gider — ${formatCompactCurrency(total, "USD")} · ${contributingCount} proje. Gider kalemleri zaten USD bazlı (mserp_expamountusdd).`}
         >
-          <span className="text-[40px] font-semibold leading-none tracking-tight text-rose-700">
+          {/* 30px sits between the original 26px and Pipeline's 40px —
+              "80,3 Mn $" carries more characters than Pipeline's bare
+              "90", so matching 40px exactly made the rose ink dominate
+              the small tile. 30px keeps the headline readable next to
+              "toplam gider" without overpowering the legend below. */}
+          <span className="text-[30px] font-semibold leading-none tracking-tight text-rose-700">
             <AnimatedNumber value={total} preset="currency" currency="USD" />
           </span>
           <span className="text-[11px] text-muted-foreground">
