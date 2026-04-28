@@ -5,7 +5,7 @@ import {
   Wallet01Icon,
   ChartDownIcon,
   ChartUpIcon,
-  PieChartIcon,
+  Crown02Icon,
 } from "@hugeicons/core-free-icons";
 import {
   Bar,
@@ -74,7 +74,7 @@ interface BoardConfig {
 const BOARDS: BoardConfig[] = [
   {
     key: "top-sales",
-    label: "En Çok Faturalı",
+    label: "Satış Liderleri",
     icon: CrownIcon,
     iconColor: "#e0ad3e",
     emptyMessage: "Bu filtrede faturalı segment yok.",
@@ -315,7 +315,7 @@ export function LeaderboardSegmentsPanel({
       <CardHeader className="flex flex-col gap-3 space-y-0 pb-3">
         <CardTitle className="flex items-center gap-2 text-base">
           <HugeiconsIcon
-            icon={PieChartIcon}
+            icon={Crown02Icon}
             size={20}
             strokeWidth={1.75}
             className="shrink-0"

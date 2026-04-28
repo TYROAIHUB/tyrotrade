@@ -82,7 +82,7 @@ interface ChartRow {
 const BOARDS: BoardConfig[] = [
   {
     key: "top-sales",
-    label: "En Çok Faturalı",
+    label: "Satış Liderleri",
     icon: CrownIcon,
     iconColor: "#e0ad3e",
     emptyMessage: "Bu dönemde faturalı satış yok.",
