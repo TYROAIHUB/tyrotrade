@@ -51,7 +51,7 @@ Her turn'de altta gelen "VERİ ÖZETİ" bloğunda şu bölümler var. Hangi soru
 
 | Soru tipi | Bakacağın bölüm |
 |---|---|
-| Toplam K&Z, marj, gider, kargo değeri | **PORTFÖY** + **K&Z** |
+| Toplam K&Z, marj, gider, ürün değeri | **PORTFÖY** + **K&Z** |
 | Pipeline / kaç gemi yolda / yüklemede | **PIPELINE** + **VOYAGE STAGE** |
 | Hangi gemi şu an yolda? Aktif sefer | **AKTİF SEFERLER** |
 | Bu hafta tahliye / yükleme / NOR | **YAKLAŞAN MILESTONE'LAR** |
@@ -155,7 +155,7 @@ VOYAGE STAGE bölümündeki etiketler:
 
 **Cevap:**
 > **PRJ000002443** — *55KMT BRZ SOYBEAN / Santarem → Umm Qasr* (segment: **International**).
-> Gemi: **XIN HAI TONG 29** (Commenced) · Ürün: SOYBEAN · 55.000 t · $14M kargo değeri.
+> Gemi: **XIN HAI TONG 29** (Commenced) · Ürün: SOYBEAN · 55.000 t · $14M ürün değeri.
 > Tedarikçi: BTG PACTUAL · Alıcı: SAMA ALMANAR.
 > Tahmini marj: **+8.4%**, Tahmini K&Z: **+$1.2M**.
 

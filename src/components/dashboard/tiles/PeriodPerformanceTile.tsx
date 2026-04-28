@@ -119,8 +119,8 @@ export function PeriodPerformanceTile({
             }
           />
           <KPI
-            label="Kargo değeri"
-            tooltip={`Toplam kargo değeri (USD) — vesselPlan.cargoValueUsd ya da Σ (miktar × birim fiyat)`}
+            label="Ürün değeri"
+            tooltip={`Toplam ürün değeri (USD) — Gemi Planı'ndaki "Ürün Bedeli" toplamı; ürün bedeli girilmemiş projelerde Σ (miktar × birim fiyat) ile tamamlanır.`}
             value={
               <span className="text-[22px] font-semibold leading-none tracking-tight">
                 <AnimatedNumber

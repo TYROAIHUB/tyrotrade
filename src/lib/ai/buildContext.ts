@@ -196,7 +196,7 @@ Filtre kapsamı: ${totalProjects} proje · Finansal yıl: ${fy.fullLabel}
 
 PORTFÖY
 ─ Toplam proje: ${totalProjects}
-─ Toplam kargo değeri: ${formatCompactCurrency(totalCargoUsd, "USD")}
+─ Toplam ürün değeri: ${formatCompactCurrency(totalCargoUsd, "USD")}
 ─ Aktif yolculukta tonaj: ${formatTons(inTransit.kg)} (${inTransit.projectCount} proje)
 ─ USD eşdeğeri P&L katkısı (priced lines): ${pl.contributingCount} proje${
     pl.fxConvertedCount > 0
@@ -240,7 +240,7 @@ ${
     : "─ Yeterli LP-(ED)/DP-ETA tarihi yok, ortalama hesaplanamadı"
 }
 
-EN BÜYÜK 5 PROJE (kargo değerine göre)
+EN BÜYÜK 5 PROJE (ürün değerine göre)
 ${top5Value || "(veri yok)"}
 
 EN ÇOK FATURALI 3 PROJE (gerçekleşen satış USD)
