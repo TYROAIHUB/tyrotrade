@@ -82,8 +82,9 @@ export function ProjectsPage() {
   };
 
   // Filter trigger node — passed as a slot into ProjectList so it
-  // renders in the list header next to the search input. The trigger
-  // itself reads the unified filter state from page-level here.
+  // renders in the list header next to the search input. Icon-only
+  // trigger keeps the list header tight; the popover surface is the
+  // same as Dashboard / Veri Yönetimi.
   const filterTrigger = (
     <AdvancedFilter
       projects={rawProjects}
@@ -92,6 +93,7 @@ export function ProjectsPage() {
       shipPlanDefault={PROJECTS_SHIP_PLAN_DEFAULT}
       resultCount={projects.length}
       totalCount={rawProjects.length}
+      iconOnly
     />
   );
 

@@ -1,7 +1,7 @@
 import * as React from "react";
 import { HugeiconsIcon } from "@hugeicons/react";
 import {
-  FilterHorizontalIcon,
+  FilterIcon,
   FilterResetIcon,
 } from "@hugeicons/core-free-icons";
 import {
@@ -42,6 +42,10 @@ interface AdvancedFilterProps {
   resultCount?: number;
   /** Total before filters — shown in footer. */
   totalCount?: number;
+  /** Render a compact 36×36 icon-only square trigger instead of the
+   *  full "Filtre" labelled pill. Used by ProjectList where the
+   *  search input + a labelled pill would crowd the panel header. */
+  iconOnly?: boolean;
   className?: string;
 }
 
@@ -75,6 +79,7 @@ export function AdvancedFilter({
   shipPlanDefault = true,
   resultCount,
   totalCount,
+  iconOnly = false,
   className,
 }: AdvancedFilterProps) {
   const accent = useThemeAccent();
@@ -106,43 +111,75 @@ export function AdvancedFilter({
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <button
-          type="button"
-          aria-label="Gelişmiş filtre"
-          className={cn(
-            // rounded-full + symmetric px-3.5 + min-w-[110px] mirrors
-            // AskAiButton so the topbar pair reads as identical siblings.
-            "h-9 rounded-full px-3.5 min-w-[110px] inline-flex items-center justify-center gap-2 shrink-0 shadow-sm relative transition-transform",
-            "text-[13px] font-semibold tracking-tight",
-            "hover:scale-[1.04] active:scale-95",
-            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2",
-            className
-          )}
-          style={{
-            background: accent.gradient,
-            color: "white",
-            boxShadow: `0 4px 12px -4px ${accent.ring}, inset 0 1px 0 0 rgba(255,255,255,0.25)`,
-          }}
-        >
-          <HugeiconsIcon
-            icon={FilterHorizontalIcon}
-            size={16}
-            strokeWidth={2}
-          />
-          <span>Filtre</span>
-          {activeCount > 0 && (
-            <span
-              className="ml-0.5 h-5 min-w-5 px-1.5 inline-flex items-center justify-center rounded-full text-[10.5px] font-bold tabular-nums"
-              style={{
-                background: "white",
-                color: accent.solid,
-                boxShadow: `inset 0 0 0 1.5px ${accent.solid}, 0 2px 6px -1px ${accent.ring}`,
-              }}
-            >
-              {activeCount}
-            </span>
-          )}
-        </button>
+        {iconOnly ? (
+          // Compact icon-only trigger — used by ProjectList where the
+          // search input is already wide and a labelled pill crowds
+          // the panel header. Square 36×36 with corner badge for the
+          // active count.
+          <button
+            type="button"
+            aria-label="Gelişmiş filtre"
+            className={cn(
+              "size-9 rounded-xl grid place-items-center shrink-0 shadow-sm relative transition-transform",
+              "hover:scale-[1.04] active:scale-95",
+              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2",
+              className
+            )}
+            style={{
+              background: accent.gradient,
+              color: "white",
+              boxShadow: `0 4px 12px -4px ${accent.ring}, inset 0 1px 0 0 rgba(255,255,255,0.25)`,
+            }}
+          >
+            <HugeiconsIcon icon={FilterIcon} size={16} strokeWidth={2} />
+            {activeCount > 0 && (
+              <span
+                className="absolute -top-1 -right-1 size-4 grid place-items-center rounded-full text-[9px] font-bold tabular-nums"
+                style={{
+                  background: "white",
+                  color: accent.solid,
+                  boxShadow: `0 0 0 1.5px ${accent.solid}, 0 2px 6px -1px ${accent.ring}`,
+                }}
+              >
+                {activeCount}
+              </span>
+            )}
+          </button>
+        ) : (
+          <button
+            type="button"
+            aria-label="Gelişmiş filtre"
+            className={cn(
+              // rounded-full + symmetric px-3.5 + min-w-[110px] mirrors
+              // AskAiButton so the topbar pair reads as identical siblings.
+              "h-9 rounded-full px-3.5 min-w-[110px] inline-flex items-center justify-center gap-2 shrink-0 shadow-sm relative transition-transform",
+              "text-[13px] font-semibold tracking-tight",
+              "hover:scale-[1.04] active:scale-95",
+              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2",
+              className
+            )}
+            style={{
+              background: accent.gradient,
+              color: "white",
+              boxShadow: `0 4px 12px -4px ${accent.ring}, inset 0 1px 0 0 rgba(255,255,255,0.25)`,
+            }}
+          >
+            <HugeiconsIcon icon={FilterIcon} size={16} strokeWidth={2} />
+            <span>Filtre</span>
+            {activeCount > 0 && (
+              <span
+                className="ml-0.5 h-5 min-w-5 px-1.5 inline-flex items-center justify-center rounded-full text-[10.5px] font-bold tabular-nums"
+                style={{
+                  background: "white",
+                  color: accent.solid,
+                  boxShadow: `inset 0 0 0 1.5px ${accent.solid}, 0 2px 6px -1px ${accent.ring}`,
+                }}
+              >
+                {activeCount}
+              </span>
+            )}
+          </button>
+        )}
       </PopoverTrigger>
       <PopoverContent
         align="end"
@@ -173,7 +210,7 @@ export function AdvancedFilter({
             }}
           >
             <HugeiconsIcon
-              icon={FilterHorizontalIcon}
+              icon={FilterIcon}
               size={16}
               strokeWidth={2}
             />
