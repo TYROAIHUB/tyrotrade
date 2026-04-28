@@ -235,7 +235,21 @@ function StripedBar(props: {
   const used = count * step - gap;
   const offset = Math.max(0, (width - used) / 2);
   return (
-    <g>
+    <g style={{ cursor: "pointer" }}>
+      {/* Invisible hit target — covers the full bar bounds so clicks
+          register on the recharts Bar wrapper regardless of whether
+          they land on a stripe or in the gap between stripes.
+          Without this, custom-shape bars look clickable (recharts
+          renders the focus frame on hover) but `onClick` on `<Bar>`
+          never fires — the SVG transparent gaps swallow the event. */}
+      <rect
+        x={x}
+        y={y}
+        width={width}
+        height={height}
+        fill="transparent"
+        pointerEvents="all"
+      />
       {Array.from({ length: count }).map((_, i) => (
         <rect
           key={i}
@@ -245,6 +259,7 @@ function StripedBar(props: {
           height={height}
           rx={1.5}
           fill={fill}
+          pointerEvents="none"
         />
       ))}
     </g>

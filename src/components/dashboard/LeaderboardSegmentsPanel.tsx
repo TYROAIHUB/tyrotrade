@@ -232,6 +232,16 @@ function StripedBar(props: {
   const offset = Math.max(0, (width - used) / 2);
   return (
     <g>
+      {/* Invisible hit target — keeps the full bar clickable for
+          parity with the project-level leaderboard. */}
+      <rect
+        x={x}
+        y={y}
+        width={width}
+        height={height}
+        fill="transparent"
+        pointerEvents="all"
+      />
       {Array.from({ length: count }).map((_, i) => (
         <rect
           key={i}
@@ -241,6 +251,7 @@ function StripedBar(props: {
           height={height}
           rx={1.5}
           fill={fill}
+          pointerEvents="none"
         />
       ))}
     </g>
