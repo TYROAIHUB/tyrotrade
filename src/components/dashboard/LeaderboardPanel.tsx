@@ -2,6 +2,7 @@ import * as React from "react";
 import { useNavigate } from "react-router-dom";
 import { HugeiconsIcon } from "@hugeicons/react";
 import {
+  Crown02Icon,
   LaurelWreathFirst01Icon,
   Wallet01Icon,
   ChartDownIcon,
@@ -382,12 +383,17 @@ export function LeaderboardPanel({ projects }: LeaderboardPanelProps) {
     <Card className="overflow-hidden">
       <CardHeader className="flex flex-col gap-3 space-y-0 pb-3">
         <CardTitle className="flex items-center gap-2 text-base font-bold text-slate-900">
+          {/* Header icon stays a crown regardless of which board the
+              user picks — the panel itself is "Kral Projeler" so it
+              should always read as a crown, not the active tab's
+              icon. Per-tab icons still appear inside the TabsTrigger
+              row below. */}
           <HugeiconsIcon
-            icon={config.icon}
+            icon={Crown02Icon}
             size={20}
             strokeWidth={1.75}
             className="shrink-0"
-            style={{ color: config.iconColor }}
+            style={{ color: "#e0ad3e" }}
           />
           Kral Projeler
         </CardTitle>
