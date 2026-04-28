@@ -432,20 +432,31 @@
 /* MapLibre attribution — collapse to (i) icon by default.
  *
  * The Carto + OSM licence requires attribution to be visible on demand,
- * not always-on. MapLibre's `compact` mode forces an info-icon trigger,
- * but on wider viewports it still renders the full text alongside.
- * These overrides hide the inner attribution string until the user
- * clicks the (i) — same UX as Google/Mapbox compact controls — while
- * preserving full hover/click reveal for compliance. */
-.maplibregl-ctrl-attrib.maplibregl-compact:not(.maplibregl-compact-show)
-  .maplibregl-ctrl-attrib-inner {
+ * not always-on. MapLibre's `compact` mode renders an info-icon
+ * trigger but in some versions (re)opens to the full text by default.
+ * These overrides force the compact + collapsed look regardless of
+ * which class set MapLibre actually emits — text only shows when the
+ * user clicks the (i) (which adds `maplibregl-compact-show`). */
+.maplibregl-ctrl-attrib .maplibregl-ctrl-attrib-inner {
   display: none !important;
 }
-.maplibregl-ctrl-attrib.maplibregl-compact:not(.maplibregl-compact-show) {
+.maplibregl-ctrl-attrib.maplibregl-compact-show .maplibregl-ctrl-attrib-inner {
+  display: block !important;
+}
+/* Make sure the container always renders as a tight icon pill at rest
+ * (compact-class may be missing on wider viewports where MapLibre
+ * normally inlines the text). */
+.maplibregl-ctrl-attrib:not(.maplibregl-compact-show) {
   background: rgba(255, 255, 255, 0.85);
   padding: 2px 24px 2px 4px;
   min-height: 24px;
   min-width: 24px;
+  border-radius: 12px;
+}
+/* The (i) glyph is rendered as the button's `::after`. Force it to
+ * always render so it stays as the only visible affordance at rest. */
+.maplibregl-ctrl-attrib-button {
+  display: block !important;
 }
 
 .dark {
