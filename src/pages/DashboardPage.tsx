@@ -4,43 +4,50 @@ import { BentoGrid } from "@/components/dashboard/BentoGrid";
 import { LeaderboardPanel } from "@/components/dashboard/LeaderboardPanel";
 import { LeaderboardSegmentsPanel } from "@/components/dashboard/LeaderboardSegmentsPanel";
 import { EventsPanel } from "@/components/dashboard/EventsPanel";
+import { AdvancedFilter } from "@/components/filters/AdvancedFilter";
+import { PeriodFilter } from "@/components/filters/PeriodFilter";
 import {
-  DashboardFilters,
-  EMPTY_DASHBOARD_FILTERS,
-  applyDashboardFilters,
-  dashboardFilterCount,
-  type DashboardFilterState,
-} from "@/components/dashboard/DashboardFilters";
+  applyProjectFilter,
+  makeEmptyFilters,
+  projectFilterCount,
+  type ProjectFilterState,
+} from "@/lib/filters/projectFilters";
 import * as React from "react";
 import { useProjects } from "@/hooks/useProjects";
 import { ProjectsEmptyState } from "@/components/projects/ProjectsEmptyState";
 import { aggregatePipelineBuckets } from "@/lib/selectors/aggregate";
 import { getFinancialYear } from "@/lib/dashboard/financialPeriod";
 
+// Dashboard default = inclusive (all projects flow into KPIs unless
+// the user explicitly toggles ship-plan-only). Vessel Projects uses
+// the opposite default — both are passed to the unified filter via
+// `makeEmptyFilters({ includeWithoutShipPlan })`.
+const DASHBOARD_SHIP_PLAN_DEFAULT = true;
+
 export function DashboardPage() {
   const now = new Date();
-  const [filters, setFilters] = React.useState<DashboardFilterState>(
-    EMPTY_DASHBOARD_FILTERS
+  const [filters, setFilters] = React.useState<ProjectFilterState>(() =>
+    makeEmptyFilters({ includeWithoutShipPlan: DASHBOARD_SHIP_PLAN_DEFAULT })
   );
 
   // 🔒 Read-only — composes Project[] from cached Dataverse entities (real
   // mode) or returns mockProjects (mock mode). isEmpty cues the empty state
   // when the user hasn't run "Güncelle" yet.
   const { projects: rawProjects, isEmpty, fetchedAt } = useProjects();
-  // No hard-coded ship-plan filter — every project flows in. The advanced
-  // filter (`DashboardFilters`) carries the same `includeWithoutShipPlan`
-  // toggle as the Projects page, so the user controls inclusion themselves.
   const allProjects = rawProjects;
 
   const projects = React.useMemo(
-    () => applyDashboardFilters(allProjects, filters, now),
+    () => applyProjectFilter(allProjects, filters, now),
     // `now` recomputed every render but stable string-equal so we leave it
     // out of deps to avoid a render thrash.
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [allProjects, filters]
   );
   const totalAvailable = allProjects.length;
-  const activeFilterCount = dashboardFilterCount(filters);
+  const activeFilterCount = projectFilterCount(
+    filters,
+    DASHBOARD_SHIP_PLAN_DEFAULT
+  );
   const totalProjects = projects.length;
 
   const buckets = aggregatePipelineBuckets(projects, now);
@@ -113,13 +120,24 @@ export function DashboardPage() {
                 )}
               </p>
             </div>
-            <DashboardFilters
-              projects={allProjects}
-              filters={filters}
-              onChange={setFilters}
-              resultCount={projects.length}
-              totalCount={totalAvailable}
-            />
+            <div className="flex items-center gap-3">
+              <PeriodFilter
+                period={filters.period}
+                fyKey={filters.fyKey}
+                onChange={(period, fyKey) =>
+                  setFilters({ ...filters, period, fyKey })
+                }
+                variant="compact"
+              />
+              <AdvancedFilter
+                projects={allProjects}
+                filters={filters}
+                onChange={setFilters}
+                shipPlanDefault={DASHBOARD_SHIP_PLAN_DEFAULT}
+                resultCount={projects.length}
+                totalCount={totalAvailable}
+              />
+            </div>
           </div>
         </GlassPanel>
 

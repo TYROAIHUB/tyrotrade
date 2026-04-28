@@ -12,12 +12,14 @@ import {
 } from "@/components/data-management/EntityRowsTable";
 import { RefreshAllButton } from "@/components/data-management/RefreshAllButton";
 import { TabStrip, type TabItem } from "@/components/data-management/TabStrip";
+import { AdvancedFilter } from "@/components/filters/AdvancedFilter";
+import { PeriodFilter } from "@/components/filters/PeriodFilter";
 import {
-  ProjectsToolbar,
-  EMPTY_PROJECT_FILTERS,
-  applyProjectsFilter,
-  type ProjectsFilterState,
-} from "@/components/data-management/ProjectsToolbar";
+  applyProjectFilter,
+  makeEmptyFilters,
+  type ProjectFilterState,
+} from "@/lib/filters/projectFilters";
+import { useProjects } from "@/hooks/useProjects";
 import {
   PROJECT_COLUMNS,
   PROJECT_LINE_COLUMNS,
@@ -55,9 +57,18 @@ export function DataManagementPage() {
   const [topTab, setTopTab] = React.useState<TopTabKey>("projects");
   const [childTab, setChildTab] = React.useState<ChildTabKey>("lines");
 
-  // Projects toolbar: search + advanced filter
-  const [projectFilters, setProjectFilters] =
-    React.useState<ProjectsFilterState>(EMPTY_PROJECT_FILTERS);
+  // Unified Advanced Filter state — same shape as Dashboard / Vessel
+  // Projects. Veri Yönetimi defaults to "all projects in" since the
+  // page is for raw-row inspection, not operational triage.
+  const [projectFilters, setProjectFilters] = React.useState<ProjectFilterState>(
+    () => makeEmptyFilters({ includeWithoutShipPlan: true })
+  );
+
+  // Domain Project[] (already-composed) — used to derive the allowed
+  // projectNo set after applying the unified filter, then narrow the
+  // raw `projects.rows` accordingly. Keeps the Dataverse Inspector's
+  // raw-row display unchanged while reusing the page-agnostic filter UI.
+  const { projects: domainProjects } = useProjects();
   // Default sort: contractdate desc (newest first)
   const [projectSort, setProjectSort] = React.useState<SortState | null>({
     field: "mserp_contractdate",
@@ -249,11 +260,20 @@ export function DataManagementPage() {
     budget.refetch,
   ]);
 
-  // Apply filters then sort to get the displayed projects
+  // Apply unified filter (period + categorical) on the domain Project
+  // list, derive the allowed projectNo set, then narrow the raw rows
+  // by `mserp_projid` membership. Sort at the end.
+  const allowedProjectNos = React.useMemo(() => {
+    const filtered = applyProjectFilter(domainProjects, projectFilters);
+    return new Set(filtered.map((p) => p.projectNo));
+  }, [domainProjects, projectFilters]);
+
   const visibleProjects = React.useMemo(() => {
-    const filtered = applyProjectsFilter(projects.rows, projectFilters);
+    const filtered = projects.rows.filter((r) =>
+      allowedProjectNos.has(String(r.mserp_projid ?? ""))
+    );
     return sortRows(filtered, projectSort);
-  }, [projects.rows, projectFilters, projectSort]);
+  }, [projects.rows, allowedProjectNos, projectSort]);
 
   // Resolve selected project from the FULL projects.rows (not filtered) so it
   // survives if the project is filtered out of the visible list.
@@ -368,11 +388,24 @@ export function DataManagementPage() {
               />
             </div>
             {topTab === "projects" && (
-              <ProjectsToolbar
-                rows={projects.rows}
-                filters={projectFilters}
-                onChange={setProjectFilters}
-              />
+              <div className="flex items-center gap-2">
+                <PeriodFilter
+                  period={projectFilters.period}
+                  fyKey={projectFilters.fyKey}
+                  onChange={(period, fyKey) =>
+                    setProjectFilters({ ...projectFilters, period, fyKey })
+                  }
+                  variant="compact"
+                />
+                <AdvancedFilter
+                  projects={domainProjects}
+                  filters={projectFilters}
+                  onChange={setProjectFilters}
+                  shipPlanDefault={true}
+                  resultCount={visibleProjects.length}
+                  totalCount={projects.rows.length}
+                />
+              </div>
             )}
             <RefreshAllButton steps={refreshSteps} />
           </div>
