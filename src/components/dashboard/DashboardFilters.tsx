@@ -172,8 +172,10 @@ export function DashboardFilters({
           className={cn(
             // rounded-full + symmetric px-3.5 mirrors AskAiButton's pill
             // shape so the two topbar CTAs (Filtre + TYRO AI) read as a
-            // matched pair. h-9 / text-[13px] / font-semibold all align.
-            "h-9 rounded-full px-3.5 inline-flex items-center gap-2 shrink-0 shadow-sm relative transition-transform",
+            // matched pair. min-w-[110px] guarantees the filter pill
+            // never renders narrower than "TYRO AI" — the labels are
+            // different lengths but the buttons should look identical.
+            "h-9 rounded-full px-3.5 min-w-[110px] inline-flex items-center justify-center gap-2 shrink-0 shadow-sm relative transition-transform",
             "text-[13px] font-semibold tracking-tight",
             "hover:scale-[1.04] active:scale-95",
             "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2",

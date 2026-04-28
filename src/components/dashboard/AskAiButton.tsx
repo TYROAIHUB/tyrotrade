@@ -30,8 +30,13 @@ export function AskAiButton({ onClick, className }: AskAiButtonProps) {
       onMouseLeave={() => setHovered(false)}
       aria-label="TYRO AI sohbetini aç"
       className={cn(
-        "group relative inline-flex items-center gap-2 shrink-0",
-        "rounded-full px-3.5 h-9 text-[13px] font-semibold text-white",
+        "group relative inline-flex items-center justify-center gap-2 shrink-0",
+        // min-w-[110px] mirrors DashboardFilters trigger so both topbar
+        // CTAs render at exactly the same width regardless of label
+        // length ("Filtre" vs "TYRO AI"). Pill shape, padding, height,
+        // and font-size all match so the pair reads as identical
+        // siblings on the topbar.
+        "rounded-full px-3.5 min-w-[110px] h-9 text-[13px] font-semibold text-white",
         "ring-1 ring-white/15 hover:ring-white/30",
         "transition-all duration-200",
         "hover:scale-[1.04]",

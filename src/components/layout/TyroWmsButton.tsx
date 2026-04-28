@@ -33,14 +33,14 @@ export function TyroWmsButton({ className }: TyroWmsButtonProps) {
       onBlur={() => setHovered(false)}
       className={cn(
         "group relative inline-flex items-center shrink-0 overflow-hidden",
-        "rounded-full h-9 text-[12px] font-semibold lowercase text-white",
+        "rounded-full h-9 text-[13px] font-semibold lowercase text-white",
         "ring-1 ring-white/20 hover:ring-white/40",
-        // Width animation: 36px collapsed → 124px expanded (icon + label
-        // + symmetric padding so the wordmark sits center-ish in the
-        // freed space). The transition is on `width` so layout doesn't
-        // shift adjacent topbar buttons mid-animation.
+        // Width animation: 36px collapsed → 138px expanded. The expanded
+        // width is sized so the centred "tyrowms" wordmark at 13px sits
+        // comfortably between the icon and the right edge without
+        // crowding either side.
         "transition-[width,box-shadow,transform] duration-300 ease-out",
-        hovered ? "w-[124px]" : "w-9",
+        hovered ? "w-[138px]" : "w-9",
         "active:scale-95",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
         className
