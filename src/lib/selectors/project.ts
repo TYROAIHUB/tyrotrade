@@ -169,30 +169,30 @@ export function selectDaysToDischargeEta(
 /* ─────────── Transit days ─────────── */
 
 /**
- * Per-project transit days (LP-ED → DP-ETA, with documented fallbacks).
+ * Per-project transit days — **Yükleme bitişi (LP-ED) → DP NOR Kabul
+ * (dpNorAccepted)**. Returns rounded integer days, or `null` when
+ * either endpoint is missing or the interval is non-positive.
  *
- * Returns rounded integer days, or `null` when either endpoint is missing
- * or the interval is non-positive.
+ * **Single source of truth** — this is the *exact* formula the Vessel
+ * Projects map header's "Transit" pill uses (see `RouteMap.tsx`'s
+ * `transitDays`). Both the dashboard's Velocity tile aggregate AND the
+ * detail drawer rows go through here so the tile's `Min / Max / Avg`
+ * line up bit-for-bit with the per-project number a user sees when
+ * they click into the project page.
  *
- * **Single source of truth** — both the VelocityTile aggregate AND the
- * VelocityBreakdown rows call this so the tile's "Min 5 / Max 89 / Avg 24"
- * always matches the breakdown's shortest/longest/average row exactly.
- *
- * Milestone fallback chain (matches D365 F&O voyage workflow):
- * - Start: `lpEd` (loading end) → `blDate` (Bill of Lading)
- * - End:   `dpEta` (discharge ETA) → `dpNorAccepted` (NOR accepted)
+ * Strict endpoints (no fallback) — when DP NOR Accepted is missing the
+ * project is intentionally excluded from the transit aggregate. Use
+ * `selectOperationDays` (when added) for a looser fallback chain that
+ * surfaces every project including ones still in transit.
  */
 export function selectTransitDays(
   p: Pick<Project, "vesselPlan">
 ): number | null {
   const ms = p.vesselPlan?.milestones;
-  if (!ms) return null;
-  const startIso = ms.lpEd ?? ms.blDate ?? null;
-  const endIso = ms.dpEta ?? ms.dpNorAccepted ?? null;
-  if (!startIso || !endIso) return null;
-  const start = new Date(startIso).getTime();
-  const end = new Date(endIso).getTime();
-  if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start)
+  if (!ms?.lpEd || !ms.dpNorAccepted) return null;
+  const start = new Date(ms.lpEd).getTime();
+  const end = new Date(ms.dpNorAccepted).getTime();
+  if (!Number.isFinite(start) || !Number.isFinite(end) || end < start)
     return null;
-  return Math.round((end - start) / (1000 * 60 * 60 * 24));
+  return Math.round((end - start) / 86_400_000);
 }

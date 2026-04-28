@@ -43,6 +43,7 @@ import { DEFAULT_STYLE } from "@/lib/map/style";
 import { useRouteGeometry } from "@/hooks/useRouteGeometry";
 import { useRouteProgress } from "@/hooks/useRouteProgress";
 import { formatDate } from "@/lib/format";
+import { selectTransitDays } from "@/lib/selectors/project";
 import type { Project } from "@/lib/dataverse/entities";
 import { useThemeAccent } from "@/components/layout/theme-accent";
 
@@ -552,15 +553,6 @@ function diffDays(startIso: string, endIso: string): number | null {
   return Math.round((end - start) / 86_400_000);
 }
 
-/** Transit Süre — `lpEd` (loading end) → `dpNorAccepted` (DP NOR
- *  accepted). Both endpoints required; returns null otherwise so the
- *  pill is hidden. */
-function transitDays(p: Project): number | null {
-  const ms = p.vesselPlan?.milestones;
-  if (!ms?.lpEd || !ms.dpNorAccepted) return null;
-  return diffDays(ms.lpEd, ms.dpNorAccepted);
-}
-
 /** Operasyon Süresi — earliest known LP milestone → DP NOR accepted.
  *  When the voyage is Completed / Closed and DP NOR is missing, fall
  *  back to the latest available DP date (dpEd > dpSd > dpEta) so closed
@@ -590,7 +582,10 @@ function operationDays(p: Project): number | null {
 /** Two compact day-count pills shown next to the stage chip in the map
  *  header. Either pill renders only when both endpoints are known. */
 function DurationPills({ project }: { project: Project }) {
-  const transit = transitDays(project);
+  // Same selector the dashboard's Velocity tile + drawer use, so the
+  // header pill here and the "Min/Max/Avg" line on the dashboard are
+  // always reading from the identical formula.
+  const transit = selectTransitDays(project);
   const operation = operationDays(project);
   if (transit == null && operation == null) return null;
   return (

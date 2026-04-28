@@ -1,5 +1,16 @@
 import * as React from "react";
 import {
+  ChartLineData01Icon,
+  Clock01Icon,
+  Coins02Icon,
+  ContainerIcon,
+  MoneyExchange01Icon,
+  Route01Icon,
+  UserGroupIcon,
+  Wallet01Icon,
+  WeightScale01Icon,
+} from "@hugeicons/core-free-icons";
+import {
   KpiGroupHeader,
   KpiProjectRow,
   KpiEmptyState,
@@ -128,6 +139,7 @@ export function ExpenseBreakdown({
             : "Projeler · giderden büyüğe"
         }
         count={rows.length}
+        icon={Wallet01Icon}
       />
       <div className="flex flex-col gap-0.5">
         {rows.map((r) => (
@@ -243,6 +255,7 @@ export function PipelineBreakdown({
             label={g.status}
             count={g.projects.length}
             toneColor={STATUS_COLORS[g.status]}
+            icon={ContainerIcon}
           />
           <div className="flex flex-col gap-0.5">
             {g.projects.map((p) => (
@@ -304,6 +317,7 @@ export function CurrencyBreakdown({
             label={g.currency}
             count={g.projects.length}
             toneColor={CURRENCY_COLORS[g.currency]}
+            icon={MoneyExchange01Icon}
           />
           <div className="flex flex-col gap-0.5">
             {g.projects.map((p) => (
@@ -370,6 +384,7 @@ export function CorridorBreakdown({
             <KpiGroupHeader
               label={`${c.loadingPort} → ${c.dischargePort}`}
               count={c.count}
+              icon={Route01Icon}
               valueChip={
                 <span className="text-[10.5px] tabular-nums font-semibold text-foreground/85">
                   {formatCompactCurrency(c.totalCargoValueUsd, "USD")}
@@ -445,6 +460,7 @@ export function VelocityBreakdown({
             : `En yavaştan · ortalama ${avg} gün`
         }
         count={rows.length}
+        icon={Clock01Icon}
         valueChip={
           <span className="text-[10.5px] tabular-nums font-semibold text-foreground/85">
             min {aggregateStats.minDays} · max {aggregateStats.maxDays}
@@ -533,7 +549,11 @@ export function CounterpartyBreakdown({
       ) : (
         grouped.map((g) => (
           <div key={g.name} className="flex flex-col">
-            <KpiGroupHeader label={g.name} count={g.projects.length} />
+            <KpiGroupHeader
+              label={g.name}
+              count={g.projects.length}
+              icon={UserGroupIcon}
+            />
             <div className="flex flex-col gap-0.5">
               {g.projects.map((p) => (
                 <KpiProjectRow
@@ -581,6 +601,7 @@ export function PeriodPerformanceBreakdown({
             : "Tüm projeler · yüksek değerden"
         }
         count={rows.length}
+        icon={ChartLineData01Icon}
       />
       <div className="flex flex-col gap-0.5">
         {rows.map(({ p, cargo }) => (
@@ -637,6 +658,7 @@ export function EstimatedPLBreakdown({
             : "Projeler · kârdan zarara"
         }
         count={rows.length}
+        icon={Coins02Icon}
       />
       <div className="flex flex-col gap-0.5">
         {rows.map(({ p, plUsd, marginPct }) => {
@@ -700,6 +722,7 @@ export function QuantityBreakdown({
             : "Projeler · çok tonajdan aza"
         }
         count={rows.length}
+        icon={WeightScale01Icon}
         valueChip={
           <span className="text-[10.5px] tabular-nums font-semibold text-amber-700">
             {formatTons(rows.reduce((s, r) => s + selectTotalKg(r.p), 0))}

@@ -329,15 +329,15 @@ export interface VelocityStats {
 }
 
 /**
- * Average transit time, in days, between the loading-end milestone (lpEd
- * preferred, blDate fallback) and the discharge-arrival milestone (dpEta
- * preferred, dpNorAccepted fallback). Projects missing either endpoint
- * are skipped.
+ * Average transit time, in days. Each per-project value comes from
+ * `selectTransitDays(p)` (LP-ED → DP NOR Accepted, strict endpoints,
+ * `Math.round`) — the *exact* formula the Vessel Projects map header
+ * pill displays for a single project.
  *
- * Uses `selectTransitDays(p)` for every per-project value so the tile and
- * the VelocityBreakdown drawer stay perfectly in sync — same rounding,
- * same milestone fallbacks, same skip rules. A user clicking through
- * the tile must see exactly the same min/max/avg numbers as the rows.
+ * That alignment is deliberate: the dashboard's "Min / Max / Avg gün"
+ * line must equal the shortest / longest / average per-project transit
+ * a user sees when they click into the project page. Projects missing
+ * `lpEd` or `dpNorAccepted` are skipped (no fallback).
  */
 export function aggregateAvgTransitDays(projects: Project[]): VelocityStats {
   const days: number[] = [];

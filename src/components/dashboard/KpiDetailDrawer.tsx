@@ -141,45 +141,74 @@ export function KpiDetailDrawer({
  * Pipeline drawer). Optional value chip on the right for the group's
  * total metric.
  *
- * Premium hierarchy: each group separated by a subtle `border-t` and
- * extra top padding so the eye finds its way through dense lists. The
- * count renders as a pill-shaped badge, not flat text, to read as a
- * deliberate UI element rather than a continuation of the label.
+ * Renders as a tinted band — light slate fill + soft inner border — so
+ * group boundaries pop visibly through the dense row stack. Optional
+ * `icon` (HugeIcons) sits in a small badge on the left; a `toneColor`
+ * vertical strip threads alongside the icon when categories carry a
+ * semantic palette (status, currency, etc.).
+ *
+ * Premium hierarchy: tinted surface, accent strip, icon badge, uppercase
+ * label, count pill, optional metric chip on the right.
  */
 export function KpiGroupHeader({
   label,
   count,
   valueChip,
   toneColor,
+  icon,
 }: {
   label: string;
   count: number;
   valueChip?: React.ReactNode;
-  /** Optional dot colour to make the group identifiable. */
+  /** Optional accent colour for the left strip — categorical palette. */
   toneColor?: string;
+  /** Optional HugeIcons glyph to render in the left badge. */
+  icon?: IconSvgElement;
 }) {
   return (
     <div
       className={cn(
-        "flex items-center gap-2 px-3 pt-5 pb-2 mt-2",
-        "first:mt-0 first:pt-3 first:border-t-0",
-        "border-t border-border/35"
+        "relative flex items-center gap-2 mt-3 mb-1.5 first:mt-1",
+        "px-3 py-2 rounded-lg overflow-hidden",
+        "bg-foreground/[0.045]",
+        "border border-foreground/[0.07]"
       )}
     >
       {toneColor && (
         <span
-          className="size-2 rounded-full shrink-0"
+          aria-hidden
+          className="absolute inset-y-2 left-0 w-1 rounded-r-full"
           style={{ backgroundColor: toneColor }}
         />
       )}
-      <span className="text-[10.5px] font-bold uppercase tracking-[0.14em] text-foreground/80">
+      {icon && (
+        <span
+          className={cn(
+            "size-6 rounded-md grid place-items-center shrink-0",
+            "bg-white/70 ring-1 ring-foreground/[0.06] text-foreground/80",
+            toneColor ? "ml-1" : ""
+          )}
+          style={
+            toneColor
+              ? {
+                  color: toneColor,
+                  boxShadow: `inset 0 0 0 1px ${toneColor}33`,
+                }
+              : undefined
+          }
+        >
+          <HugeiconsIcon icon={icon} size={13} strokeWidth={1.85} />
+        </span>
+      )}
+      <span className="text-[10.75px] font-bold uppercase tracking-[0.14em] text-foreground/85 truncate min-w-0">
         {label}
       </span>
       <span
         className={cn(
-          "inline-flex items-center justify-center min-w-5 h-4 px-1.5 rounded-full",
+          "inline-flex items-center justify-center min-w-5 h-4 px-1.5 rounded-full shrink-0",
           "text-[9.5px] font-semibold tabular-nums",
-          "bg-foreground/[0.06] text-foreground/70"
+          "bg-white/85 text-foreground/75",
+          "ring-1 ring-foreground/[0.08]"
         )}
       >
         {count}

@@ -49,8 +49,24 @@ interface AdvancedFilterProps {
    *  full "Filtre" labelled pill. Used by ProjectList where the
    *  search input + a labelled pill would crowd the panel header. */
   iconOnly?: boolean;
+  /** Trigger paint:
+   *  - `"accent"` (default) → live sidebar accent gradient (matches AskAi)
+   *  - `"muted"` → cool medium-dark slate gradient (theme-neutral, calmer
+   *    next to the AI button on the dashboard topbar). Active-count badge
+   *    keeps slate ink so it reads against the white pill. */
+  tone?: "accent" | "muted";
   className?: string;
 }
+
+/** Cool medium-dark slate gradient — used when `tone="muted"`. Kept
+ *  in module scope so both the icon-only and pill variants pull from
+ *  the same source of truth. */
+const MUTED_TONE = {
+  gradient:
+    "linear-gradient(135deg, #64748b 0%, #475569 55%, #334155 100%)",
+  ring: "rgba(51, 65, 85, 0.55)",
+  solid: "#334155",
+};
 
 /**
  * Page-agnostic Advanced Filter popover. One trigger pill matches the
@@ -83,9 +99,11 @@ export function AdvancedFilter({
   resultCount,
   totalCount,
   iconOnly = false,
+  tone = "accent",
   className,
 }: AdvancedFilterProps) {
   const accent = useThemeAccent();
+  const triggerTone = tone === "muted" ? MUTED_TONE : accent;
   const activeCount = projectFilterCount(filters, shipPlanDefault);
   const hasFilters = activeCount > 0;
 
@@ -130,9 +148,9 @@ export function AdvancedFilter({
               className
             )}
             style={{
-              background: accent.gradient,
+              background: triggerTone.gradient,
               color: "white",
-              boxShadow: `0 4px 12px -4px ${accent.ring}, inset 0 1px 0 0 rgba(255,255,255,0.25)`,
+              boxShadow: `0 4px 12px -4px ${triggerTone.ring}, inset 0 1px 0 0 rgba(255,255,255,0.25)`,
             }}
           >
             <HugeiconsIcon icon={FilterIcon} size={16} strokeWidth={2} />
@@ -141,8 +159,8 @@ export function AdvancedFilter({
                 className="absolute -top-1 -right-1 size-4 grid place-items-center rounded-full text-[9px] font-bold tabular-nums"
                 style={{
                   background: "white",
-                  color: accent.solid,
-                  boxShadow: `0 0 0 1.5px ${accent.solid}, 0 2px 6px -1px ${accent.ring}`,
+                  color: triggerTone.solid,
+                  boxShadow: `0 0 0 1.5px ${triggerTone.solid}, 0 2px 6px -1px ${triggerTone.ring}`,
                 }}
               >
                 {activeCount}
@@ -163,9 +181,9 @@ export function AdvancedFilter({
               className
             )}
             style={{
-              background: accent.gradient,
+              background: triggerTone.gradient,
               color: "white",
-              boxShadow: `0 4px 12px -4px ${accent.ring}, inset 0 1px 0 0 rgba(255,255,255,0.25)`,
+              boxShadow: `0 4px 12px -4px ${triggerTone.ring}, inset 0 1px 0 0 rgba(255,255,255,0.25)`,
             }}
           >
             <HugeiconsIcon icon={FilterIcon} size={16} strokeWidth={2} />
@@ -175,8 +193,8 @@ export function AdvancedFilter({
                 className="ml-0.5 h-5 min-w-5 px-1.5 inline-flex items-center justify-center rounded-full text-[10.5px] font-bold tabular-nums"
                 style={{
                   background: "white",
-                  color: accent.solid,
-                  boxShadow: `inset 0 0 0 1.5px ${accent.solid}, 0 2px 6px -1px ${accent.ring}`,
+                  color: triggerTone.solid,
+                  boxShadow: `inset 0 0 0 1.5px ${triggerTone.solid}, 0 2px 6px -1px ${triggerTone.ring}`,
                 }}
               >
                 {activeCount}

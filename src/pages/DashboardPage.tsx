@@ -196,6 +196,7 @@ export function DashboardPage() {
               shipPlanDefault={DASHBOARD_SHIP_PLAN_DEFAULT}
               resultCount={projects.length}
               totalCount={totalAvailable}
+              tone="muted"
             />
           </div>
         </GlassPanel>
