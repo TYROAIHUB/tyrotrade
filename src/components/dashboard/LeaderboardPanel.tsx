@@ -82,7 +82,7 @@ interface ChartRow {
 const BOARDS: BoardConfig[] = [
   {
     key: "top-sales",
-    label: "Satış Liderleri",
+    label: "Satış Liderleri | Gerçekleşen",
     icon: CrownIcon,
     iconColor: "#e0ad3e",
     emptyMessage: "Bu dönemde faturalı satış yok.",
@@ -101,7 +101,7 @@ const BOARDS: BoardConfig[] = [
   },
   {
     key: "top-expense",
-    label: "El Yakanlar",
+    label: "El Yakanlar | Tahmini",
     icon: Wallet01Icon,
     iconColor: "#f43f5e",
     emptyMessage: "Bu dönemde gider tahmini olan proje yok.",
@@ -120,7 +120,7 @@ const BOARDS: BoardConfig[] = [
   },
   {
     key: "lowest-margin",
-    label: "En Düşük Marj",
+    label: "En Düşük Marj | Tahmini",
     icon: ChartDownIcon,
     iconColor: "#f43f5e",
     emptyMessage: "Bu dönemde marj hesaplanabilir proje yok.",
@@ -142,7 +142,7 @@ const BOARDS: BoardConfig[] = [
   },
   {
     key: "highest-margin",
-    label: "En Yüksek Marj",
+    label: "En Yüksek Marj | Tahmini",
     icon: ChartUpIcon,
     iconColor: "#10b981",
     emptyMessage: "Bu dönemde marj hesaplanabilir proje yok.",
