@@ -18,6 +18,13 @@ interface AskAiButtonProps {
  *
  * Same gradient powers the drawer header, send button, and message
  * avatars so the entire AI surface tracks the user's theme choice.
+ *
+ * Collapsed-by-default — same dialect as TyroWmsButton on its left.
+ * At rest the button is a 36×36 circular icon-only pill so it doesn't
+ * crowd the topbar; on hover it animates the width open to reveal the
+ * "TYRO AI" wordmark. Pair-symmetric pill geometry with the WMS
+ * sibling: same height (h-9), same width animation (w-9 → w-[120px]),
+ * same shimmer, same easing.
  */
 export function AskAiButton({ onClick, className }: AskAiButtonProps) {
   const [hovered, setHovered] = React.useState(false);
@@ -28,21 +35,20 @@ export function AskAiButton({ onClick, className }: AskAiButtonProps) {
       onClick={onClick}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
+      onFocus={() => setHovered(true)}
+      onBlur={() => setHovered(false)}
       aria-label="TYRO AI sohbetini aç"
       className={cn(
-        "group relative inline-flex items-center justify-center gap-2 shrink-0",
-        // min-w-[110px] mirrors DashboardFilters trigger so both topbar
-        // CTAs render at exactly the same width regardless of label
-        // length ("Filtre" vs "TYRO AI"). Pill shape, padding, height,
-        // and font-size all match so the pair reads as identical
-        // siblings on the topbar.
-        "rounded-full px-3.5 min-w-[110px] h-9 text-[13px] font-semibold text-white",
+        "group relative inline-flex items-center shrink-0 overflow-hidden",
+        "rounded-full h-9 text-[13px] font-semibold text-white",
         "ring-1 ring-white/15 hover:ring-white/30",
-        "transition-all duration-200",
-        "hover:scale-[1.04]",
+        // Width animation: 36px collapsed → 120px expanded. Same easing
+        // + duration as TyroWmsButton so the two pills feel like a
+        // coordinated pair when the user hovers them in sequence.
+        "transition-[width,box-shadow,transform] duration-300 ease-out",
+        hovered ? "w-[120px]" : "w-9",
         "active:scale-95",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
-        "overflow-hidden",
         className
       )}
       style={{
@@ -60,16 +66,31 @@ export function AskAiButton({ onClick, className }: AskAiButtonProps) {
           hovered && "before:translate-x-[120%]"
         )}
       />
-      <HugeiconsIcon
-        icon={ChatEdit01Icon}
-        size={16}
-        strokeWidth={2}
+
+      {/* Icon — pinned 36×36 so the collapsed pill is a perfect circle. */}
+      <span className="relative z-[1] size-9 grid place-items-center shrink-0">
+        <HugeiconsIcon
+          icon={ChatEdit01Icon}
+          size={16}
+          strokeWidth={2}
+          className={cn(
+            "transition-transform duration-300",
+            hovered ? "rotate-6 scale-110" : "rotate-0"
+          )}
+        />
+      </span>
+
+      {/* Wordmark fades in alongside the width animation. */}
+      <span
         className={cn(
-          "shrink-0 transition-transform duration-300 relative z-[1]",
-          hovered ? "rotate-6 scale-110" : "rotate-0"
+          "relative z-[1] flex-1 inline-flex items-center justify-center",
+          "tracking-tight whitespace-nowrap pr-3",
+          "transition-opacity duration-200",
+          hovered ? "opacity-100 delay-100" : "opacity-0"
         )}
-      />
-      <span className="relative z-[1] tracking-tight">TYRO AI</span>
+      >
+        TYRO AI
+      </span>
     </button>
   );
 }
