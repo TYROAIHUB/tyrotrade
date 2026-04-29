@@ -88,34 +88,37 @@ export function TyroChatDrawer({ open, onOpenChange }: TyroChatDrawerProps) {
           </div>
         </div>
 
-        {/* Iframe body — crops the agent's own dark "TYRO Project MCP
-            Agent" banner (it duplicates our drawer header) and leaves
-            a small bottom gap so the rounded-bl-3xl corner doesn't
-            clip into the chat input.
-            Cross-origin iframe → can't touch the DOM; we hide the
-            banner by offsetting the iframe upward inside an
-            overflow-hidden wrapper. `BANNER_OFFSET` is a fixed pixel
-            value tuned to Copilot Studio's current banner height; bump
-            if Microsoft adjusts their default chrome. */}
-        <div className="flex-1 min-h-0 bg-white relative overflow-hidden">
+        {/* Iframe body — Copilot Studio renders its own dark teal
+            "TYRO Project MCP Agent" banner at the top, which duplicates
+            our drawer header. We can't touch its DOM (cross-origin),
+            and shifting the iframe with negative offsets broke the
+            internal flex layout (chat container stopped filling the
+            extended height). Cleanest fix: keep the iframe at natural
+            size and paint a matching-white overlay on top so the banner
+            is visually masked while the chat layout below stays
+            untouched. */}
+        <div className="flex-1 min-h-0 bg-white relative">
           {hasOpened ? (
-            <iframe
-              // `key` ensures we re-mount when the user changes the URL
-              // from Settings — otherwise the old src stays cached.
-              key={url}
-              src={url}
-              title="TYRO Chat — Copilot Studio agent"
-              className="absolute inset-x-0 border-0"
-              style={{
-                // Pull iframe up by 56px so the agent's banner sits
-                // ABOVE the visible region; bottom-2 (8px) keeps the
-                // input box clear of the rounded drawer corner.
-                top: -56,
-                bottom: 6,
-              }}
-              allow="microphone; clipboard-read; clipboard-write"
-              referrerPolicy="strict-origin-when-cross-origin"
-            />
+            <>
+              <iframe
+                // `key` ensures we re-mount when the user changes the URL
+                // from Settings — otherwise the old src stays cached.
+                key={url}
+                src={url}
+                title="TYRO Chat — Copilot Studio agent"
+                className="w-full h-full border-0"
+                allow="microphone; clipboard-read; clipboard-write"
+                referrerPolicy="strict-origin-when-cross-origin"
+              />
+              {/* Mask over the agent's banner — same white bg as the
+                  body so it disappears into the drawer chrome. Adjust
+                  height if Microsoft changes the banner thickness. */}
+              <div
+                aria-hidden
+                className="absolute inset-x-0 top-0 bg-white pointer-events-none"
+                style={{ height: 56 }}
+              />
+            </>
           ) : (
             <div className="h-full grid place-items-center text-[12px] text-muted-foreground">
               Yükleniyor…
