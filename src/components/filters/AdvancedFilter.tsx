@@ -182,10 +182,13 @@ export function AdvancedFilter({
             )}
           </button>
         ) : collapsible ? (
-          // Collapsed-by-default pill — same animation dialect as
-          // TyroWmsButton + AskAiButton. White outer shell, navy
-          // gradient badge holds the icon, "Filtre" wordmark fades in
-          // alongside the width animation.
+          // Glassy white pill, collapsed-by-default. At rest reads as a
+          // clean white circle button with a navy filter icon centered;
+          // on hover the width animates open and "Gelişmiş Filtre" fades
+          // in (navy ink). The shell stays white throughout — no inner
+          // dark badge — so the trigger feels light and modern next to
+          // the gradient TYRO AI / TYRO Chat siblings rather than
+          // competing with them tonally.
           <button
             type="button"
             aria-label="Gelişmiş filtre"
@@ -196,51 +199,68 @@ export function AdvancedFilter({
             className={cn(
               "group relative inline-flex items-center shrink-0 overflow-hidden",
               "rounded-full h-9",
-              "bg-white text-slate-900",
-              "ring-1 ring-foreground/15 hover:ring-foreground/25",
-              "shadow-[0_2px_8px_-2px_rgba(15,23,42,0.12)]",
+              // Glassy white surface — slight transparency + backdrop
+              // blur so the button reads as a "lifted" floating element.
+              "bg-white/85 backdrop-blur-xl backdrop-saturate-150",
+              "ring-1 ring-foreground/12 hover:ring-foreground/25",
               "transition-[width,box-shadow,transform] duration-300 ease-out",
-              hovered ? "w-[120px]" : "w-9",
+              hovered ? "w-[160px]" : "w-9",
               "active:scale-95",
               "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
               className
             )}
+            style={{
+              // Layered shadow: hard inner highlight + soft outer drop
+              // so the white pill pops off any background while keeping
+              // the glass aesthetic.
+              boxShadow:
+                "inset 0 1px 0 0 rgba(255,255,255,0.95), 0 1px 2px 0 rgba(15,23,42,0.06), 0 8px 22px -8px rgba(15,23,42,0.20)",
+              color: MUTED_TONE.solid,
+            }}
           >
-            {/* Navy badge — pinned 36×36 so the collapsed pill reads
-                as a perfect navy circle inside a thin white halo. */}
-            <span
-              className="relative z-[1] size-9 rounded-full grid place-items-center shrink-0 text-white"
-              style={{
-                background: MUTED_TONE.gradient,
-                boxShadow: `inset 0 1px 0 0 rgba(255,255,255,0.20), 0 0 0 1px rgba(15,23,42,0.10)`,
-              }}
-            >
-              <HugeiconsIcon icon={FilterIcon} size={16} strokeWidth={2} />
-              {activeCount > 0 && (
-                <span
-                  className="absolute -top-1 -right-1 size-4 grid place-items-center rounded-full text-[9px] font-bold tabular-nums"
-                  style={{
-                    background: "white",
-                    color: MUTED_TONE.solid,
-                    boxShadow: `0 0 0 1.5px ${MUTED_TONE.solid}, 0 2px 6px -1px ${MUTED_TONE.ring}`,
-                  }}
-                >
-                  {activeCount}
-                </span>
-              )}
+            {/* Filter icon — pinned 36×36 area, navy stroke. No inner
+                badge; the icon sits directly on the white surface. */}
+            <span className="relative z-[1] size-9 grid place-items-center shrink-0">
+              <HugeiconsIcon
+                icon={FilterIcon}
+                size={16}
+                strokeWidth={2}
+                style={{ color: MUTED_TONE.solid }}
+              />
             </span>
 
-            {/* Wordmark fades in alongside the width animation. */}
+            {/* Wordmark — navy ink, fades in alongside the width
+                animation. */}
             <span
               className={cn(
                 "relative z-[1] flex-1 inline-flex items-center justify-center",
-                "text-[13px] font-semibold tracking-tight whitespace-nowrap pr-3",
-                "transition-opacity duration-200",
-                hovered ? "opacity-100 delay-100" : "opacity-0"
+                "text-[13px] font-semibold tracking-tight whitespace-nowrap pr-4",
+                "transition-opacity duration-200"
               )}
+              style={{
+                color: MUTED_TONE.solid,
+                opacity: hovered ? 1 : 0,
+                transitionDelay: hovered ? "100ms" : "0ms",
+              }}
             >
-              Filtre
+              Gelişmiş Filtre
             </span>
+
+            {/* Active-count rosette — pinned to the top-right corner of
+                the entire pill so it stays visible whether collapsed or
+                expanded. Navy fill + white digit so it pops off the
+                white shell. */}
+            {activeCount > 0 && (
+              <span
+                className="absolute -top-1 -right-1 size-4 grid place-items-center rounded-full text-[9px] font-bold tabular-nums text-white z-[2]"
+                style={{
+                  background: MUTED_TONE.solid,
+                  boxShadow: `0 0 0 2px white, 0 2px 6px -1px ${MUTED_TONE.ring}`,
+                }}
+              >
+                {activeCount}
+              </span>
+            )}
           </button>
         ) : (
           <button
@@ -303,10 +323,14 @@ export function AdvancedFilter({
           } as React.CSSProperties
         }
       >
-        {/* Header — pill follows the same tone as the trigger so the
-            opened popover reads as a continuation of the button it
-            sprung from (muted slate on the dashboard, live accent on
-            ProjectList / Veri Yönetimi). */}
+        {/* Header — pill always uses the live `triggerTone` so the
+            popover opens with the same accent the user just clicked.
+            Dashboard, ProjectList, and Veri Yönetimi all default to
+            the sidebar accent, so the icon + gradient inside the
+            popover match across pages. The collapsible dashboard
+            trigger paints its OWN navy stroke on the white shell
+            outside; once opened, the popover snaps back to the
+            shared accent dialect. */}
         <div className="px-4 py-3 flex items-center gap-3 shrink-0 border-b border-border/40">
           <span
             className="size-9 rounded-xl grid place-items-center shrink-0 text-white shadow-sm"
