@@ -157,11 +157,11 @@ function TopBar({ title, pathname }: { title: string; pathname: string }) {
               <Search />
             </Button>
             <NotificationButton />
-            <TyroWmsButton className="hidden sm:inline-flex" />
             <AskAiButton
               className="hidden sm:inline-flex"
               onClick={() => setAiOpen(true)}
             />
+            <TyroWmsButton className="hidden sm:inline-flex" />
             <TyroChatButton
               className="hidden sm:inline-flex"
               onClick={() => setChatOpen(true)}
