@@ -1,7 +1,6 @@
 import * as React from "react";
 import { MoneyExchange01Icon } from "@hugeicons/core-free-icons";
 import { BentoTile } from "../BentoTile";
-import { TONE_CURRENCY } from "@/components/details/AccentIconBadge";
 import {
   aggregateCurrencyExposure,
   type CurrencyCode,
@@ -56,7 +55,6 @@ export function CurrencyExposureTile({
       title="Para Birimi Maruziyeti"
       subtitle="FX riski yoğunluğu"
       icon={MoneyExchange01Icon}
-      iconTone={TONE_CURRENCY}
       span={span}
       rowSpan={rowSpan}
       onClick={onClick}

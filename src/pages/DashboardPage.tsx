@@ -26,12 +26,7 @@ import {
   TONE_FORECAST,
   TONE_PL,
   TONE_CARGO,
-  TONE_EXPENSE,
   TONE_SEA,
-  TONE_CURRENCY,
-  TONE_CORRIDOR,
-  TONE_VELOCITY,
-  TONE_COUNTERPARTY,
   type IconBadgeTone,
 } from "@/components/details/AccentIconBadge";
 import type { IconSvgElement } from "@hugeicons/react";
@@ -345,7 +340,10 @@ interface KpiMeta {
    *  drawer is about to render. */
   subtitle?: (projects: Project[]) => string;
   icon: IconSvgElement;
-  tone: IconBadgeTone;
+  /** When omitted the drawer + tile both fall back to the live sidebar
+   *  accent (`useThemeAccent`) — pin a `tone` only for KPIs that carry
+   *  a fixed semantic palette (P&L / forecast / cargo / sea-state). */
+  tone?: IconBadgeTone;
   /** Optional sort flip labels — when omitted the toolbar's sort
    *  toggle is hidden (Pipeline / Currency keep their canonical order). */
   sort?: { default: string; reverse: string };
@@ -373,11 +371,15 @@ const KPI_META: Record<KpiId, KpiMeta> = {
     tone: TONE_CARGO,
     sort: { default: "En çok tonajdan", reverse: "En az tonajdan" },
   },
+  // Expense + currency + corridor + velocity + counterparty drop their
+  // `tone` so both the dashboard tile icon and the drawer header pill
+  // follow the live sidebar accent — light navy / gold / cyan etc.
+  // Period / PL / Quantity / Pipeline keep their fixed semantic tones
+  // (forecast / P&L / cargo / sea) because those carry domain meaning.
   expense: {
     title: "Tahmini Gider",
     subtitle: (p) => `${p.length} proje · USD bazlı kalemler`,
     icon: Wallet01Icon,
-    tone: TONE_EXPENSE,
     sort: { default: "En pahalıdan", reverse: "En ucuzdan" },
   },
   pipeline: {
@@ -391,28 +393,24 @@ const KPI_META: Record<KpiId, KpiMeta> = {
     title: "Para Birimi Maruziyeti",
     subtitle: (p) => `${p.length} proje · USD / EUR / TRY`,
     icon: MoneyExchange01Icon,
-    tone: TONE_CURRENCY,
     // Currency order is canonical (USD → EUR → TRY); no flip.
   },
   corridor: {
     title: "Koridor Konsantrasyonu",
     subtitle: (p) => `${p.length} proje · LP → DP dağılımı`,
     icon: Route01Icon,
-    tone: TONE_CORRIDOR,
     sort: { default: "En çok projeli koridor", reverse: "En az projeli koridor" },
   },
   velocity: {
     title: "Ortalama Transit",
     subtitle: (p) => `${p.length} proje · LP-(ED) → DP-ETA`,
     icon: Clock01Icon,
-    tone: TONE_VELOCITY,
     sort: { default: "En yavaştan", reverse: "En hızlıdan" },
   },
   counterparty: {
     title: "Karşı Taraf Dağılımı",
     subtitle: (p) => `${p.length} proje · tedarikçi & alıcı`,
     icon: UserGroupIcon,
-    tone: TONE_COUNTERPARTY,
     sort: { default: "En çok projeli", reverse: "En az projeli" },
   },
 };

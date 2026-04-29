@@ -1,7 +1,6 @@
 import * as React from "react";
 import { Route01Icon } from "@hugeicons/core-free-icons";
 import { BentoTile } from "../BentoTile";
-import { TONE_CORRIDOR } from "@/components/details/AccentIconBadge";
 import { aggregateByCorridor } from "@/lib/selectors/aggregate";
 import type { Project } from "@/lib/dataverse/entities";
 
@@ -62,7 +61,6 @@ export function CorridorConcentrationTile({
       title="Koridor Konsantrasyonu"
       subtitle="LP→DP yoğunluğu"
       icon={Route01Icon}
-      iconTone={TONE_CORRIDOR}
       span={span}
       rowSpan={rowSpan}
       onClick={onClick}
