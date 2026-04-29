@@ -21,9 +21,29 @@ interface ProfileMenuProps {
   expanded: boolean;
 }
 
-const NAME = "Cenk Saylı";
-const EMAIL = "cenk.sayli@tiryaki.com.tr";
-const INITIALS = "CS";
+/** Mock-mode + missing-account fallback so the avatar always has SOME
+ *  identity to render. Real auth fills these in from the MSAL account. */
+const FALLBACK_NAME = "Cenk Saylı";
+const FALLBACK_EMAIL = "cenk.sayli@tiryaki.com.tr";
+
+/** Two-letter initials from a "First Last" string. Falls back to the
+ *  first two letters of the email local-part when the name is missing
+ *  or single-token. */
+function computeInitials(name: string, email: string): string {
+  const trimmed = (name ?? "").trim();
+  if (trimmed) {
+    const parts = trimmed.split(/\s+/).filter(Boolean);
+    if (parts.length >= 2) {
+      return (parts[0]![0]! + parts[parts.length - 1]![0]!).toUpperCase();
+    }
+    if (parts.length === 1 && parts[0]!.length >= 2) {
+      return parts[0]!.slice(0, 2).toUpperCase();
+    }
+  }
+  const local = (email ?? "").split("@")[0] ?? "";
+  if (local.length >= 2) return local.slice(0, 2).toUpperCase();
+  return "TY";
+}
 
 export function ProfileMenu({ expanded }: ProfileMenuProps) {
   const accent = useThemeAccent();
@@ -31,7 +51,15 @@ export function ProfileMenu({ expanded }: ProfileMenuProps) {
   // it returns an empty `accounts` array and a no-op instance. We still
   // gate the actual logout call behind `isAuthConfigured` so that mock
   // sessions don't try to redirect to an empty endpoint.
-  const { instance } = useMsal();
+  const { instance, accounts } = useMsal();
+
+  // Real account → use the AAD-resolved display name + UPN (email).
+  // Mock / unauthenticated → fall back so the sidebar always renders
+  // a valid name + email pair.
+  const account = accounts[0] ?? instance.getActiveAccount() ?? null;
+  const NAME = (account?.name ?? "").trim() || FALLBACK_NAME;
+  const EMAIL = (account?.username ?? "").trim() || FALLBACK_EMAIL;
+  const INITIALS = computeInitials(NAME, EMAIL);
 
   const handleLogout = () => {
     if (isAuthConfigured && !shouldUseMock()) {

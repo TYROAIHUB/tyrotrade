@@ -53,10 +53,22 @@ import {
   type ProjectFilterState,
 } from "@/lib/filters/projectFilters";
 import * as React from "react";
+import { useNavigate } from "react-router-dom";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { useProjects } from "@/hooks/useProjects";
 import { ProjectsEmptyState } from "@/components/projects/ProjectsEmptyState";
-import { aggregatePipelineBuckets } from "@/lib/selectors/aggregate";
+import {
+  aggregatePipelineBuckets,
+} from "@/lib/selectors/aggregate";
+import { selectStage } from "@/lib/selectors/project";
+import { useThemeAccent } from "@/components/layout/theme-accent";
 import { getFinancialYear } from "@/lib/dashboard/financialPeriod";
+import { cn } from "@/lib/utils";
 import type { Project } from "@/lib/dataverse/entities";
 
 // Dashboard default = inclusive (all projects flow into KPIs unless
@@ -111,6 +123,30 @@ export function DashboardPage() {
   const loading = buckets.loading;
   const atDischarge = buckets.atDischarge;
 
+  // Per-bucket project lists — fed to the greeting subtitle's hover
+  // tooltips so the user can see which projects are in each pipeline
+  // state without leaving the dashboard. Single pass over `projects`
+  // grouping by their resolved stage; we DON'T memoize the result
+  // separately because the upstream `projects` memo already gates
+  // recomputation on filter changes.
+  const pipelineLists = React.useMemo(() => {
+    const lists = {
+      loading: [] as Project[],
+      inTransit: [] as Project[],
+      atDischarge: [] as Project[],
+    };
+    for (const p of projects) {
+      const stage = selectStage(p, now);
+      if (stage === null) continue;
+      if (stage === "loading" || stage === "at-loading-port")
+        lists.loading.push(p);
+      else if (stage === "in-transit") lists.inTransit.push(p);
+      else if (stage === "at-discharge-port") lists.atDischarge.push(p);
+    }
+    return lists;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [projects]);
+
   // Approximate "rows visible after search" — counts projects passing
   // the toolbar's free-text query. Matches the per-breakdown filter so
   // the toolbar's `12/437` counter is honest. Specific breakdowns may
@@ -164,17 +200,42 @@ export function DashboardPage() {
                 </span>{" "}
                 izleniyor.
                 {(inTransit > 0 || loading > 0 || atDischarge > 0) && (
-                  <>
-                    {" "}
-                    {[
-                      inTransit > 0 && `${inTransit} yolda`,
-                      loading > 0 && `${loading} yüklemede`,
-                      atDischarge > 0 && `${atDischarge} tahliyede`,
-                    ]
-                      .filter(Boolean)
-                      .join(" · ")}
-                    .
-                  </>
+                  <span className="ml-0.5 inline-flex items-baseline flex-wrap gap-x-1.5">
+                    <TooltipProvider delayDuration={120}>
+                      {inTransit > 0 && (
+                        <PipelineCountTooltip
+                          count={inTransit}
+                          label="yolda"
+                          projects={pipelineLists.inTransit}
+                        />
+                      )}
+                      {loading > 0 && (
+                        <>
+                          {inTransit > 0 && (
+                            <span className="text-foreground/40">·</span>
+                          )}
+                          <PipelineCountTooltip
+                            count={loading}
+                            label="yüklemede"
+                            projects={pipelineLists.loading}
+                          />
+                        </>
+                      )}
+                      {atDischarge > 0 && (
+                        <>
+                          {(inTransit > 0 || loading > 0) && (
+                            <span className="text-foreground/40">·</span>
+                          )}
+                          <PipelineCountTooltip
+                            count={atDischarge}
+                            label="tahliyede"
+                            projects={pipelineLists.atDischarge}
+                          />
+                        </>
+                      )}
+                    </TooltipProvider>
+                    <span>.</span>
+                  </span>
                 )}
                 {activeFilterCount > 0 && (
                   <span className="ml-1.5 text-foreground/70">
@@ -441,4 +502,114 @@ function formatSyncTime(iso: string): string {
   const dd = String(d.getDate()).padStart(2, "0");
   const mo = String(d.getMonth() + 1).padStart(2, "0");
   return `${dd}.${mo} ${hh}:${mm}`;
+}
+
+/* ─────────── Pipeline-count tooltip ─────────── */
+
+/**
+ * Hoverable count + label that opens a premium tooltip listing the
+ * underlying projects (projectNo + name + segment, capped to 12 rows).
+ * Click a row → navigate to the Vessel Projects page with that project
+ * pre-selected via `focusProjectNo` state. Used by the dashboard
+ * greeting subtitle for `inTransit / loading / atDischarge` chips —
+ * NOT applied to the FY label or the total project count, which are
+ * top-level numbers without an actionable list behind them.
+ */
+function PipelineCountTooltip({
+  count,
+  label,
+  projects,
+}: {
+  count: number;
+  label: string;
+  projects: Project[];
+}) {
+  const accent = useThemeAccent();
+  const navigate = useNavigate();
+  const PREVIEW_CAP = 12;
+  const visible = projects.slice(0, PREVIEW_CAP);
+  const remainder = projects.length - visible.length;
+
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <button
+          type="button"
+          className={cn(
+            "inline-flex items-baseline gap-1 rounded-md px-1 -mx-1 -my-0.5 py-0.5",
+            "transition-colors cursor-default outline-none",
+            "hover:bg-foreground/[0.04]",
+            "focus-visible:ring-2 focus-visible:ring-offset-1 focus-visible:ring-offset-background"
+          )}
+          style={{ color: accent.solid }}
+        >
+          <span className="font-bold tabular-nums">{count}</span>
+          <span className="font-medium">{label}</span>
+        </button>
+      </TooltipTrigger>
+      <TooltipContent
+        side="bottom"
+        align="start"
+        sideOffset={6}
+        className={cn(
+          "p-0 max-w-[360px] w-[320px]",
+          "bg-white/97 backdrop-blur-2xl backdrop-saturate-150",
+          "ring-1 ring-foreground/10",
+          "shadow-[0_18px_44px_-14px_rgba(15,23,42,0.32)]"
+        )}
+      >
+        <div className="px-3 py-2 border-b border-border/40 flex items-center gap-2">
+          <span
+            className="size-1.5 rounded-full shrink-0"
+            style={{ background: accent.solid }}
+          />
+          <span className="text-[11px] font-bold uppercase tracking-wider text-slate-900">
+            {count} proje · {label}
+          </span>
+        </div>
+        <div className="py-1">
+          {visible.map((p) => (
+            <button
+              key={p.projectNo}
+              type="button"
+              onClick={() =>
+                navigate(`/projects/${p.projectNo}`, {
+                  state: { focusProjectNo: p.projectNo },
+                })
+              }
+              className="w-full text-left px-3 py-1.5 hover:bg-foreground/[0.04] transition-colors flex flex-col gap-0.5"
+            >
+              <div className="flex items-baseline gap-1.5 min-w-0">
+                <span
+                  className="font-mono text-[10.5px] tabular-nums shrink-0"
+                  style={{ color: accent.solid, opacity: 0.75 }}
+                >
+                  {p.projectNo}
+                </span>
+                <span className="text-[11.5px] font-semibold text-slate-900 truncate">
+                  {p.projectName}
+                </span>
+              </div>
+              {p.segment && (
+                <span
+                  className="text-[10px] uppercase tracking-wider self-start font-semibold px-1.5 py-px rounded"
+                  style={{
+                    color: accent.solid,
+                    background: accent.tint,
+                  }}
+                >
+                  {p.segment}
+                </span>
+              )}
+            </button>
+          ))}
+          {remainder > 0 && (
+            <div className="px-3 py-1.5 text-[10.5px] text-foreground/65 italic">
+              + {remainder} proje daha
+            </div>
+          )}
+        </div>
+      </TooltipContent>
+    </Tooltip>
+  );
 }

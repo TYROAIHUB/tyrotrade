@@ -11,6 +11,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { useSidebar, type SidebarTheme } from "./sidebar-context";
+import { useThemeAccent } from "./theme-accent";
 
 interface ThemeOption {
   value: SidebarTheme;
@@ -62,7 +63,12 @@ interface ThemeSwitcherProps {
 
 export function ThemeSwitcher({ showLabel }: ThemeSwitcherProps) {
   const { theme, setTheme } = useSidebar();
+  const accent = useThemeAccent();
   const active = THEME_OPTIONS.find((o) => o.value === theme);
+  // Mid stop of the active theme — used as the visible ring around the
+  // small swatch in the sidebar trigger so the indicator picks up the
+  // current theme's signature accent (sky/gold/cyan mid).
+  const swatchRing = accent.stops[1];
 
   const trigger = (
     <button
@@ -82,9 +88,15 @@ export function ThemeSwitcher({ showLabel }: ThemeSwitcherProps) {
       {showLabel && (
         <>
           <span className="truncate flex-1 text-left">Tema</span>
+          {/* Ring colour comes from the active theme's mid stop so
+              the small swatch picks up the current theme's signature
+              hue (sky / gold / cyan) instead of a generic neutral. */}
           <span
-            className="size-4 rounded-full ring-1 ring-[var(--sb-swatch-ring)] shrink-0 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.25)]"
-            style={{ background: active?.surface }}
+            className="size-4 rounded-full shrink-0 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.25)]"
+            style={{
+              background: active?.surface,
+              boxShadow: `0 0 0 2px ${swatchRing}, inset 0 1px 0 0 rgba(255,255,255,0.25)`,
+            }}
             aria-hidden
           />
         </>
@@ -109,12 +121,14 @@ export function ThemeSwitcher({ showLabel }: ThemeSwitcherProps) {
         align="end"
         sideOffset={14}
         className={cn(
-          // PopoverContent already brings .glass + .glass-strong + .shadow-glass
-          // (frosted bg + backdrop-filter + specular highlight). We just shape it.
           "w-[340px] p-0 overflow-hidden",
-          // Crisp 1px hairline + a stronger drop shadow so the panel doesn't
-          // disappear into the app behind it.
-          "ring-1 ring-white/55 ring-offset-0",
+          // Opaque white panel — the previous frosted .glass background
+          // let the underlying sidebar surface bleed through, making
+          // theme swatches read against the wrong palette. Solid
+          // bg-white + saturated backdrop-blur keeps the swatches
+          // legible regardless of what's behind the popover.
+          "bg-white backdrop-blur-2xl backdrop-saturate-150",
+          "ring-1 ring-foreground/10",
           "shadow-[0_28px_70px_-14px_rgba(15,23,42,0.45),0_8px_24px_-8px_rgba(15,23,42,0.18)]"
         )}
       >
