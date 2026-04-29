@@ -153,12 +153,16 @@ export function EstimatedPLTile({
       onClick={onClick}
     >
       <div className="flex flex-col h-full min-h-0">
-        {/* ─────────── Header: K&Z + Zirve | Satış / Alım / Gider ─────────── */}
+        {/* ─────────── Header: TOPLAM + ZIRVE | SATIŞ/ALIM/GİDER ───────────
+            Two columns of "eyebrow over big value" on the left
+            (TOPLAM | ZIRVE) baseline-aligned, three rows of
+            label/dot/value on the right (3-col grid for column-aligned
+            dots and figures across rows). */}
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-stretch gap-3 min-w-0">
             <div className="flex flex-col gap-1 min-w-0">
-              <span className="text-[10px] font-bold uppercase tracking-[0.12em] text-foreground/70">
-                Tahmini K&Z
+              <span className="text-[10px] font-bold uppercase tracking-[0.12em] text-foreground/70 leading-none">
+                Toplam
               </span>
               <span
                 className="text-[22px] font-semibold leading-none tracking-tight"
@@ -180,7 +184,7 @@ export function EstimatedPLTile({
                   className="flex flex-col gap-1 min-w-0"
                   title={`En yüksek |K&Z| ${peak.monthLong} ayı — ${peak.pl >= 0 ? "+" : ""}${formatCompactCurrency(peak.pl, "USD")}`}
                 >
-                  <span className="text-[10px] font-bold uppercase tracking-[0.12em] text-foreground/70">
+                  <span className="text-[10px] font-bold uppercase tracking-[0.12em] text-foreground/70 leading-none">
                     Zirve
                   </span>
                   <span
@@ -194,10 +198,16 @@ export function EstimatedPLTile({
             )}
           </div>
 
-          {/* Right: 3-stacked compact metrics replacing the old legend.
-              "Tahmini" prefix dropped — the tile title already supplies
-              the framing, repeating it three times added noise. */}
-          <div className="flex flex-col gap-1 shrink-0 text-right">
+          {/* Right: 3-row grid (label · dot · value) so the columns line
+              up vertically across the three rows. Labels right-aligned
+              against the dot column; values right-aligned at the pill's
+              right edge. */}
+          <div
+            className="grid shrink-0 gap-x-1.5 gap-y-1 items-center"
+            style={{
+              gridTemplateColumns: "auto auto minmax(64px, max-content)",
+            }}
+          >
             <RightMetric label="Satış" value={pl.salesTotalUsd} dot="#10b981" />
             <RightMetric label="Alım" value={pl.purchaseTotalUsd} dot="#f59e0b" />
             <RightMetric label="Gider" value={pl.expenseTotalUsd} dot="#dc2626" />
@@ -215,7 +225,7 @@ export function EstimatedPLTile({
             <BarChart
               accessibilityLayer
               data={monthly}
-              margin={{ top: 18, right: 0, left: 0, bottom: 0 }}
+              margin={{ top: 26, right: 6, left: 6, bottom: 0 }}
             >
               {/* Tick styling matches EstimatedQuantityTile so the two
                   monthly bar charts read with the same axis dialect. */}
@@ -261,6 +271,12 @@ export function EstimatedPLTile({
 
 /* ─────────── Right-column compact metric row ─────────── */
 
+/**
+ * One row of the right-side 3-column grid (label / dot / value).
+ * Returns a fragment so the parent grid can lay out all three rows in
+ * three columns — that's what gives the dots and currency figures a
+ * clean vertical alignment regardless of label length.
+ */
 function RightMetric({
   label,
   value,
@@ -271,24 +287,24 @@ function RightMetric({
   dot: string;
 }) {
   return (
-    <div
-      className="flex items-baseline gap-1.5 justify-end leading-none"
-      title={`${label}: ${formatCompactCurrency(value, "USD")}`}
-    >
-      <span className="text-[10px] uppercase tracking-wider text-muted-foreground/80">
+    <>
+      <span
+        className="text-[10px] uppercase tracking-wider text-muted-foreground/85 text-right leading-none"
+        title={`${label}: ${formatCompactCurrency(value, "USD")}`}
+      >
         {label}
       </span>
       <span
-        className="size-1.5 rounded-full shrink-0 self-center"
+        className="size-1.5 rounded-full shrink-0 justify-self-center"
         style={{ backgroundColor: dot }}
       />
       <span
-        className="text-[11.5px] font-bold tabular-nums tabular-num min-w-[60px]"
+        className="text-[11.5px] font-bold tabular-nums leading-none text-right"
         style={{ color: dot }}
       >
         {formatCompactCurrency(value, "USD")}
       </span>
-    </div>
+    </>
   );
 }
 
@@ -330,21 +346,26 @@ function BarShape(props: BarShapeProps) {
   const fill = accentColor ?? "#3b82f6";
   const centerX = xPos + w / 2;
 
-  // Zero-value months: render a faint baseline tick so the slot still
+  // Zero-value months: render a visible baseline tick so the slot still
   // reads as "month exists, no data" instead of looking like the bar is
-  // missing.
+  // missing. Higher opacity + slightly larger than before so the user
+  // can tell the slot is intentionally there.
   if (h === 0 || numericValue === 0) {
     return (
       <>
-        <Rectangle {...props} fill="transparent" />
+        <Rectangle
+          {...props}
+          fill="transparent"
+          style={{ pointerEvents: "all" }}
+        />
         <rect
-          x={centerX - 1.5}
-          y={yPos - 1}
-          width={3}
-          height={2}
-          rx={1}
+          x={centerX - 2}
+          y={yPos - 1.5}
+          width={4}
+          height={3}
+          rx={1.5}
           fill={fill}
-          fillOpacity={0.25}
+          fillOpacity={0.45}
         />
       </>
     );
@@ -355,23 +376,28 @@ function BarShape(props: BarShapeProps) {
   // bar in the direction it grows: positive bars need extra height
   // above yPos (so we shift yPos up); negative bars extend below the
   // baseline (yPos stays, h grows down).
-  const MIN_H = 4;
+  const MIN_H = 6;
   const renderH = Math.max(h, MIN_H);
   const renderY = numericValue >= 0 ? yPos - (renderH - h) : yPos;
   const tipY = numericValue >= 0 ? renderY : renderY + renderH;
-  // Label above the bar tip with comfortable clearance so it never
-  // overlaps the bar even at the peak. For negative bars the tip is at
-  // the bottom, so the label sits below it.
-  const labelOffset = 8;
+  // Label clears the bar tip with comfortable headroom. For negative
+  // bars the tip is at the bottom of the bar, so the label sits below.
+  const labelClearance = 10;
   const labelY =
-    numericValue >= 0 ? tipY - labelOffset : tipY + labelOffset + 8;
+    numericValue >= 0 ? tipY - labelClearance : tipY + labelClearance + 8;
   const centerY = renderY + renderH / 2;
 
   return (
     <>
       {/* Invisible hit-target so hover is detected across the full
-          natural bar width even when the visible spine is only 10%. */}
-      <Rectangle {...props} fill="transparent" />
+          natural bar width even when the visible spine is only 10%.
+          Explicit pointer-events:all because some browsers skip
+          hit-testing for `fill="transparent"` rects. */}
+      <Rectangle
+        {...props}
+        fill="transparent"
+        style={{ pointerEvents: "all" }}
+      />
 
       <motion.rect
         key={`bar-${index}`}
@@ -387,6 +413,7 @@ function BarShape(props: BarShapeProps) {
         style={{
           transformOrigin: `${centerX}px ${centerY}px`,
           transformBox: "fill-box",
+          pointerEvents: "none",
         }}
       />
 
