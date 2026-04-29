@@ -156,7 +156,7 @@ export function DashboardPage() {
                   short and scannable. */}
               <p className="text-sm text-muted-foreground">
                 <span className="font-semibold text-foreground">
-                  {fy.fullLabel}
+                  {fy.fullLabel.replace(/^FY\s*/, "")}
                 </span>{" "}
                 finansal döneminde{" "}
                 <span className="font-semibold text-foreground">
