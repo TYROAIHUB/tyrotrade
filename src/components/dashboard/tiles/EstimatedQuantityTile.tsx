@@ -1,5 +1,5 @@
 import * as React from "react";
-import { WeightScale01Icon } from "@hugeicons/core-free-icons";
+import { BalanceScaleIcon } from "@hugeicons/core-free-icons";
 import { Bar, BarChart, Tooltip, XAxis } from "recharts";
 import { BentoTile } from "../BentoTile";
 import { TONE_CARGO } from "@/components/details/AccentIconBadge";
@@ -158,7 +158,7 @@ export function EstimatedQuantityTile({
     <BentoTile
       title="Tahmini Miktar"
       subtitle="Toplam tonaj · ay bazlı dağılım"
-      icon={WeightScale01Icon}
+      icon={BalanceScaleIcon}
       iconTone={TONE_CARGO}
       span={span}
       rowSpan={rowSpan}

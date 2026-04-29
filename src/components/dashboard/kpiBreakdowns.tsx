@@ -8,7 +8,7 @@ import {
   Route01Icon,
   UserGroupIcon,
   Wallet01Icon,
-  WeightScale01Icon,
+  BalanceScaleIcon,
 } from "@hugeicons/core-free-icons";
 import {
   KpiGroupHeader,
@@ -722,7 +722,7 @@ export function QuantityBreakdown({
             : "Projeler · çok tonajdan aza"
         }
         count={rows.length}
-        icon={WeightScale01Icon}
+        icon={BalanceScaleIcon}
         valueChip={
           <span className="text-[10.5px] tabular-nums font-semibold text-amber-700">
             {formatTons(rows.reduce((s, r) => s + selectTotalKg(r.p), 0))}

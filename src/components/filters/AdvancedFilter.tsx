@@ -49,12 +49,14 @@ interface AdvancedFilterProps {
    *  full "Filtre" labelled pill. Used by ProjectList where the
    *  search input + a labelled pill would crowd the panel header. */
   iconOnly?: boolean;
-  /** When true, render a TyroWms-dialect collapsed pill: at rest a
-   *  36×36 round button (navy badge + white filter icon) inside a
-   *  white outer pill; on hover the width animates open to reveal
-   *  the "Filtre" wordmark in slate ink. Used on the dashboard so the
-   *  filter pill matches the AskAiButton + TyroWmsButton siblings'
-   *  collapse-on-rest behaviour. Mutually exclusive with `iconOnly`. */
+  /** When true, render the dashboard's glassy white-pill variant —
+   *  always-open (no collapse animation), 3D-lifted shadow stack,
+   *  navy filter icon + "Filtre" wordmark in navy ink. Width is
+   *  capped to match TYRO Chat / TYRO AI siblings so the topbar +
+   *  dashboard CTAs read as a symmetric set. Mutually exclusive with
+   *  `iconOnly`. (Prop name kept for API stability — was previously
+   *  a hover-collapse variant that flipped to always-open after the
+   *  user asked for size parity with the chat buttons.) */
   collapsible?: boolean;
   /** Trigger paint (only honoured when `collapsible=false`):
    *  - `"accent"` (default) → live sidebar accent gradient (matches AskAi)
@@ -182,13 +184,17 @@ export function AdvancedFilter({
             )}
           </button>
         ) : collapsible ? (
-          // Glassy white pill, collapsed-by-default. At rest reads as a
-          // clean white circle button with a navy filter icon centered;
-          // on hover the width animates open and "Gelişmiş Filtre" fades
-          // in (navy ink). The shell stays white throughout — no inner
-          // dark badge — so the trigger feels light and modern next to
-          // the gradient TYRO AI / TYRO Chat siblings rather than
-          // competing with them tonally.
+          // Always-open glassy white pill. Same min-width + height as
+          // the TYRO Chat / TYRO AI sibling buttons so the topbar +
+          // dashboard CTAs read as a symmetric set.
+          //
+          // 3D presence comes from a stacked shadow:
+          //   - inset top highlight (rgba 1,1,1)         → glass top sheen
+          //   - inset bottom shadow (slate 0.04)         → ambient floor
+          //   - outer 1px hairline ring                  → button edge
+          //   - 1+4+12px layered drops                   → lifted feel
+          // Hover bumps the lift by translating up 1px and deepening
+          // the outer drops + adding an indigo edge tint for affordance.
           <button
             type="button"
             aria-label="Gelişmiş filtre"
@@ -197,65 +203,53 @@ export function AdvancedFilter({
             onFocus={() => setHovered(true)}
             onBlur={() => setHovered(false)}
             className={cn(
-              "group relative inline-flex items-center shrink-0 overflow-hidden",
-              "rounded-full h-9",
-              // Glassy white surface — slight transparency + backdrop
-              // blur so the button reads as a "lifted" floating element.
-              "bg-white/85 backdrop-blur-xl backdrop-saturate-150",
-              "ring-1 ring-foreground/12 hover:ring-foreground/25",
-              "transition-[width,box-shadow,transform] duration-300 ease-out",
-              hovered ? "w-[160px]" : "w-9",
-              "active:scale-95",
+              "group relative inline-flex items-center justify-center gap-2 shrink-0",
+              "h-9 rounded-full px-3.5 min-w-[110px]",
+              "text-[13px] font-semibold tracking-tight",
+              "transition-[transform,box-shadow] duration-200 ease-out",
+              hovered && "-translate-y-px",
+              "active:translate-y-0 active:scale-[0.98]",
               "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
               className
             )}
             style={{
-              // Layered shadow: hard inner highlight + soft outer drop
-              // so the white pill pops off any background while keeping
-              // the glass aesthetic.
-              boxShadow:
-                "inset 0 1px 0 0 rgba(255,255,255,0.95), 0 1px 2px 0 rgba(15,23,42,0.06), 0 8px 22px -8px rgba(15,23,42,0.20)",
+              // Subtle vertical gradient: white at top, faintly cooler
+              // off-white at bottom — simulates light from above so the
+              // pill reads as a 3D-lifted disc rather than a flat blob.
+              background:
+                "linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(248,250,252,0.92) 100%)",
+              backdropFilter: "blur(12px) saturate(150%)",
               color: MUTED_TONE.solid,
+              boxShadow: hovered
+                ? [
+                    "inset 0 1px 0 0 rgba(255,255,255,1)",
+                    "inset 0 -1px 1px 0 rgba(15,23,42,0.04)",
+                    "0 0 0 1px rgba(99,102,241,0.20)",
+                    "0 2px 4px 0 rgba(15,23,42,0.08)",
+                    "0 10px 24px -6px rgba(15,23,42,0.18)",
+                  ].join(", ")
+                : [
+                    "inset 0 1px 0 0 rgba(255,255,255,1)",
+                    "inset 0 -1px 1px 0 rgba(15,23,42,0.04)",
+                    "0 0 0 1px rgba(15,23,42,0.07)",
+                    "0 1px 2px 0 rgba(15,23,42,0.06)",
+                    "0 6px 14px -4px rgba(15,23,42,0.12)",
+                  ].join(", "),
             }}
           >
-            {/* Filter icon — pinned 36×36 area, navy stroke. No inner
-                badge; the icon sits directly on the white surface. */}
-            <span className="relative z-[1] size-9 grid place-items-center shrink-0">
-              <HugeiconsIcon
-                icon={FilterIcon}
-                size={16}
-                strokeWidth={2}
-                style={{ color: MUTED_TONE.solid }}
-              />
-            </span>
-
-            {/* Wordmark — navy ink, fades in alongside the width
-                animation. */}
-            <span
-              className={cn(
-                "relative z-[1] flex-1 inline-flex items-center justify-center",
-                "text-[13px] font-semibold tracking-tight whitespace-nowrap pr-4",
-                "transition-opacity duration-200"
-              )}
-              style={{
-                color: MUTED_TONE.solid,
-                opacity: hovered ? 1 : 0,
-                transitionDelay: hovered ? "100ms" : "0ms",
-              }}
-            >
-              Gelişmiş Filtre
-            </span>
-
-            {/* Active-count rosette — pinned to the top-right corner of
-                the entire pill so it stays visible whether collapsed or
-                expanded. Navy fill + white digit so it pops off the
-                white shell. */}
+            <HugeiconsIcon
+              icon={FilterIcon}
+              size={16}
+              strokeWidth={2}
+              style={{ color: MUTED_TONE.solid }}
+            />
+            <span>Filtre</span>
             {activeCount > 0 && (
               <span
-                className="absolute -top-1 -right-1 size-4 grid place-items-center rounded-full text-[9px] font-bold tabular-nums text-white z-[2]"
+                className="ml-0.5 h-5 min-w-5 px-1.5 inline-flex items-center justify-center rounded-full text-[10.5px] font-bold tabular-nums text-white"
                 style={{
                   background: MUTED_TONE.solid,
-                  boxShadow: `0 0 0 2px white, 0 2px 6px -1px ${MUTED_TONE.ring}`,
+                  boxShadow: `inset 0 1px 0 0 rgba(255,255,255,0.20), 0 2px 6px -1px ${MUTED_TONE.ring}`,
                 }}
               >
                 {activeCount}

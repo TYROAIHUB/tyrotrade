@@ -38,7 +38,7 @@ import type { IconSvgElement } from "@hugeicons/react";
 import {
   ChartLineData01Icon,
   Coins02Icon,
-  WeightScale01Icon,
+  BalanceScaleIcon,
   Wallet01Icon,
   ContainerIcon,
   MoneyExchange01Icon,
@@ -369,7 +369,7 @@ const KPI_META: Record<KpiId, KpiMeta> = {
   quantity: {
     title: "Tahmini Miktar",
     subtitle: (p) => `${p.length} proje · toplam tonaj dağılımı`,
-    icon: WeightScale01Icon,
+    icon: BalanceScaleIcon,
     tone: TONE_CARGO,
     sort: { default: "En çok tonajdan", reverse: "En az tonajdan" },
   },
