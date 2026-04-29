@@ -54,6 +54,10 @@ export interface RefreshResult {
   errorMessage?: string;
   /** Wall-clock duration in milliseconds. */
   durationMs: number;
+  /** Project header rows fetched in the first step — surfaced to the
+   *  toast so the user sees "437 proje senkronlandı". `undefined`
+   *  when the projects step never ran (very first failure). */
+  projectCount?: number;
 }
 
 /* ─────────── Filter helper ─────────── */
@@ -92,6 +96,7 @@ export async function refreshAllEntities(
   const startedAt = Date.now();
   const client = getDataverseClient();
   const completed: string[] = [];
+  let projectCount: number | undefined;
 
   type Step = { label: string; run: () => Promise<void> };
 
@@ -114,6 +119,9 @@ export async function refreshAllEntities(
           value: result.value,
           totalCount: result.totalCount,
         });
+        // Capture for the success toast — prefer the server's `$count`
+        // total when present, fall back to in-memory length otherwise.
+        projectCount = result.totalCount ?? result.value.length;
       },
     },
     {
@@ -244,6 +252,7 @@ export async function refreshAllEntities(
         failedStep: step.label,
         errorMessage: err instanceof Error ? err.message : String(err),
         durationMs: Date.now() - startedAt,
+        projectCount,
       };
     }
   }
@@ -252,5 +261,6 @@ export async function refreshAllEntities(
     ok: true,
     completedSteps: completed,
     durationMs: Date.now() - startedAt,
+    projectCount,
   };
 }

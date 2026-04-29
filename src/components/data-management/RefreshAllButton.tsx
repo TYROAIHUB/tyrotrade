@@ -4,6 +4,12 @@ import { HugeiconsIcon } from "@hugeicons/react";
 import { RefreshIcon } from "@hugeicons/core-free-icons";
 import { cn } from "@/lib/utils";
 import { useThemeAccent } from "@/components/layout/theme-accent";
+import { readCache } from "@/lib/storage/entityCache";
+import {
+  RefreshErrorToast,
+  RefreshLoadingToast,
+  RefreshSuccessToast,
+} from "@/components/ui/refresh-toast";
 
 interface RefreshAllButtonProps {
   /** Async functions to invoke sequentially. Each one returns when its fetch
@@ -35,12 +41,38 @@ export function RefreshAllButton({
     setBusy(true);
     setProgress({ done: 0, total: steps.length });
     const startedAt = Date.now();
+
+    // Single sticky toast that progressively swaps from loading →
+    // success/error via sonner's id-based update. unstyled flag lets
+    // our custom JSX carry its own surface — same component the
+    // post-login auto-refresh fires.
+    const toastId = toast.custom(
+      () => (
+        <RefreshLoadingToast
+          stepLabel={steps[0]?.label}
+          current={0}
+          total={steps.length}
+        />
+      ),
+      { duration: Infinity, unstyled: true }
+    );
+
     let failedStep: string | null = null;
     let failureMessage: string | null = null;
     try {
       for (let i = 0; i < steps.length; i++) {
         const step = steps[i];
         setCurrentLabel(step.label);
+        toast.custom(
+          () => (
+            <RefreshLoadingToast
+              stepLabel={step.label}
+              current={i + 1}
+              total={steps.length}
+            />
+          ),
+          { id: toastId, duration: Infinity, unstyled: true }
+        );
         try {
           await step.refetch();
         } catch (err) {
@@ -54,18 +86,37 @@ export function RefreshAllButton({
       setBusy(false);
       setCurrentLabel("");
     }
-    // Toast surfaces the final outcome — same dialect as the post-login
-    // auto-refresh so users get a consistent signal regardless of which
-    // path triggered the update.
-    const seconds = ((Date.now() - startedAt) / 1000).toFixed(1);
+
+    const durationSec = (Date.now() - startedAt) / 1000;
+
     if (failedStep) {
-      toast.error("Veri güncelleme başarısız", {
-        description: `${failedStep} adımında hata${failureMessage ? `: ${failureMessage.slice(0, 120)}` : ""}`,
-      });
+      toast.custom(
+        () => (
+          <RefreshErrorToast
+            stepLabel={failedStep ?? undefined}
+            message={failureMessage ?? undefined}
+          />
+        ),
+        { id: toastId, duration: 8000, unstyled: true }
+      );
     } else {
-      toast.success("Veriler güncellendi", {
-        description: `${steps.length} adım · ${seconds} sn`,
-      });
+      // Pull project count from the just-written cache so the success
+      // toast can show "437 proje senkronlandı". Falls back gracefully
+      // when the cache slot is unexpectedly missing.
+      const cached = readCache(
+        "mserp_etgtryprojecttableentities"
+      );
+      const projectCount = cached?.totalCount ?? cached?.value.length;
+      toast.custom(
+        () => (
+          <RefreshSuccessToast
+            projectCount={projectCount}
+            durationSec={durationSec}
+            stepCount={steps.length}
+          />
+        ),
+        { id: toastId, duration: 5000, unstyled: true }
+      );
     }
   }
 

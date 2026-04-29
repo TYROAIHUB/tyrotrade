@@ -2,6 +2,11 @@ import * as React from "react";
 import { toast } from "sonner";
 import { shouldUseMock } from "@/lib/dataverse";
 import { refreshAllEntities } from "@/lib/dataverse/refreshAll";
+import {
+  RefreshErrorToast,
+  RefreshLoadingToast,
+  RefreshSuccessToast,
+} from "@/components/ui/refresh-toast";
 
 /** Once-per-session flag stored in sessionStorage so the auto-refresh
  *  fires exactly one time after MSAL login — not on every route change,
@@ -31,18 +36,15 @@ function markRefreshed(): void {
 /**
  * Mounted once inside `AppShell` after MSAL has resolved the user.
  * Triggers a background `refreshAllEntities()` call exactly one time
- * per browser session, then surfaces a toast describing what
- * happened. Subsequent renders/routes are no-ops thanks to the
- * sessionStorage flag.
+ * per browser session, then surfaces a premium custom toast describing
+ * what happened.
  *
- * Skips entirely when `VITE_USE_MOCK=true` (mock data needs no
- * refresh) or when MSAL hasn't supplied an account yet.
+ * Same-toast progressive update via sonner's `id` mechanism: a single
+ * top-right card transitions through loading → success/error in place
+ * (no flicker, no stack of duplicates). Custom JSX bypasses sonner's
+ * default styling so the brand language carries.
  */
 export function DataverseLoginAutoRefresh() {
-  // Run on mount; sessionStorage flag prevents the loop. The empty
-  // dep array is intentional — re-mounts that happen mid-session
-  // (e.g. AppShell unmount/mount during navigation) are gated by the
-  // flag, not the dep array.
   React.useEffect(() => {
     if (shouldUseMock()) return;
     if (alreadyRefreshed()) return;
@@ -51,31 +53,48 @@ export function DataverseLoginAutoRefresh() {
     // (React StrictMode dev mode does this) doesn't trigger a duplicate.
     markRefreshed();
 
-    // Loading toast that swaps to success/error when the promise settles.
-    // Sonner's toast.promise covers all three states with a single call.
-    const promise = refreshAllEntities();
-    toast.promise(promise, {
-      loading: "Veriler güncelleniyor…",
-      success: (result) => {
-        if (result.ok) {
-          const seconds = (result.durationMs / 1000).toFixed(1);
-          return {
-            message: "Veriler güncellendi",
-            description: `${result.completedSteps.length} adım · ${seconds} sn`,
-          };
-        }
-        // refreshAllEntities returned without throwing, but flagged a step
-        // as failed — surface as error toast.
-        throw new Error(result.errorMessage ?? "Bilinmeyen hata");
-      },
-      error: (err: unknown) => {
-        const msg = err instanceof Error ? err.message : String(err);
-        return {
-          message: "Veri güncelleme başarısız",
-          description: msg.slice(0, 140),
-        };
-      },
+    const toastId = toast.custom(() => <RefreshLoadingToast />, {
+      duration: Infinity,
+      unstyled: true,
     });
+
+    void (async () => {
+      const result = await refreshAllEntities((p) => {
+        toast.custom(
+          () => (
+            <RefreshLoadingToast
+              stepLabel={p.label}
+              current={p.step}
+              total={p.totalSteps}
+            />
+          ),
+          { id: toastId, duration: Infinity, unstyled: true }
+        );
+      });
+
+      if (result.ok) {
+        toast.custom(
+          () => (
+            <RefreshSuccessToast
+              projectCount={result.projectCount}
+              durationSec={result.durationMs / 1000}
+              stepCount={result.completedSteps.length}
+            />
+          ),
+          { id: toastId, duration: 5000, unstyled: true }
+        );
+      } else {
+        toast.custom(
+          () => (
+            <RefreshErrorToast
+              stepLabel={result.failedStep}
+              message={result.errorMessage}
+            />
+          ),
+          { id: toastId, duration: 8000, unstyled: true }
+        );
+      }
+    })();
   }, []);
 
   return null;
