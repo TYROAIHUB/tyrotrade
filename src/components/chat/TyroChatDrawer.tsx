@@ -88,8 +88,16 @@ export function TyroChatDrawer({ open, onOpenChange }: TyroChatDrawerProps) {
           </div>
         </div>
 
-        {/* Iframe body — fills the rest of the drawer */}
-        <div className="flex-1 min-h-0 bg-white">
+        {/* Iframe body — crops the agent's own dark "TYRO Project MCP
+            Agent" banner (it duplicates our drawer header) and leaves
+            a small bottom gap so the rounded-bl-3xl corner doesn't
+            clip into the chat input.
+            Cross-origin iframe → can't touch the DOM; we hide the
+            banner by offsetting the iframe upward inside an
+            overflow-hidden wrapper. `BANNER_OFFSET` is a fixed pixel
+            value tuned to Copilot Studio's current banner height; bump
+            if Microsoft adjusts their default chrome. */}
+        <div className="flex-1 min-h-0 bg-white relative overflow-hidden">
           {hasOpened ? (
             <iframe
               // `key` ensures we re-mount when the user changes the URL
@@ -97,7 +105,14 @@ export function TyroChatDrawer({ open, onOpenChange }: TyroChatDrawerProps) {
               key={url}
               src={url}
               title="TYRO Chat — Copilot Studio agent"
-              className="w-full h-full border-0"
+              className="absolute inset-x-0 border-0"
+              style={{
+                // Pull iframe up by 56px so the agent's banner sits
+                // ABOVE the visible region; bottom-2 (8px) keeps the
+                // input box clear of the rounded drawer corner.
+                top: -56,
+                bottom: 6,
+              }}
               allow="microphone; clipboard-read; clipboard-write"
               referrerPolicy="strict-origin-when-cross-origin"
             />
