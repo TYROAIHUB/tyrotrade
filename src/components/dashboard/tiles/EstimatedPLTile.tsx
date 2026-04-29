@@ -171,13 +171,6 @@ export function EstimatedPLTile({
                   prefix={pl.pl > 0 ? "+" : undefined}
                 />
               </span>
-              <span
-                className="text-[10.5px] font-semibold tabular-nums"
-                style={{ color: tintColor }}
-              >
-                {pl.marginPct >= 0 ? "+" : ""}
-                {pl.marginPct.toFixed(1)}% marj
-              </span>
             </div>
 
             {peak && (
@@ -201,23 +194,13 @@ export function EstimatedPLTile({
             )}
           </div>
 
-          {/* Right: 3-stacked compact metrics replacing the old legend */}
+          {/* Right: 3-stacked compact metrics replacing the old legend.
+              "Tahmini" prefix dropped — the tile title already supplies
+              the framing, repeating it three times added noise. */}
           <div className="flex flex-col gap-1 shrink-0 text-right">
-            <RightMetric
-              label="Tahmini Satış"
-              value={pl.salesTotalUsd}
-              dot="#10b981"
-            />
-            <RightMetric
-              label="Tahmini Alım"
-              value={pl.purchaseTotalUsd}
-              dot="#f59e0b"
-            />
-            <RightMetric
-              label="Tahmini Gider"
-              value={pl.expenseTotalUsd}
-              dot="#dc2626"
-            />
+            <RightMetric label="Satış" value={pl.salesTotalUsd} dot="#10b981" />
+            <RightMetric label="Alım" value={pl.purchaseTotalUsd} dot="#f59e0b" />
+            <RightMetric label="Gider" value={pl.expenseTotalUsd} dot="#dc2626" />
           </div>
         </div>
 
@@ -234,16 +217,18 @@ export function EstimatedPLTile({
               data={monthly}
               margin={{ top: 18, right: 0, left: 0, bottom: 0 }}
             >
+              {/* Tick styling matches EstimatedQuantityTile so the two
+                  monthly bar charts read with the same axis dialect. */}
               <XAxis
                 dataKey="monthLabel"
                 tickLine={false}
                 tickMargin={6}
                 axisLine={false}
                 tick={{
-                  fontSize: 9.5,
+                  fontSize: 11,
                   fill: "currentColor",
-                  opacity: 0.6,
-                  fontFamily: "var(--font-mono, monospace)",
+                  opacity: 0.85,
+                  fontWeight: 600,
                 }}
                 interval={0}
               />
@@ -287,18 +272,18 @@ function RightMetric({
 }) {
   return (
     <div
-      className="flex items-center gap-1.5 justify-end min-w-0"
+      className="flex items-baseline gap-1.5 justify-end leading-none"
       title={`${label}: ${formatCompactCurrency(value, "USD")}`}
     >
-      <span className="text-[9.5px] uppercase tracking-wider text-muted-foreground/85 truncate">
+      <span className="text-[10px] uppercase tracking-wider text-muted-foreground/80">
         {label}
       </span>
       <span
-        className="size-1.5 rounded-full shrink-0"
+        className="size-1.5 rounded-full shrink-0 self-center"
         style={{ backgroundColor: dot }}
       />
       <span
-        className="text-[11px] font-bold tabular-nums leading-none w-[64px]"
+        className="text-[11.5px] font-bold tabular-nums tabular-num min-w-[60px]"
         style={{ color: dot }}
       >
         {formatCompactCurrency(value, "USD")}
@@ -336,23 +321,51 @@ function BarShape(props: BarShapeProps) {
   const yPos = Number(y ?? 0);
   const w = Number(width ?? 0);
   const h = Number(height ?? 0);
-  const centerX = xPos + w / 2;
-  const centerY = yPos + h / 2;
-  // Negative bars: recharts puts yPos at the baseline and extends `h`
-  // downward, so the visible "tip" is at yPos + h. Position the value
-  // label above the tip in either case so it never overlaps the bar.
   const numericValue =
     typeof value === "number"
       ? value
       : Array.isArray(value)
         ? value[1] - value[0]
         : 0;
-  const labelY = numericValue >= 0 ? yPos - 6 : yPos + h + 14;
   const fill = accentColor ?? "#3b82f6";
+  const centerX = xPos + w / 2;
 
-  if (h === 0) {
-    return <Rectangle {...props} fill="transparent" />;
+  // Zero-value months: render a faint baseline tick so the slot still
+  // reads as "month exists, no data" instead of looking like the bar is
+  // missing.
+  if (h === 0 || numericValue === 0) {
+    return (
+      <>
+        <Rectangle {...props} fill="transparent" />
+        <rect
+          x={centerX - 1.5}
+          y={yPos - 1}
+          width={3}
+          height={2}
+          rx={1}
+          fill={fill}
+          fillOpacity={0.25}
+        />
+      </>
+    );
   }
+
+  // Enforce a minimum visible height so months with very small (relative
+  // to the peak) P&L don't render as sub-pixel slivers. We extend the
+  // bar in the direction it grows: positive bars need extra height
+  // above yPos (so we shift yPos up); negative bars extend below the
+  // baseline (yPos stays, h grows down).
+  const MIN_H = 4;
+  const renderH = Math.max(h, MIN_H);
+  const renderY = numericValue >= 0 ? yPos - (renderH - h) : yPos;
+  const tipY = numericValue >= 0 ? renderY : renderY + renderH;
+  // Label above the bar tip with comfortable clearance so it never
+  // overlaps the bar even at the peak. For negative bars the tip is at
+  // the bottom, so the label sits below it.
+  const labelOffset = 8;
+  const labelY =
+    numericValue >= 0 ? tipY - labelOffset : tipY + labelOffset + 8;
+  const centerY = renderY + renderH / 2;
 
   return (
     <>
@@ -363,11 +376,11 @@ function BarShape(props: BarShapeProps) {
       <motion.rect
         key={`bar-${index}`}
         x={xPos}
-        y={yPos}
+        y={renderY}
         width={w}
-        height={h}
+        height={renderH}
         fill={fill}
-        rx={1}
+        rx={1.5}
         initial={{ scaleX: COLLAPSED_SCALE }}
         animate={{ scaleX: isActive ? 1 : COLLAPSED_SCALE }}
         transition={{ type: "spring", stiffness: 220, damping: 26 }}
@@ -383,19 +396,20 @@ function BarShape(props: BarShapeProps) {
           x={centerX}
           y={labelY}
           textAnchor="middle"
+          dominantBaseline="alphabetic"
           fill={fill}
-          initial={{ opacity: 0, y: labelY - 6, filter: "blur(2px)" }}
+          initial={{ opacity: 0, y: labelY - 4, filter: "blur(2px)" }}
           animate={{ opacity: 1, y: labelY, filter: "blur(0px)" }}
           exit={{ opacity: 0, filter: "blur(2px)" }}
           transition={{ duration: 0.18 }}
           style={{
             pointerEvents: "none",
-            fontFamily: "var(--font-mono, monospace)",
-            fontSize: 10,
-            fontWeight: 600,
+            fontSize: 10.5,
+            fontWeight: 700,
+            letterSpacing: "-0.01em",
           }}
         >
-          {formatCompactCurrency(numericValue, "USD")}
+          {`${numericValue >= 0 ? "+" : "−"}${formatCompactCurrency(Math.abs(numericValue), "USD")}`}
         </motion.text>
       )}
     </>
