@@ -1,9 +1,12 @@
 import * as React from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ChevronRight } from "lucide-react";
-import { toast } from "sonner";
+import { ArrowRight } from "lucide-react";
 import { HugeiconsIcon } from "@hugeicons/react";
-import { BubbleChatIcon, Robot01Icon } from "@hugeicons/core-free-icons";
+import {
+  BubbleChatIcon,
+  Robot01Icon,
+  Tick02Icon,
+} from "@hugeicons/core-free-icons";
 import {
   Sheet,
   SheetContent,
@@ -15,16 +18,14 @@ import { useSettings } from "@/hooks/useSettings";
 import { DEFAULT_COPILOT_CHAT_URL } from "@/lib/settings/userSettings";
 import { cn } from "@/lib/utils";
 
-/** TYRO ticaret domain'ine özel hazır sorular — kullanıcının verdiği
- *  TYRO AI mock'undaki dile göre. Cross-origin iframe nedeniyle bu
- *  metinleri agent'a doğrudan gönderemediğimiz için chip click →
- *  panoya kopyala + toast şeklinde çalışıyor; kullanıcı aşağıdaki
- *  iframe input'una Ctrl+V ile yapıştırıp gönderiyor. */
-const SUGGESTIONS: string[] = [
-  "Şu an yolda olan gemiler",
-  "Bu hafta milestone'u olan projeler",
-  "En karlı 3 segment ve durumu",
-  "Risk altındaki düşük marjlı projeler",
+/** Onboarding bullet points — one short value-prop per line so the
+ *  user knows what kinds of questions the agent can handle before
+ *  they hit "Sohbete başla". Kept domain-specific and crisp so the
+ *  intro screen doesn't read like generic AI marketing copy. */
+const FEATURES: string[] = [
+  "Aktif sevkiyat ve milestone takibi",
+  "Finansal analiz, marj ve K&Z sorguları",
+  "Liman, koridor ve gemi durum sorguları",
 ];
 
 interface TyroChatDrawerProps {
@@ -40,8 +41,10 @@ interface TyroChatDrawerProps {
  * siblings — only the tone palette differs (indigo-violet here vs.
  * live theme accent for Gemini).
  *
- * Iframe takes the whole body (no padding) so the embedded webchat
- * can use every pixel; the drawer chrome handles framing.
+ * On first open we lay an onboarding overlay with the robot icon,
+ * a short value pitch, three feature bullets, and a single primary
+ * CTA. The Copilot iframe loads underneath; once the user dismisses
+ * the overlay (CTA click) the agent's chat surface is fully visible.
  */
 export function TyroChatDrawer({ open, onOpenChange }: TyroChatDrawerProps) {
   const { settings } = useSettings();
@@ -53,52 +56,22 @@ export function TyroChatDrawer({ open, onOpenChange }: TyroChatDrawerProps) {
 
   // Lazy-mount the iframe — only renders after the user opens the
   // drawer the first time, then stays mounted so subsequent re-opens
-  // skip the cold-start handshake. This avoids paying the Copilot
-  // Studio bootstrap cost on every dashboard load.
+  // skip the cold-start handshake.
   const [hasOpened, setHasOpened] = React.useState(false);
   React.useEffect(() => {
     if (open) setHasOpened(true);
   }, [open]);
 
-  // Welcome overlay shown ON TOP of the iframe until the user picks a
-  // suggestion or explicitly dismisses it. Once dismissed it stays
-  // hidden for the rest of the session (state persists while the
-  // drawer is mounted). Cross-origin iframe → chip clicks copy the
-  // text to clipboard so the user can paste it into the agent's own
-  // input box; we can't postMessage into the iframe directly.
+  // Onboarding overlay state — visible by default, dismissed by the
+  // primary CTA. State persists while the drawer stays mounted, so
+  // re-opening doesn't re-show the overlay (one-time onboarding).
   const [overlayVisible, setOverlayVisible] = React.useState(true);
-
-  async function handleSuggestionClick(text: string) {
-    let copied = false;
-    try {
-      if (navigator.clipboard?.writeText) {
-        await navigator.clipboard.writeText(text);
-        copied = true;
-      }
-    } catch {
-      copied = false;
-    }
-    if (copied) {
-      toast.success("Soru panoya kopyalandı", {
-        description:
-          "Aşağıdaki kutuya yapıştırıp gönder (Ctrl+V / ⌘V)",
-      });
-    } else {
-      toast.message("Sorgu hazır", {
-        description: text,
-      });
-    }
-    setOverlayVisible(false);
-  }
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
         side="right"
         className={cn(
-          // overflow-hidden so the top accent strip clips into the
-          // rounded-l-3xl corner cleanly (same fix as KpiDetailDrawer
-          // and TyroAiDrawer).
           "w-full sm:max-w-[460px] p-0 flex flex-col gap-0 overflow-hidden",
           "bg-white/95 backdrop-blur-2xl backdrop-saturate-150",
           "border-l border-border/60",
@@ -134,21 +107,11 @@ export function TyroChatDrawer({ open, onOpenChange }: TyroChatDrawerProps) {
           </div>
         </div>
 
-        {/* Iframe body — Copilot Studio renders its own dark teal
-            "TYRO Project MCP Agent" banner at the top, which duplicates
-            our drawer header. We can't touch its DOM (cross-origin),
-            and shifting the iframe with negative offsets broke the
-            internal flex layout (chat container stopped filling the
-            extended height). Cleanest fix: keep the iframe at natural
-            size and paint a matching-white overlay on top so the banner
-            is visually masked while the chat layout below stays
-            untouched. */}
+        {/* Body — iframe + masks + onboarding overlay */}
         <div className="flex-1 min-h-0 bg-white relative">
           {hasOpened ? (
             <>
               <iframe
-                // `key` ensures we re-mount when the user changes the URL
-                // from Settings — otherwise the old src stays cached.
                 key={url}
                 src={url}
                 title="TYRO Chat — Copilot Studio agent"
@@ -156,91 +119,148 @@ export function TyroChatDrawer({ open, onOpenChange }: TyroChatDrawerProps) {
                 allow="microphone; clipboard-read; clipboard-write"
                 referrerPolicy="strict-origin-when-cross-origin"
               />
-              {/* Mask over the agent's banner — same white bg as the
-                  body so it disappears into the drawer chrome. Adjust
-                  height if Microsoft changes the banner thickness. */}
+              {/* Mask over the agent's own dark "TYRO Project MCP Agent"
+                  banner — cross-origin so we paint white over it. */}
               <div
                 aria-hidden
                 className="absolute inset-x-0 top-0 bg-white pointer-events-none"
                 style={{ height: 56 }}
               />
 
-              {/* Welcome overlay — rendered ON TOP of the iframe with
-                  the same dialect as TyroAiDrawer (robot icon, intro
-                  copy, suggestion chips). Disappears once the user
-                  picks a suggestion or hits the dismiss link. */}
               <AnimatePresence>
                 {overlayVisible && (
                   <motion.div
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
-                    exit={{ opacity: 0, transition: { duration: 0.18 } }}
-                    transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
+                    exit={{ opacity: 0, transition: { duration: 0.22 } }}
+                    transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
                     className={cn(
                       "absolute inset-0 z-10 flex flex-col items-center",
-                      "px-5 pt-12 pb-4 gap-5",
-                      "bg-white/97 backdrop-blur-sm"
+                      "px-6 py-10",
+                      "bg-white/98 backdrop-blur-sm"
                     )}
                   >
-                    {/* Robot icon pill (indigo TYRO Chat tone) */}
-                    <span
-                      className="size-14 rounded-2xl grid place-items-center shadow-sm text-white"
+                    {/* Robot pill — pulses gently to draw the eye to
+                        the assistant identity at first glance. */}
+                    <motion.span
+                      initial={{ scale: 0.92, opacity: 0 }}
+                      animate={{ scale: 1, opacity: 1 }}
+                      transition={{
+                        delay: 0.08,
+                        duration: 0.45,
+                        ease: [0.22, 1, 0.36, 1],
+                      }}
+                      className="size-16 rounded-2xl grid place-items-center shadow-sm text-white relative"
                       style={{
                         background: TYRO_CHAT_TONE.gradient,
-                        boxShadow: `0 6px 18px -4px ${TYRO_CHAT_TONE.ring}, inset 0 1px 0 0 rgba(255,255,255,0.30)`,
+                        boxShadow: `0 8px 22px -6px ${TYRO_CHAT_TONE.ring}, inset 0 1px 0 0 rgba(255,255,255,0.30)`,
                       }}
                     >
                       <HugeiconsIcon
                         icon={Robot01Icon}
-                        size={26}
+                        size={30}
                         strokeWidth={1.75}
                       />
-                    </span>
+                      {/* Soft halo ring */}
+                      <span
+                        aria-hidden
+                        className="absolute -inset-1.5 rounded-3xl pointer-events-none"
+                        style={{
+                          boxShadow: `0 0 0 1px ${TYRO_CHAT_TONE.ring}`,
+                          opacity: 0.35,
+                        }}
+                      />
+                    </motion.span>
 
-                    {/* Title + intro */}
-                    <div className="text-center">
-                      <h3 className="text-[15px] font-semibold tracking-tight text-slate-900">
-                        Nasıl yardımcı olabilirim?
-                      </h3>
-                      <p className="text-[12px] text-muted-foreground mt-1 leading-snug max-w-[300px]">
-                        Aşağıdaki örneklerden biriyle başla — soru
-                        panoya kopyalanır, sohbet kutusuna yapıştırıp
-                        gönderebilirsin.
-                      </p>
-                    </div>
-
-                    {/* Suggestion chips */}
-                    <div className="w-full flex flex-col gap-2 max-w-[360px]">
-                      {SUGGESTIONS.map((s) => (
-                        <button
-                          key={s}
-                          type="button"
-                          onClick={() => handleSuggestionClick(s)}
-                          className={cn(
-                            "group w-full flex items-center justify-between gap-3",
-                            "px-3.5 py-2.5 rounded-xl text-left",
-                            "bg-white/85 hover:bg-white",
-                            "border border-foreground/10 hover:border-indigo-300",
-                            "transition-all hover:scale-[1.01] active:scale-[0.99]",
-                            "shadow-[0_2px_6px_-2px_rgba(15,23,42,0.06)]"
-                          )}
-                        >
-                          <span className="text-[12.5px] font-medium text-slate-800 leading-snug">
-                            {s}
-                          </span>
-                          <ChevronRight className="size-3.5 text-slate-400 group-hover:text-indigo-600 transition-colors shrink-0" />
-                        </button>
-                      ))}
-                    </div>
-
-                    {/* Dismiss link */}
-                    <button
-                      type="button"
-                      onClick={() => setOverlayVisible(false)}
-                      className="text-[11px] text-muted-foreground hover:text-foreground transition-colors mt-auto"
+                    {/* Title + value-prop copy */}
+                    <motion.div
+                      initial={{ opacity: 0, y: 6 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.18, duration: 0.4 }}
+                      className="text-center mt-5"
                     >
-                      Atlayıp doğrudan kendim sorayım →
-                    </button>
+                      <h3 className="text-[18px] font-bold tracking-tight text-slate-900 leading-tight">
+                        Yapay Zeka Asistanı
+                      </h3>
+                      <p className="text-[12.5px] text-muted-foreground mt-2 leading-relaxed max-w-[320px] mx-auto">
+                        Proje, gemi ve finansal verilerinizi doğal dilde
+                        sorgulayın. TYRO Chat sevkiyat takibinden marj
+                        analizine kadar her sorunuza saniyeler içinde
+                        yanıt verir.
+                      </p>
+                    </motion.div>
+
+                    {/* Feature bullets — each lands in sequence */}
+                    <motion.ul
+                      initial="hidden"
+                      animate="visible"
+                      variants={{
+                        visible: {
+                          transition: { staggerChildren: 0.07, delayChildren: 0.28 },
+                        },
+                      }}
+                      className="mt-6 w-full max-w-[320px] flex flex-col gap-2.5"
+                    >
+                      {FEATURES.map((feature) => (
+                        <motion.li
+                          key={feature}
+                          variants={{
+                            hidden: { opacity: 0, x: -8 },
+                            visible: { opacity: 1, x: 0 },
+                          }}
+                          transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+                          className="flex items-start gap-2.5"
+                        >
+                          <span
+                            className="size-5 rounded-full grid place-items-center shrink-0 mt-0.5"
+                            style={{
+                              background: "rgba(99,102,241,0.10)",
+                              color: TYRO_CHAT_TONE.solid,
+                            }}
+                          >
+                            <HugeiconsIcon
+                              icon={Tick02Icon}
+                              size={11}
+                              strokeWidth={2.5}
+                            />
+                          </span>
+                          <span className="text-[12.5px] text-slate-700 leading-snug">
+                            {feature}
+                          </span>
+                        </motion.li>
+                      ))}
+                    </motion.ul>
+
+                    {/* Spacer pushes the CTA toward the bottom */}
+                    <div className="flex-1" />
+
+                    {/* Primary CTA — the only action on this surface. */}
+                    <motion.button
+                      type="button"
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.5, duration: 0.4 }}
+                      onClick={() => setOverlayVisible(false)}
+                      className={cn(
+                        "group relative inline-flex items-center justify-center gap-2",
+                        "h-11 px-5 rounded-full text-[13.5px] font-semibold text-white",
+                        "shadow-md hover:shadow-lg",
+                        "ring-1 ring-white/15 hover:ring-white/30",
+                        "transition-all duration-200",
+                        "hover:scale-[1.02] active:scale-95",
+                        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2",
+                        "overflow-hidden w-full max-w-[320px]"
+                      )}
+                      style={{
+                        background: TYRO_CHAT_TONE.gradient,
+                        boxShadow: `0 8px 22px -6px ${TYRO_CHAT_TONE.ring}, inset 0 1px 0 0 rgba(255,255,255,0.25)`,
+                      }}
+                    >
+                      <span className="relative z-[1] tracking-tight">
+                        Yapay zeka sohbetine başla
+                      </span>
+                      <ArrowRight className="relative z-[1] size-4 transition-transform duration-200 group-hover:translate-x-0.5" />
+                    </motion.button>
                   </motion.div>
                 )}
               </AnimatePresence>
