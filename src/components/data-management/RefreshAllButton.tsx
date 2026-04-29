@@ -1,4 +1,5 @@
 import * as React from "react";
+import { toast } from "sonner";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { RefreshIcon } from "@hugeicons/core-free-icons";
 import { cn } from "@/lib/utils";
@@ -33,16 +34,38 @@ export function RefreshAllButton({
     if (busy) return;
     setBusy(true);
     setProgress({ done: 0, total: steps.length });
+    const startedAt = Date.now();
+    let failedStep: string | null = null;
+    let failureMessage: string | null = null;
     try {
       for (let i = 0; i < steps.length; i++) {
         const step = steps[i];
         setCurrentLabel(step.label);
-        await step.refetch();
+        try {
+          await step.refetch();
+        } catch (err) {
+          failedStep = step.label;
+          failureMessage = err instanceof Error ? err.message : String(err);
+          break;
+        }
         setProgress({ done: i + 1, total: steps.length });
       }
     } finally {
       setBusy(false);
       setCurrentLabel("");
+    }
+    // Toast surfaces the final outcome — same dialect as the post-login
+    // auto-refresh so users get a consistent signal regardless of which
+    // path triggered the update.
+    const seconds = ((Date.now() - startedAt) / 1000).toFixed(1);
+    if (failedStep) {
+      toast.error("Veri güncelleme başarısız", {
+        description: `${failedStep} adımında hata${failureMessage ? `: ${failureMessage.slice(0, 120)}` : ""}`,
+      });
+    } else {
+      toast.success("Veriler güncellendi", {
+        description: `${steps.length} adım · ${seconds} sn`,
+      });
     }
   }
 

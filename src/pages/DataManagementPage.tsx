@@ -394,6 +394,7 @@ export function DataManagementPage() {
                 shipPlanDefault={true}
                 resultCount={visibleProjects.length}
                 totalCount={projects.rows.length}
+                tone="muted"
               />
             )}
             <RefreshAllButton steps={refreshSteps} />

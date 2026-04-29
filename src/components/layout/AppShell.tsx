@@ -12,6 +12,7 @@ import { NotificationButton } from "@/components/layout/NotificationButton";
 import { TyroAiDrawer } from "@/components/chat/TyroAiDrawer";
 import { AppSidebar } from "./AppSidebar";
 import { SidebarProvider, useSidebar } from "./sidebar-context";
+import { DataverseLoginAutoRefresh } from "@/components/auth/DataverseLoginAutoRefresh";
 import {
   CommandPalette,
   useCommandPalette,
@@ -68,6 +69,11 @@ function ShellInner() {
           <Outlet />
         </div>
       </main>
+
+      {/* Fires the post-login Dataverse refresh exactly once per browser
+          session (sessionStorage flag). Renders nothing — toast is the
+          only visible signal. */}
+      <DataverseLoginAutoRefresh />
     </div>
   );
 }

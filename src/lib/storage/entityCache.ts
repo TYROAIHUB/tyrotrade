@@ -6,9 +6,32 @@
  * - "Verileri Güncelle" overwrites the slot
  * - Survives page reloads — user sees last-fetched data instantly on reopen
  * - 5MB browser quota limit per origin → graceful degradation on quota error
+ *
+ * After every successful write a same-tab `tyro:cache-updated` CustomEvent
+ * fires (window-scoped) so subscribers (`useCacheFingerprint` etc.) can
+ * re-derive without waiting for the next render. Cross-tab updates are
+ * still covered by the native `storage` event.
  */
 
 const KEY_PREFIX = "tyro:dv:";
+
+/** Custom event fired on the window after a successful cache write.
+ *  Same-tab `localStorage.setItem` does NOT fire the native `storage`
+ *  event, so consumers listen to this instead. */
+export const CACHE_UPDATED_EVENT = "tyro:cache-updated";
+
+export interface CacheUpdatedDetail {
+  entitySet: string;
+}
+
+function dispatchCacheUpdated(entitySet: string): void {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(
+    new CustomEvent<CacheUpdatedDetail>(CACHE_UPDATED_EVENT, {
+      detail: { entitySet },
+    })
+  );
+}
 
 export interface EntityCacheEntry<T = Record<string, unknown>> {
   /** ISO timestamp when this snapshot was captured */
@@ -49,6 +72,7 @@ export function writeCache<T = Record<string, unknown>>(
   const payload = JSON.stringify(entry);
   try {
     localStorage.setItem(k, payload);
+    dispatchCacheUpdated(entitySet);
     return { ok: true };
   } catch (err) {
     // QuotaExceededError. Try evicting OUR own entry for this entity (might
@@ -61,6 +85,7 @@ export function writeCache<T = Record<string, unknown>>(
     try {
       localStorage.removeItem(k);
       localStorage.setItem(k, payload);
+      dispatchCacheUpdated(entitySet);
       return { ok: true };
     } catch (err2) {
       // Still no room — accept that this entity won't persist. The fetched

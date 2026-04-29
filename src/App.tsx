@@ -1,4 +1,5 @@
 import { Routes, Route, Navigate } from "react-router-dom";
+import { Toaster } from "sonner";
 import { AppShell } from "@/components/layout/AppShell";
 import { LoginPage } from "@/pages/LoginPage";
 import { DashboardPage } from "@/pages/DashboardPage";
@@ -30,5 +31,23 @@ export default function App() {
     </Routes>
   );
 
-  return requireAuth ? <AuthGate>{shellTree}</AuthGate> : shellTree;
+  return (
+    <>
+      {requireAuth ? <AuthGate>{shellTree}</AuthGate> : shellTree}
+      {/* Global toast viewport. richColors gives us proper success/error
+          tinting; closeButton shows an X so users can dismiss long-lived
+          toasts manually. Top-right placement matches the user's request. */}
+      <Toaster
+        position="top-right"
+        richColors
+        closeButton
+        expand
+        offset={16}
+        toastOptions={{
+          className:
+            "!rounded-2xl !shadow-[0_18px_40px_-12px_rgba(15,23,42,0.32)]",
+        }}
+      />
+    </>
+  );
 }

@@ -1,5 +1,9 @@
 import * as React from "react";
-import { readCache } from "@/lib/storage/entityCache";
+import {
+  CACHE_UPDATED_EVENT,
+  readCache,
+  type CacheUpdatedDetail,
+} from "@/lib/storage/entityCache";
 import {
   composeProjects,
   type ComposeWarnings,
@@ -104,19 +108,31 @@ export function useRealProjects(): UseRealProjectsReturn {
  */
 function useCacheFingerprint(entitySet: string): string {
   const [fp, setFp] = React.useState(() => readFingerprint(entitySet));
-  // Re-read on mount + whenever localStorage events fire (cross-tab updates).
   React.useEffect(() => {
-    const handler = (e: StorageEvent) => {
+    // Cross-tab: native storage event fires when ANOTHER tab writes.
+    const storageHandler = (e: StorageEvent) => {
       if (!e.key || e.key === `tyro:dv:${entitySet}`) {
         setFp(readFingerprint(entitySet));
       }
     };
-    window.addEventListener("storage", handler);
-    // Same-tab writes don't fire `storage` event; re-check on each render
-    // by reading fresh and updating state if changed.
+    // Same-tab: writeCache dispatches `tyro:cache-updated` because
+    // setItem doesn't trigger the storage event in the writing tab.
+    const cacheHandler = (e: Event) => {
+      const detail = (e as CustomEvent<CacheUpdatedDetail>).detail;
+      if (!detail || detail.entitySet === entitySet) {
+        setFp(readFingerprint(entitySet));
+      }
+    };
+    window.addEventListener("storage", storageHandler);
+    window.addEventListener(CACHE_UPDATED_EVENT, cacheHandler);
+    // Initial reconciliation in case localStorage was written between the
+    // useState lazy-init and effect mount (very narrow race).
     const fresh = readFingerprint(entitySet);
     if (fresh !== fp) setFp(fresh);
-    return () => window.removeEventListener("storage", handler);
+    return () => {
+      window.removeEventListener("storage", storageHandler);
+      window.removeEventListener(CACHE_UPDATED_EVENT, cacheHandler);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [entitySet]);
   return fp;
