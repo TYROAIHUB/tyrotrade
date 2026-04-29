@@ -1,6 +1,6 @@
 import * as React from "react";
 import { HugeiconsIcon } from "@hugeicons/react";
-import { BubbleChatIcon } from "@hugeicons/core-free-icons";
+import { Robot01Icon } from "@hugeicons/core-free-icons";
 import { cn } from "@/lib/utils";
 
 interface TyroChatButtonProps {
@@ -63,7 +63,7 @@ export function TyroChatButton({ onClick, className }: TyroChatButtonProps) {
         )}
       />
       <HugeiconsIcon
-        icon={BubbleChatIcon}
+        icon={Robot01Icon}
         size={16}
         strokeWidth={2}
         className={cn(
