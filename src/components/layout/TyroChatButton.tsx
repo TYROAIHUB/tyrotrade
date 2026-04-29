@@ -71,7 +71,16 @@ export function TyroChatButton({ onClick, className }: TyroChatButtonProps) {
           hovered ? "rotate-[-6deg] scale-110" : "rotate-0"
         )}
       />
-      <span className="relative z-[1] tracking-tight">TYRO Chat</span>
+      {/* 1px nudge down so the wordmark sits on the Robot icon's
+          visual baseline — the glyph has more weight at the bottom
+          (head + body) than the top (antenna), which makes the
+          geometrically-centered text read as floating high. */}
+      <span
+        className="relative z-[1] tracking-tight"
+        style={{ transform: "translateY(1px)" }}
+      >
+        TYRO Chat
+      </span>
     </button>
   );
 }
