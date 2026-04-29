@@ -129,7 +129,7 @@ export function TyroChatDrawer({ open, onOpenChange }: TyroChatDrawerProps) {
               TYRO Chat
             </SheetTitle>
             <SheetDescription className="text-[12px] text-muted-foreground leading-tight mt-0.5">
-              Copilot Studio asistanı
+              Uluslararası ticaret asistanı
             </SheetDescription>
           </div>
         </div>
