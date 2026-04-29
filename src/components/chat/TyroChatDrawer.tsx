@@ -8,13 +8,9 @@ import {
   SheetDescription,
 } from "@/components/ui/sheet";
 import { TYRO_CHAT_TONE } from "@/components/layout/TyroChatButton";
+import { useSettings } from "@/hooks/useSettings";
+import { DEFAULT_COPILOT_CHAT_URL } from "@/lib/settings/userSettings";
 import { cn } from "@/lib/utils";
-
-/** Copilot Studio webchat iframe URL — the agent the user wants embedded.
- *  Lives here as a constant for now; could move to userSettings if more
- *  than one agent ever ships. */
-const COPILOT_WEBCHAT_URL =
-  "https://copilotstudio.microsoft.com/environments/Default-9efa3bdf-67ad-47e3-8dfb-d1df79a6d7fa/bots/crfc1_agentokBCAt/webchat?__version__=2";
 
 interface TyroChatDrawerProps {
   open: boolean;
@@ -33,6 +29,13 @@ interface TyroChatDrawerProps {
  * can use every pixel; the drawer chrome handles framing.
  */
 export function TyroChatDrawer({ open, onOpenChange }: TyroChatDrawerProps) {
+  const { settings } = useSettings();
+  // Defensive fallback: even if `readSettings` somehow returns an empty
+  // override (e.g. malformed JSON), default to the bound TYRO agent so
+  // the drawer never opens to a blank iframe.
+  const url =
+    (settings.copilotChatUrl ?? "").trim() || DEFAULT_COPILOT_CHAT_URL;
+
   // Lazy-mount the iframe — only renders after the user opens the
   // drawer the first time, then stays mounted so subsequent re-opens
   // skip the cold-start handshake. This avoids paying the Copilot
@@ -89,12 +92,12 @@ export function TyroChatDrawer({ open, onOpenChange }: TyroChatDrawerProps) {
         <div className="flex-1 min-h-0 bg-white">
           {hasOpened ? (
             <iframe
-              src={COPILOT_WEBCHAT_URL}
+              // `key` ensures we re-mount when the user changes the URL
+              // from Settings — otherwise the old src stays cached.
+              key={url}
+              src={url}
               title="TYRO Chat — Copilot Studio agent"
               className="w-full h-full border-0"
-              // Sandbox: scripts + same-origin needed for the webchat to
-              // talk to its backend; popups allowed so the agent can open
-              // help docs in a new tab if needed.
               allow="microphone; clipboard-read; clipboard-write"
               referrerPolicy="strict-origin-when-cross-origin"
             />

@@ -8,7 +8,11 @@ import {
   Trash2,
 } from "lucide-react";
 import { HugeiconsIcon } from "@hugeicons/react";
-import { FlashIcon, AiBrain02Icon } from "@hugeicons/core-free-icons";
+import {
+  FlashIcon,
+  AiBrain02Icon,
+  BubbleChatIcon,
+} from "@hugeicons/core-free-icons";
 import { GlassPanel } from "@/components/glass/GlassPanel";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
@@ -23,9 +27,11 @@ import {
 import { useThemeAccent } from "@/components/layout/theme-accent";
 import { useSettings } from "@/hooks/useSettings";
 import {
+  DEFAULT_COPILOT_CHAT_URL,
   isUsingDefaultKey,
   type GeminiModel,
 } from "@/lib/settings/userSettings";
+import { TYRO_CHAT_TONE } from "@/components/layout/TyroChatButton";
 import { generateAnswer, GeminiError } from "@/lib/ai/gemini";
 import { cn } from "@/lib/utils";
 
@@ -43,6 +49,7 @@ export function SettingsPage() {
     <ScrollArea className="h-full">
       <div className="max-w-3xl mx-auto py-3 px-1 space-y-3">
         <AiChatbotCard />
+        <CopilotChatCard />
         <LocalStorageCard />
         <PlaceholderCard
           title="Tema & Görünüm"
@@ -275,6 +282,131 @@ function StatusDot({ usingDefault }: { usingDefault: boolean }) {
       />
       {usingDefault ? "Varsayılan key kullanılıyor" : "Özel key girildi"}
     </span>
+  );
+}
+
+/* ─────────── Copilot Chat (TYRO Chat iframe) Card ─────────── */
+
+/**
+ * Lets the user override the Copilot Studio webchat URL that powers
+ * the TYRO Chat drawer. Empty input + Save → reverts to the bundled
+ * default (Tiryaki's bound agent) so wiping the field is a safe
+ * "reset" gesture.
+ *
+ * Mirrors AiChatbotCard's geometry but uses the indigo TYRO Chat tone
+ * for the header pill so the Settings entry visually matches the
+ * topbar pill + drawer chrome it controls.
+ */
+function CopilotChatCard() {
+  const { settings, setSettings } = useSettings();
+  const [draft, setDraft] = React.useState(settings.copilotChatUrl);
+
+  // Sync local draft when settings change in another tab / via reset.
+  React.useEffect(() => {
+    setDraft(settings.copilotChatUrl);
+  }, [settings.copilotChatUrl]);
+
+  const trimmedDraft = draft.trim();
+  const trimmedSaved = (settings.copilotChatUrl ?? "").trim();
+  const isDirty = trimmedDraft !== trimmedSaved;
+  const usingDefault = trimmedSaved === DEFAULT_COPILOT_CHAT_URL;
+
+  function handleSave() {
+    // Empty draft → fall back to default (deletion = reset to factory).
+    const next = trimmedDraft.length === 0 ? DEFAULT_COPILOT_CHAT_URL : trimmedDraft;
+    setSettings({ ...settings, copilotChatUrl: next });
+    setDraft(next);
+  }
+
+  function handleResetToDefault() {
+    setSettings({ ...settings, copilotChatUrl: DEFAULT_COPILOT_CHAT_URL });
+    setDraft(DEFAULT_COPILOT_CHAT_URL);
+  }
+
+  return (
+    <GlassPanel tone="default" className="rounded-2xl">
+      <div className="px-5 py-4 flex items-start gap-3 border-b border-border/40">
+        <span
+          className="size-9 rounded-xl grid place-items-center shrink-0 shadow-sm text-white"
+          style={{
+            background: TYRO_CHAT_TONE.gradient,
+            boxShadow: `0 4px 12px -4px ${TYRO_CHAT_TONE.ring}, inset 0 1px 0 0 rgba(255,255,255,0.25)`,
+          }}
+        >
+          <HugeiconsIcon icon={BubbleChatIcon} size={18} strokeWidth={2} />
+        </span>
+        <div className="min-w-0 flex-1">
+          <h2 className="text-[15px] font-semibold tracking-tight leading-tight">
+            TYRO Chat (Copilot Studio)
+          </h2>
+          <p className="text-[12px] text-muted-foreground mt-0.5 leading-snug">
+            Topbar'daki TYRO Chat butonu bu URL'i iframe içinde açar. Boş
+            bırakıp kaydedersen varsayılana geri döner.
+          </p>
+        </div>
+      </div>
+
+      <div className="px-5 py-4 space-y-3">
+        <div className="space-y-2">
+          <div className="flex items-baseline justify-between gap-2">
+            <label className="text-[11.5px] font-semibold uppercase tracking-wider text-foreground/70">
+              Webchat URL
+            </label>
+            <span
+              className={cn(
+                "inline-flex items-center gap-1.5 text-[10.5px] font-semibold",
+                usingDefault ? "text-foreground/55" : "text-indigo-700"
+              )}
+            >
+              <span
+                className={cn(
+                  "size-1.5 rounded-full",
+                  usingDefault ? "bg-foreground/35" : "bg-indigo-500"
+                )}
+              />
+              {usingDefault ? "Varsayılan URL" : "Özel URL"}
+            </span>
+          </div>
+          <div className="flex gap-2">
+            <Input
+              type="url"
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              placeholder={DEFAULT_COPILOT_CHAT_URL}
+              className="flex-1 font-mono text-[12px]"
+              spellCheck={false}
+              autoComplete="off"
+            />
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleSave}
+              disabled={!isDirty}
+            >
+              Kaydet
+            </Button>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-border/40">
+          <span className="text-[11.5px] text-muted-foreground">
+            URL sadece bu tarayıcıda saklanır (localStorage).
+          </span>
+          {!usingDefault && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={handleResetToDefault}
+              className="h-7 px-2 gap-1.5 text-[11px]"
+            >
+              <RotateCcw className="size-3" />
+              Varsayılana sıfırla
+            </Button>
+          )}
+        </div>
+      </div>
+    </GlassPanel>
   );
 }
 

@@ -19,7 +19,17 @@ export interface UserSettings {
    *  override from the Settings page; override is stored locally. */
   geminiApiKey: string;
   geminiModel: GeminiModel;
+  /** Copilot Studio webchat iframe URL — feeds the TYRO Chat drawer.
+   *  Hardcoded default for the current TYRO agent; user can swap to
+   *  a different agent endpoint without redeploying. */
+  copilotChatUrl: string;
 }
+
+/** Default Copilot Studio webchat URL — TYRO's bound agent. Lives as a
+ *  module constant so the Settings page can reset to it and so the
+ *  drawer falls back gracefully if the user clears the override. */
+export const DEFAULT_COPILOT_CHAT_URL =
+  "https://copilotstudio.microsoft.com/environments/Default-9efa3bdf-67ad-47e3-8dfb-d1df79a6d7fa/bots/crfc1_agentokBCAt/webchat?__version__=2";
 
 /** Encoded development fallback for the Gemini key. Stored as base64
  *  so GitHub's secret-scan doesn't trip on the literal GCP-shaped
@@ -48,6 +58,7 @@ const STORAGE_KEY = "tyro:settings";
 export const DEFAULT_SETTINGS: UserSettings = {
   geminiApiKey: DEFAULT_KEY,
   geminiModel: "gemini-2.5-flash",
+  copilotChatUrl: DEFAULT_COPILOT_CHAT_URL,
 };
 
 /** True when the active key is the env-provided default (UI badge cue).
@@ -82,6 +93,11 @@ export function readSettings(): UserSettings {
         parsed.geminiModel === "gemini-1.5-flash"
           ? parsed.geminiModel
           : DEFAULT_SETTINGS.geminiModel,
+      copilotChatUrl:
+        typeof parsed.copilotChatUrl === "string" &&
+        parsed.copilotChatUrl.trim().length > 0
+          ? parsed.copilotChatUrl
+          : DEFAULT_SETTINGS.copilotChatUrl,
     };
   } catch {
     return DEFAULT_SETTINGS;
