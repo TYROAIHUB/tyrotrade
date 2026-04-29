@@ -160,12 +160,15 @@ export function EstimatedPLTile({
             dots and figures across rows). */}
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-stretch gap-3 min-w-0">
-            <div className="flex flex-col gap-1 min-w-0">
+            <div className="flex flex-col justify-between gap-1 min-w-0">
               <span className="text-[10px] font-bold uppercase tracking-[0.12em] text-foreground/70 leading-none">
                 Toplam
               </span>
+              {/* Both value spans use identical inline-flex + fixed
+                  height so the AnimatedNumber wrapper and the plain
+                  "Kasım" string land on the same visual baseline. */}
               <span
-                className="text-[22px] font-semibold leading-none tracking-tight"
+                className="text-[22px] font-semibold leading-none tracking-tight inline-flex items-end h-[22px]"
                 style={{ color: tintColor }}
               >
                 <AnimatedNumber
@@ -181,14 +184,14 @@ export function EstimatedPLTile({
               <>
                 <span className="border-l border-dashed border-border/70 self-stretch" />
                 <div
-                  className="flex flex-col gap-1 min-w-0"
+                  className="flex flex-col justify-between gap-1 min-w-0"
                   title={`En yüksek |K&Z| ${peak.monthLong} ayı — ${peak.pl >= 0 ? "+" : ""}${formatCompactCurrency(peak.pl, "USD")}`}
                 >
                   <span className="text-[10px] font-bold uppercase tracking-[0.12em] text-foreground/70 leading-none">
                     Zirve
                   </span>
                   <span
-                    className="text-[22px] font-semibold leading-none tracking-tight truncate"
+                    className="text-[22px] font-semibold leading-none tracking-tight truncate inline-flex items-end h-[22px]"
                     style={{ color: peak.pl >= 0 ? tintColor : "rgb(159 18 57)" }}
                   >
                     {peak.monthLong}
@@ -310,14 +313,23 @@ function RightMetric({
 
 /* ─────────── Animated bar shape ─────────── */
 //
-// Adapted from the user-supplied evilcharts "monospace" bar pattern.
-// At rest each bar collapses to a 10%-wide "spine"; on hover (recharts
-// fires this for the activeBar slot) it springs to the full bar width
-// and the value label fades in above the tip. transformOrigin is
-// pinned to the geometric centre so the scale animation reads as the
-// bar "blooming" outward rather than sliding from one edge.
+// Adapted from the evilcharts "monospace" bar pattern but rebuilt to
+// avoid two bugs in the naive port:
+//
+//  1. `scaleX(0.1)` collapse left dense charts (12 cols on a 380px
+//     width = ~25-30px per slot) with sub-pixel spines that vanished
+//     for narrow bars. Switched to direct SVG `x` + `width` animation
+//     so the spine is always exactly SPINE_W pixels wide regardless
+//     of column density.
+//
+//  2. framer-motion's `animate.y` on `motion.text` is interpreted as a
+//     CSS transform, which COMBINES with the SVG `y` attribute set on
+//     the element. Using `y={labelY}` AND `animate={{ y: labelY }}`
+//     positioned the label at `2 × labelY` — typically way below the
+//     bar tip and clipped by the chart bounds. Animate values now use
+//     a small relative offset (-6 → 0) for the entry transition only.
 
-const COLLAPSED_SCALE = 0.1;
+const SPINE_W = 4; // pixels — visible width when collapsed
 
 interface BarShapeProps {
   index?: number;
@@ -345,11 +357,9 @@ function BarShape(props: BarShapeProps) {
         : 0;
   const fill = accentColor ?? "#3b82f6";
   const centerX = xPos + w / 2;
+  const spineX = centerX - SPINE_W / 2;
 
-  // Zero-value months: render a visible baseline tick so the slot still
-  // reads as "month exists, no data" instead of looking like the bar is
-  // missing. Higher opacity + slightly larger than before so the user
-  // can tell the slot is intentionally there.
+  /* ─── Zero-value months: visible baseline pip ─── */
   if (h === 0 || numericValue === 0) {
     return (
       <>
@@ -359,62 +369,63 @@ function BarShape(props: BarShapeProps) {
           style={{ pointerEvents: "all" }}
         />
         <rect
-          x={centerX - 2}
-          y={yPos - 1.5}
-          width={4}
-          height={3}
+          x={spineX}
+          y={yPos - 2}
+          width={SPINE_W}
+          height={4}
           rx={1.5}
           fill={fill}
-          fillOpacity={0.45}
+          fillOpacity={0.55}
         />
       </>
     );
   }
 
-  // Enforce a minimum visible height so months with very small (relative
-  // to the peak) P&L don't render as sub-pixel slivers. We extend the
-  // bar in the direction it grows: positive bars need extra height
-  // above yPos (so we shift yPos up); negative bars extend below the
-  // baseline (yPos stays, h grows down).
+  // Enforce a minimum visible height so months with very small P&L
+  // (relative to the peak) don't render as sub-pixel slivers. Bars
+  // grow in the correct direction: positive shifts the top up, negative
+  // extends below the baseline.
   const MIN_H = 6;
   const renderH = Math.max(h, MIN_H);
   const renderY = numericValue >= 0 ? yPos - (renderH - h) : yPos;
   const tipY = numericValue >= 0 ? renderY : renderY + renderH;
-  // Label clears the bar tip with comfortable headroom. For negative
-  // bars the tip is at the bottom of the bar, so the label sits below.
+  // SVG `y` attribute for the label — sits clearly above (positive) or
+  // below (negative) the bar tip. The animate.y in motion props is a
+  // small entry transform offset only; it does NOT redefine the
+  // anchor. (Old code used the absolute value here and it doubled.)
   const labelClearance = 10;
   const labelY =
     numericValue >= 0 ? tipY - labelClearance : tipY + labelClearance + 8;
-  const centerY = renderY + renderH / 2;
 
   return (
     <>
-      {/* Invisible hit-target so hover is detected across the full
-          natural bar width even when the visible spine is only 10%.
-          Explicit pointer-events:all because some browsers skip
-          hit-testing for `fill="transparent"` rects. */}
+      {/* Invisible hit-target — explicit pointer-events:all because
+          some browsers skip hit-testing for `fill="transparent"`. */}
       <Rectangle
         {...props}
         fill="transparent"
         style={{ pointerEvents: "all" }}
       />
 
+      {/* Visible bar — animate `x` + `width` SVG attributes directly.
+          When collapsed the spine is a fixed 4px wide centered on the
+          bar slot; when active it springs to the full bar width
+          starting at the slot's left edge. No scaleX, no transformBox,
+          no per-bar centerY math — bullet-proof at any column density. */}
       <motion.rect
         key={`bar-${index}`}
-        x={xPos}
         y={renderY}
-        width={w}
         height={renderH}
         fill={fill}
         rx={1.5}
-        initial={{ scaleX: COLLAPSED_SCALE }}
-        animate={{ scaleX: isActive ? 1 : COLLAPSED_SCALE }}
+        initial={{ x: spineX, width: SPINE_W }}
+        animate={
+          isActive
+            ? { x: xPos, width: w }
+            : { x: spineX, width: SPINE_W }
+        }
         transition={{ type: "spring", stiffness: 220, damping: 26 }}
-        style={{
-          transformOrigin: `${centerX}px ${centerY}px`,
-          transformBox: "fill-box",
-          pointerEvents: "none",
-        }}
+        style={{ pointerEvents: "none" }}
       />
 
       {isActive && (
@@ -425,10 +436,13 @@ function BarShape(props: BarShapeProps) {
           textAnchor="middle"
           dominantBaseline="alphabetic"
           fill={fill}
-          initial={{ opacity: 0, y: labelY - 4, filter: "blur(2px)" }}
-          animate={{ opacity: 1, y: labelY, filter: "blur(0px)" }}
-          exit={{ opacity: 0, filter: "blur(2px)" }}
-          transition={{ duration: 0.18 }}
+          // y values here are CSS-transform offsets only — small entry
+          // animation that never affects the SVG anchor (`y={labelY}`
+          // above is the actual position).
+          initial={{ opacity: 0, y: -6, filter: "blur(2px)" }}
+          animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+          exit={{ opacity: 0, y: -6, filter: "blur(2px)" }}
+          transition={{ duration: 0.2 }}
           style={{
             pointerEvents: "none",
             fontSize: 10.5,
