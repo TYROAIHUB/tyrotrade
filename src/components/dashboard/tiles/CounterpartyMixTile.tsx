@@ -1,6 +1,7 @@
 import * as React from "react";
 import { UserGroupIcon } from "@hugeicons/core-free-icons";
 import { BentoTile } from "../BentoTile";
+import { TONE_COUNTERPARTY } from "@/components/details/AccentIconBadge";
 import { aggregateCounterpartyMix } from "@/lib/selectors/aggregate";
 import type { Project } from "@/lib/dataverse/entities";
 
@@ -46,6 +47,7 @@ export function CounterpartyMixTile({
       title="Karşı Taraf Dağılımı"
       subtitle="Tedarikçi + alıcı konsantrasyonu"
       icon={UserGroupIcon}
+      iconTone={TONE_COUNTERPARTY}
       span={span}
       rowSpan={rowSpan}
       onClick={onClick}

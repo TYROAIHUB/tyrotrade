@@ -3,6 +3,7 @@ import { motion, useReducedMotion } from "framer-motion";
 import { Wallet01Icon } from "@hugeicons/core-free-icons";
 import { BentoTile } from "../BentoTile";
 import { AnimatedNumber } from "../AnimatedNumber";
+import { TONE_EXPENSE } from "@/components/details/AccentIconBadge";
 import { selectProjectPL } from "@/lib/selectors/profitLoss";
 import { formatCompactCurrency } from "@/lib/format";
 import type { Project } from "@/lib/dataverse/entities";
@@ -85,6 +86,7 @@ export function EstimatedExpenseTile({
       title="Tahmini Gider"
       subtitle={`USD · ${contributingCount} proje`}
       icon={Wallet01Icon}
+      iconTone={TONE_EXPENSE}
       span={span}
       rowSpan={rowSpan}
       onClick={onClick}

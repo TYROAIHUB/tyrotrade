@@ -2,6 +2,7 @@ import * as React from "react";
 import { Clock01Icon } from "@hugeicons/core-free-icons";
 import { BentoTile } from "../BentoTile";
 import { AnimatedNumber } from "../AnimatedNumber";
+import { TONE_VELOCITY } from "@/components/details/AccentIconBadge";
 import { aggregateAvgTransitDays } from "@/lib/selectors/aggregate";
 import type { Project } from "@/lib/dataverse/entities";
 
@@ -35,6 +36,7 @@ export function VelocityTile({
       title="Ortalama Transit"
       subtitle="LP-(ED) → DP-ETA"
       icon={Clock01Icon}
+      iconTone={TONE_VELOCITY}
       span={span}
       rowSpan={rowSpan}
       onClick={onClick}
