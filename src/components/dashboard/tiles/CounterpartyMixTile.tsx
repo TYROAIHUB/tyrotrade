@@ -62,7 +62,10 @@ export function CounterpartyMixTile({
               : "Tedarikçi verisi yok"
           }
         >
-          <div className="text-[9.5px] uppercase tracking-wider text-muted-foreground/80">
+          <div
+            className="text-[9.5px] uppercase tracking-wider"
+            style={{ color: accent.solid, opacity: 0.6 }}
+          >
             Tedarikçi
           </div>
           <div className="flex items-baseline justify-between gap-2 min-w-0">
@@ -93,7 +96,10 @@ export function CounterpartyMixTile({
               : "Alıcı verisi yok"
           }
         >
-          <div className="text-[9.5px] uppercase tracking-wider text-muted-foreground/80">
+          <div
+            className="text-[9.5px] uppercase tracking-wider"
+            style={{ color: accent.solid, opacity: 0.6 }}
+          >
             Alıcı
           </div>
           <div className="flex items-baseline justify-between gap-2 min-w-0">

@@ -21,7 +21,12 @@ type BucketKey = "freight" | "opex" | "other";
 interface BucketStat {
   key: BucketKey;
   label: string;
+  /** Base ink colour — same accent for all buckets so the bar reads
+   *  as a single hue family. */
   color: string;
+  /** Per-bucket opacity (1 / 0.65 / 0.4) gives the three buckets
+   *  visually distinct shades without leaving the accent palette. */
+  opacity: number;
   value: number;
 }
 
@@ -73,13 +78,36 @@ export function EstimatedExpenseTile({
         }
       }
     }
+    // Bucket fills are accent-shade variants — the largest expense
+    // bucket gets the deepest tone, lighter shades step down through
+    // the secondary buckets. Differentiation comes from shade
+    // intensity instead of fixed semantic palette so the whole bar
+    // recolors with the live sidebar theme.
     const buckets: BucketStat[] = [
-      { key: "freight", label: "Freight", color: "#f97316", value: freight },
-      { key: "opex", label: "Opex", color: "#a855f7", value: opex },
-      { key: "other", label: "Other", color: "#64748b", value: other },
+      {
+        key: "freight",
+        label: "Freight",
+        color: accent.solid,
+        opacity: 1,
+        value: freight,
+      },
+      {
+        key: "opex",
+        label: "Opex",
+        color: accent.solid,
+        opacity: 0.65,
+        value: opex,
+      },
+      {
+        key: "other",
+        label: "Other",
+        color: accent.solid,
+        opacity: 0.4,
+        value: other,
+      },
     ];
     return { buckets, contributingCount };
-  }, [projects]);
+  }, [projects, accent.solid]);
 
   const total = buckets.reduce((s, b) => s + b.value, 0);
 
@@ -123,7 +151,13 @@ export function EstimatedExpenseTile({
           >
             <AnimatedNumber value={total} preset="currency" currency="USD" />
           </span>
-          <span className="text-[11px] text-muted-foreground">
+          {/* Supporting label sits in the same accent palette as the
+              headline number, just lighter (60%) so it reads as
+              context, not a competing label. */}
+          <span
+            className="text-[11px]"
+            style={{ color: accent.solid, opacity: 0.6 }}
+          >
             toplam gider
           </span>
         </div>
@@ -162,6 +196,7 @@ export function EstimatedExpenseTile({
                     style={{
                       left: `${offset}%`,
                       background: `linear-gradient(180deg, ${b.color} 0%, ${b.color} 55%, color-mix(in oklab, ${b.color} 75%, black 25%) 100%)`,
+                      opacity: b.opacity,
                       boxShadow:
                         "inset 0 1px 0 0 rgba(255,255,255,0.4), inset 0 -1px 0 0 rgba(0,0,0,0.08)",
                     }}
@@ -186,14 +221,14 @@ export function EstimatedExpenseTile({
                   >
                     <span
                       className="size-1.5 rounded-full shrink-0"
-                      style={{ backgroundColor: b.color }}
+                      style={{ backgroundColor: b.color, opacity: b.opacity }}
                     />
                     <span className="text-muted-foreground truncate">
                       {b.label}
                     </span>
                     <span
                       className="font-semibold tabular-nums"
-                      style={{ color: b.color }}
+                      style={{ color: b.color, opacity: b.opacity }}
                     >
                       %{pct.toFixed(0)}
                     </span>

@@ -62,12 +62,19 @@ export function VelocityTile({
 
         {stats.sampleSize > 0 ? (
           <div className="mt-auto flex flex-col gap-1.5">
+            {/* Min / Max rows live in the accent palette — labels at
+                lower opacity, values at full so the gün figures pop.
+                Sample row stays neutral muted-foreground because it's
+                meta-info (not a primary metric). */}
             <div
               className="flex items-baseline justify-between gap-2 text-[10.5px]"
               title="En kısa transit süresi"
             >
-              <span className="text-muted-foreground">Min</span>
-              <span className="font-semibold tabular-nums">
+              <span style={{ color: accent.solid, opacity: 0.6 }}>Min</span>
+              <span
+                className="font-semibold tabular-nums"
+                style={{ color: accent.solid }}
+              >
                 {Math.round(stats.minDays)} gün
               </span>
             </div>
@@ -75,8 +82,11 @@ export function VelocityTile({
               className="flex items-baseline justify-between gap-2 text-[10.5px]"
               title="En uzun transit süresi"
             >
-              <span className="text-muted-foreground">Max</span>
-              <span className="font-semibold tabular-nums">
+              <span style={{ color: accent.solid, opacity: 0.6 }}>Max</span>
+              <span
+                className="font-semibold tabular-nums"
+                style={{ color: accent.solid }}
+              >
                 {Math.round(stats.maxDays)} gün
               </span>
             </div>

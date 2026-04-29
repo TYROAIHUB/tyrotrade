@@ -52,13 +52,6 @@ export function CorridorConcentrationTile({
       : hhi < 0.25
         ? "Orta"
         : "Yoğun";
-  const concentrationColor =
-    hhi < 0.15
-      ? "rgb(4 120 87)"
-      : hhi < 0.25
-        ? "rgb(180 83 9)"
-        : "rgb(159 18 57)";
-
   return (
     <BentoTile
       title="Koridor Konsantrasyonu"
@@ -78,6 +71,11 @@ export function CorridorConcentrationTile({
               "Çeşitli / Orta / Yoğun" label keeps its status palette
               so the at-a-glance health cue (green=good, amber=watch,
               rose=critical) survives the theme swap. */}
+          {/* Both the HHI value and the "Çeşitli/Orta/Yoğun" label
+              now sit on the live sidebar accent. The status nuance is
+              still hinted via opacity (lighter for the secondary
+              label) but the colour family is unified — keeps the tile
+              tonally clean across the three sidebar themes. */}
           <span
             className="text-[24px] font-semibold leading-none tracking-tight tabular-nums"
             style={{ color: accent.solid }}
@@ -86,7 +84,7 @@ export function CorridorConcentrationTile({
           </span>
           <span
             className="text-[11px] font-semibold uppercase tracking-wider"
-            style={{ color: concentrationColor }}
+            style={{ color: accent.solid, opacity: 0.65 }}
           >
             {concentrationLabel}
           </span>

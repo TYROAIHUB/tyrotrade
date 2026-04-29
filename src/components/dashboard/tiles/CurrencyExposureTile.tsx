@@ -17,11 +17,15 @@ interface CurrencyExposureTileProps {
 }
 
 const ORDER: CurrencyCode[] = ["USD", "EUR", "TRY", "OTHER"];
-const COLORS: Record<CurrencyCode, string> = {
-  USD: "#10b981",
-  EUR: "#3b82f6",
-  TRY: "#f59e0b",
-  OTHER: "#94a3b8",
+
+/** Per-currency opacity stops — bars all use the live sidebar accent
+ *  but step down through these alpha values so each currency reads as
+ *  a distinct shade without leaving the accent palette. */
+const SHADE_OPACITY: Record<CurrencyCode, number> = {
+  USD: 1,
+  EUR: 0.7,
+  TRY: 0.45,
+  OTHER: 0.25,
 };
 
 /**
@@ -80,7 +84,10 @@ export function CurrencyExposureTile({
           >
             {exposure.dominant}
           </span>
-          <span className="text-[11px] text-muted-foreground">
+          <span
+            className="text-[11px]"
+            style={{ color: accent.solid, opacity: 0.6 }}
+          >
             {(dominantShare * 100).toFixed(0)}% dominant
           </span>
         </div>
@@ -120,7 +127,8 @@ export function CurrencyExposureTile({
                     className="block h-full rounded-full"
                     style={{
                       width: `${pct}%`,
-                      background: `linear-gradient(180deg, ${COLORS[c]} 0%, ${COLORS[c]} 55%, color-mix(in oklab, ${COLORS[c]} 75%, black 25%) 100%)`,
+                      background: `linear-gradient(180deg, ${accent.solid} 0%, ${accent.solid} 55%, color-mix(in oklab, ${accent.solid} 75%, black 25%) 100%)`,
+                      opacity: SHADE_OPACITY[c],
                       boxShadow:
                         "inset 0 1px 0 0 rgba(255,255,255,0.4), inset 0 -1px 0 0 rgba(0,0,0,0.08)",
                     }}
