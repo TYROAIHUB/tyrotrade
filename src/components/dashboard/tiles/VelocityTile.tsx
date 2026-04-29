@@ -3,6 +3,7 @@ import { Clock01Icon } from "@hugeicons/core-free-icons";
 import { BentoTile } from "../BentoTile";
 import { AnimatedNumber } from "../AnimatedNumber";
 import { TONE_VELOCITY } from "@/components/details/AccentIconBadge";
+import { useThemeAccent } from "@/components/layout/theme-accent";
 import { aggregateAvgTransitDays } from "@/lib/selectors/aggregate";
 import type { Project } from "@/lib/dataverse/entities";
 
@@ -26,6 +27,7 @@ export function VelocityTile({
   rowSpan,
   onClick,
 }: VelocityTileProps) {
+  const accent = useThemeAccent();
   const stats = React.useMemo(
     () => aggregateAvgTransitDays(projects),
     [projects]
@@ -46,7 +48,14 @@ export function VelocityTile({
           className="flex items-baseline gap-1"
           title={`Ortalama transit — yükleme bitişi (LP-ED ya da BL) ile varış limanına ulaşma (DP-ETA) arasındaki gün farkı. ${stats.sampleSize} seferde ölçüldü.`}
         >
-          <span className="text-[28px] font-semibold leading-none tracking-tight">
+          {/* Avg-days headline tracks the live sidebar accent so the
+              tile's primary number adapts to light/navy/black themes.
+              Min/Max/Sample rows below stay neutral foreground —
+              they're secondary readouts, not the headline. */}
+          <span
+            className="text-[28px] font-semibold leading-none tracking-tight"
+            style={{ color: accent.solid }}
+          >
             <AnimatedNumber value={Math.round(stats.avgDays)} preset="days" />
           </span>
         </div>

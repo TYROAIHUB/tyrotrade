@@ -2,6 +2,7 @@ import * as React from "react";
 import { UserGroupIcon } from "@hugeicons/core-free-icons";
 import { BentoTile } from "../BentoTile";
 import { TONE_COUNTERPARTY } from "@/components/details/AccentIconBadge";
+import { useThemeAccent } from "@/components/layout/theme-accent";
 import { aggregateCounterpartyMix } from "@/lib/selectors/aggregate";
 import type { Project } from "@/lib/dataverse/entities";
 
@@ -23,6 +24,7 @@ export function CounterpartyMixTile({
   rowSpan,
   onClick,
 }: CounterpartyMixTileProps) {
+  const accent = useThemeAccent();
   const mix = React.useMemo(
     () => aggregateCounterpartyMix(projects),
     [projects]
@@ -35,12 +37,10 @@ export function CounterpartyMixTile({
     totalSup > 0 && topSupplier ? topSupplier.count / totalSup : 0;
   const buyShare = totalBuy > 0 && topBuyer ? topBuyer.count / totalBuy : 0;
 
-  const concColor = (hhi: number) =>
-    hhi < 0.15
-      ? "rgb(4 120 87)"
-      : hhi < 0.25
-        ? "rgb(180 83 9)"
-        : "rgb(159 18 57)";
+  // Top-share % readouts now track the live sidebar accent. The HHI
+  // status info underneath each row stays semantic so a critical
+  // concentration (>0.25) still shouts at the user via colour.
+  const concColor = (_hhi: number) => accent.solid;
 
   return (
     <BentoTile

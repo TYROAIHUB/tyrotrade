@@ -4,6 +4,7 @@ import { Wallet01Icon } from "@hugeicons/core-free-icons";
 import { BentoTile } from "../BentoTile";
 import { AnimatedNumber } from "../AnimatedNumber";
 import { TONE_EXPENSE } from "@/components/details/AccentIconBadge";
+import { useThemeAccent } from "@/components/layout/theme-accent";
 import { selectProjectPL } from "@/lib/selectors/profitLoss";
 import { formatCompactCurrency } from "@/lib/format";
 import type { Project } from "@/lib/dataverse/entities";
@@ -45,6 +46,7 @@ export function EstimatedExpenseTile({
   onClick,
 }: EstimatedExpenseTileProps) {
   const reduce = useReducedMotion();
+  const accent = useThemeAccent();
   const { buckets, contributingCount } = React.useMemo(() => {
     let freight = 0;
     let opex = 0;
@@ -109,7 +111,16 @@ export function EstimatedExpenseTile({
               "90", so matching 40px exactly made the rose ink dominate
               the small tile. 30px keeps the headline readable next to
               "toplam gider" without overpowering the legend below. */}
-          <span className="text-[30px] font-semibold leading-none tracking-tight text-rose-700">
+          {/* Headline number tracks the live sidebar accent so the
+              KPI's primary number adapts to light/navy/black themes.
+              The 3-bucket stacked bar below keeps its semantic palette
+              (Freight orange / Opex purple / Other slate) — those
+              colours encode bucket meaning and shouldn't collapse to
+              one accent. */}
+          <span
+            className="text-[30px] font-semibold leading-none tracking-tight"
+            style={{ color: accent.solid }}
+          >
             <AnimatedNumber value={total} preset="currency" currency="USD" />
           </span>
           <span className="text-[11px] text-muted-foreground">

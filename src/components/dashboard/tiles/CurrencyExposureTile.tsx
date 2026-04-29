@@ -2,6 +2,7 @@ import * as React from "react";
 import { MoneyExchange01Icon } from "@hugeicons/core-free-icons";
 import { BentoTile } from "../BentoTile";
 import { TONE_CURRENCY } from "@/components/details/AccentIconBadge";
+import { useThemeAccent } from "@/components/layout/theme-accent";
 import {
   aggregateCurrencyExposure,
   type CurrencyCode,
@@ -37,6 +38,7 @@ export function CurrencyExposureTile({
   rowSpan,
   onClick,
 }: CurrencyExposureTileProps) {
+  const accent = useThemeAccent();
   const exposure = React.useMemo(
     () => aggregateCurrencyExposure(projects),
     [projects]
@@ -67,9 +69,14 @@ export function CurrencyExposureTile({
           className="flex items-baseline gap-2"
           title={`Baskın para birimi — ${exposure.dominant}: ${exposure.byCurrency[exposure.dominant].count} proje (%${(dominantShare * 100).toFixed(1)}). Tek para birimine bağımlılık ne kadar yüksekse FX riski o kadar artar.`}
         >
+          {/* Dominant code reads in the live sidebar accent so the
+              tile's primary number tracks light/navy/black themes.
+              Per-currency bars below keep their semantic palette so
+              the user can still tell USD from EUR from TRY at a
+              glance. */}
           <span
             className="text-[24px] font-semibold leading-none tracking-tight tabular-nums"
-            style={{ color: COLORS[exposure.dominant] }}
+            style={{ color: accent.solid }}
           >
             {exposure.dominant}
           </span>

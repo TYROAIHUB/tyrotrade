@@ -2,6 +2,7 @@ import * as React from "react";
 import { Route01Icon } from "@hugeicons/core-free-icons";
 import { BentoTile } from "../BentoTile";
 import { TONE_CORRIDOR } from "@/components/details/AccentIconBadge";
+import { useThemeAccent } from "@/components/layout/theme-accent";
 import { aggregateByCorridor } from "@/lib/selectors/aggregate";
 import type { Project } from "@/lib/dataverse/entities";
 
@@ -27,6 +28,7 @@ export function CorridorConcentrationTile({
   rowSpan,
   onClick,
 }: CorridorConcentrationTileProps) {
+  const accent = useThemeAccent();
   const corridors = React.useMemo(() => aggregateByCorridor(projects), [projects]);
   const totalRoutedProjects = React.useMemo(
     () => corridors.reduce((sum, c) => sum + c.count, 0),
@@ -72,9 +74,13 @@ export function CorridorConcentrationTile({
           className="flex items-baseline gap-2"
           title={`Herfindahl–Hirschman Index (HHI) — koridor konsantrasyonu. < 15: çeşitli (sağlıklı) · 15-25: orta · > 25: yoğun (tek koridora bağımlılık riski)`}
         >
+          {/* HHI number tracks the sidebar accent. The secondary
+              "Çeşitli / Orta / Yoğun" label keeps its status palette
+              so the at-a-glance health cue (green=good, amber=watch,
+              rose=critical) survives the theme swap. */}
           <span
             className="text-[24px] font-semibold leading-none tracking-tight tabular-nums"
-            style={{ color: concentrationColor }}
+            style={{ color: accent.solid }}
           >
             {(hhi * 100).toFixed(0)}
           </span>
