@@ -1,0 +1,110 @@
+import * as React from "react";
+import { HugeiconsIcon } from "@hugeicons/react";
+import { BubbleChatIcon } from "@hugeicons/core-free-icons";
+import {
+  Sheet,
+  SheetContent,
+  SheetTitle,
+  SheetDescription,
+} from "@/components/ui/sheet";
+import { TYRO_CHAT_TONE } from "@/components/layout/TyroChatButton";
+import { cn } from "@/lib/utils";
+
+/** Copilot Studio webchat iframe URL — the agent the user wants embedded.
+ *  Lives here as a constant for now; could move to userSettings if more
+ *  than one agent ever ships. */
+const COPILOT_WEBCHAT_URL =
+  "https://copilotstudio.microsoft.com/environments/Default-9efa3bdf-67ad-47e3-8dfb-d1df79a6d7fa/bots/crfc1_agentokBCAt/webchat?__version__=2";
+
+interface TyroChatDrawerProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}
+
+/**
+ * Right-side drawer that hosts the Copilot Studio agent as an iframe.
+ *
+ * Same chrome dialect as `TyroAiDrawer` (rounded-l-3xl, top accent
+ * strip, opaque white surface) so the two AI surfaces feel like
+ * siblings — only the tone palette differs (indigo-violet here vs.
+ * live theme accent for Gemini).
+ *
+ * Iframe takes the whole body (no padding) so the embedded webchat
+ * can use every pixel; the drawer chrome handles framing.
+ */
+export function TyroChatDrawer({ open, onOpenChange }: TyroChatDrawerProps) {
+  // Lazy-mount the iframe — only renders after the user opens the
+  // drawer the first time, then stays mounted so subsequent re-opens
+  // skip the cold-start handshake. This avoids paying the Copilot
+  // Studio bootstrap cost on every dashboard load.
+  const [hasOpened, setHasOpened] = React.useState(false);
+  React.useEffect(() => {
+    if (open) setHasOpened(true);
+  }, [open]);
+
+  return (
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent
+        side="right"
+        className={cn(
+          // overflow-hidden so the top accent strip clips into the
+          // rounded-l-3xl corner cleanly (same fix as KpiDetailDrawer
+          // and TyroAiDrawer).
+          "w-full sm:max-w-[460px] p-0 flex flex-col gap-0 overflow-hidden",
+          "bg-white/95 backdrop-blur-2xl backdrop-saturate-150",
+          "border-l border-border/60",
+          "shadow-[0_30px_80px_-16px_rgba(15,23,42,0.45)]"
+        )}
+        aria-describedby={undefined}
+      >
+        {/* Top accent bar — instant visual ID (indigo-violet) */}
+        <div
+          aria-hidden
+          className="h-1 w-full shrink-0"
+          style={{ background: TYRO_CHAT_TONE.gradient }}
+        />
+
+        {/* Header */}
+        <div className="px-5 py-4 flex items-center gap-3 shrink-0 border-b border-border/40">
+          <span
+            className="size-10 rounded-xl grid place-items-center shrink-0 shadow-sm text-white"
+            style={{
+              background: TYRO_CHAT_TONE.gradient,
+              boxShadow: `0 4px 12px -4px ${TYRO_CHAT_TONE.ring}, inset 0 1px 0 0 rgba(255,255,255,0.25)`,
+            }}
+          >
+            <HugeiconsIcon icon={BubbleChatIcon} size={18} strokeWidth={1.75} />
+          </span>
+          <div className="min-w-0 flex-1">
+            <SheetTitle className="text-[16px] font-semibold tracking-tight leading-tight">
+              TYRO Chat
+            </SheetTitle>
+            <SheetDescription className="text-[12px] text-muted-foreground leading-tight mt-0.5">
+              Copilot Studio asistanı
+            </SheetDescription>
+          </div>
+        </div>
+
+        {/* Iframe body — fills the rest of the drawer */}
+        <div className="flex-1 min-h-0 bg-white">
+          {hasOpened ? (
+            <iframe
+              src={COPILOT_WEBCHAT_URL}
+              title="TYRO Chat — Copilot Studio agent"
+              className="w-full h-full border-0"
+              // Sandbox: scripts + same-origin needed for the webchat to
+              // talk to its backend; popups allowed so the agent can open
+              // help docs in a new tab if needed.
+              allow="microphone; clipboard-read; clipboard-write"
+              referrerPolicy="strict-origin-when-cross-origin"
+            />
+          ) : (
+            <div className="h-full grid place-items-center text-[12px] text-muted-foreground">
+              Yükleniyor…
+            </div>
+          )}
+        </div>
+      </SheetContent>
+    </Sheet>
+  );
+}

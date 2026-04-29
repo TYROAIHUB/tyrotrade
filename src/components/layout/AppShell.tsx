@@ -8,8 +8,10 @@ import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { AskAiButton } from "@/components/dashboard/AskAiButton";
 import { TyroWmsButton } from "@/components/layout/TyroWmsButton";
+import { TyroChatButton } from "@/components/layout/TyroChatButton";
 import { NotificationButton } from "@/components/layout/NotificationButton";
 import { TyroAiDrawer } from "@/components/chat/TyroAiDrawer";
+import { TyroChatDrawer } from "@/components/chat/TyroChatDrawer";
 import { AppSidebar } from "./AppSidebar";
 import { SidebarProvider, useSidebar } from "./sidebar-context";
 import { DataverseLoginAutoRefresh } from "@/components/auth/DataverseLoginAutoRefresh";
@@ -120,6 +122,7 @@ function TopBar({ title, pathname }: { title: string; pathname: string }) {
   const { setMobileOpen } = useSidebar();
   const { open: cmdOpen, setOpen: setCmdOpen } = useCommandPalette();
   const [aiOpen, setAiOpen] = React.useState(false);
+  const [chatOpen, setChatOpen] = React.useState(false);
 
   return (
     <>
@@ -159,11 +162,16 @@ function TopBar({ title, pathname }: { title: string; pathname: string }) {
               className="hidden sm:inline-flex"
               onClick={() => setAiOpen(true)}
             />
+            <TyroChatButton
+              className="hidden sm:inline-flex"
+              onClick={() => setChatOpen(true)}
+            />
           </div>
         </GlassPanel>
       </div>
       <CommandPalette open={cmdOpen} onClose={() => setCmdOpen(false)} />
       <TyroAiDrawer open={aiOpen} onOpenChange={setAiOpen} />
+      <TyroChatDrawer open={chatOpen} onOpenChange={setChatOpen} />
     </>
   );
 }

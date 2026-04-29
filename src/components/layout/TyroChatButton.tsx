@@ -1,0 +1,85 @@
+import * as React from "react";
+import { HugeiconsIcon } from "@hugeicons/react";
+import { BubbleChatIcon } from "@hugeicons/core-free-icons";
+import { cn } from "@/lib/utils";
+
+interface TyroChatButtonProps {
+  onClick: () => void;
+  className?: string;
+}
+
+/**
+ * Fixed indigo-violet gradient — distinct from the live-accent TYRO AI
+ * button (Gemini chat) and from the muted slate Filtre button so the
+ * three topbar pills read as three different "tools": filter, internal
+ * AI, external Copilot Studio agent.
+ *
+ * Indigo→violet matches the Microsoft Copilot brand palette without
+ * literally copying it; keeps the surface premium and modern.
+ */
+const TYRO_CHAT_GRADIENT =
+  "linear-gradient(135deg, #818cf8 0%, #6366f1 55%, #4338ca 100%)";
+const TYRO_CHAT_RING = "rgba(67, 56, 202, 0.55)";
+
+/**
+ * "TYRO Chat" — opens the Copilot Studio agent drawer (iframe embed).
+ * Mirrors AskAiButton's geometry (h-9, rounded-full, min-w-[110px],
+ * text-[13px]) so the two AI CTAs sit as identical-shaped siblings on
+ * the topbar.
+ */
+export function TyroChatButton({ onClick, className }: TyroChatButtonProps) {
+  const [hovered, setHovered] = React.useState(false);
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      aria-label="TYRO Chat'i aç"
+      className={cn(
+        "group relative inline-flex items-center justify-center gap-2 shrink-0",
+        "rounded-full px-3.5 min-w-[110px] h-9 text-[13px] font-semibold text-white",
+        "ring-1 ring-white/15 hover:ring-white/30",
+        "transition-all duration-200",
+        "hover:scale-[1.04]",
+        "active:scale-95",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+        "overflow-hidden",
+        className
+      )}
+      style={{
+        background: TYRO_CHAT_GRADIENT,
+        boxShadow: `0 4px 12px -4px ${TYRO_CHAT_RING}, inset 0 1px 0 0 rgba(255,255,255,0.2)`,
+      }}
+    >
+      {/* Animated shimmer overlay on hover */}
+      <span
+        aria-hidden
+        className={cn(
+          "absolute inset-0 rounded-full pointer-events-none",
+          "before:absolute before:inset-0 before:bg-gradient-to-r before:from-transparent before:via-white/30 before:to-transparent",
+          "before:translate-x-[-120%] before:transition-transform before:duration-700",
+          hovered && "before:translate-x-[120%]"
+        )}
+      />
+      <HugeiconsIcon
+        icon={BubbleChatIcon}
+        size={16}
+        strokeWidth={2}
+        className={cn(
+          "shrink-0 transition-transform duration-300 relative z-[1]",
+          hovered ? "rotate-[-6deg] scale-110" : "rotate-0"
+        )}
+      />
+      <span className="relative z-[1] tracking-tight">TYRO Chat</span>
+    </button>
+  );
+}
+
+/** Exported for the drawer header so its accent strip + icon pill use
+ *  the same gradient + ring as the trigger button. */
+export const TYRO_CHAT_TONE = {
+  gradient: TYRO_CHAT_GRADIENT,
+  ring: TYRO_CHAT_RING,
+  solid: "#4338ca",
+};
