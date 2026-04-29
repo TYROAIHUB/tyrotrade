@@ -104,18 +104,21 @@ export function CorridorConcentrationTile({
                   title={`#${idx + 1} koridor — ${c.loadingPort} → ${c.dischargePort}: ${c.count} proje · %${pct.toFixed(1)} pay`}
                 >
                   <span className="truncate min-w-0 flex-1">
-                    <span className="text-muted-foreground tabular-nums mr-1.5">
+                    <span
+                      className="tabular-nums mr-1.5 font-semibold"
+                      style={{ color: accent.solid, opacity: 0.7 }}
+                    >
                       #{idx + 1}
                     </span>
-                    <span className="text-foreground/85 font-medium">
+                    <span className="text-foreground/90 font-medium">
                       {c.loadingPort}
                     </span>
-                    <span className="text-muted-foreground"> → </span>
-                    <span className="text-foreground/85 font-medium">
+                    <span className="text-foreground/55"> → </span>
+                    <span className="text-foreground/90 font-medium">
                       {c.dischargePort}
                     </span>
                   </span>
-                  <span className="shrink-0 tabular-nums text-muted-foreground">
+                  <span className="shrink-0 tabular-nums font-medium text-foreground/75">
                     {c.count} · {pct.toFixed(0)}%
                   </span>
                 </div>

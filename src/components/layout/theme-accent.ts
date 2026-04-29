@@ -17,6 +17,14 @@ export interface ThemeAccent {
   tint: string;
   /** Stronger ring for keyboard-focus / hover. */
   ringStrong: string;
+  /**
+   * 3-stop palette extracted from the gradient — light → mid → deep.
+   * Used by multi-bucket charts (Tahmini Gider's freight/opex/other,
+   * Currency Exposure's USD/EUR/TRY) so each segment gets a distinct
+   * theme-aware colour instead of opacity-shaded clones of the same
+   * solid. In light mode these are the logo's sky → blue → navy stops.
+   */
+  stops: [string, string, string];
 }
 
 const ACCENT_BY_THEME: Record<SidebarTheme, ThemeAccent> = {
@@ -26,6 +34,7 @@ const ACCENT_BY_THEME: Record<SidebarTheme, ThemeAccent> = {
     ring: "rgba(30, 58, 138, 0.55)",
     ringStrong: "rgba(30, 58, 138, 0.85)",
     tint: "rgba(30, 58, 138, 0.08)",
+    stops: ["#38bdf8", "#2563eb", "#1e3a8a"],
   },
   navy: {
     // Tiryaki Navy + Gold — gold accents match the "trade" wordmark exactly
@@ -35,6 +44,7 @@ const ACCENT_BY_THEME: Record<SidebarTheme, ThemeAccent> = {
     ring: "rgba(200, 146, 42, 0.6)",
     ringStrong: "rgba(200, 146, 42, 0.9)",
     tint: "rgba(200, 146, 42, 0.12)",
+    stops: ["#e0ad3e", "#c8922a", "#a87a1f"],
   },
   black: {
     solid: "#38bdf8",
@@ -42,6 +52,7 @@ const ACCENT_BY_THEME: Record<SidebarTheme, ThemeAccent> = {
     ring: "rgba(56, 189, 248, 0.6)",
     ringStrong: "rgba(56, 189, 248, 0.95)",
     tint: "rgba(56, 189, 248, 0.12)",
+    stops: ["#7dd3fc", "#38bdf8", "#0284c7"],
   },
 };
 

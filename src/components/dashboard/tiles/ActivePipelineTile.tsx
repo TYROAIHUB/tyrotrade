@@ -3,6 +3,7 @@ import { ContainerIcon } from "@hugeicons/core-free-icons";
 import { BentoTile } from "../BentoTile";
 import { AnimatedNumber } from "../AnimatedNumber";
 import { TONE_SEA } from "@/components/details/AccentIconBadge";
+import { useThemeAccent } from "@/components/layout/theme-accent";
 import type { Project } from "@/lib/dataverse/entities";
 
 interface ActivePipelineTileProps {
@@ -39,6 +40,7 @@ export function ActivePipelineTile({
   onClick,
 }: ActivePipelineTileProps) {
   const reduceMotion = useReducedMotion();
+  const accent = useThemeAccent();
 
   // Only count projects that actually carry a recognised voyage status —
   // project-level "Açık" / "Kapalı" fallbacks are excluded so the tile
@@ -70,13 +72,19 @@ export function ActivePipelineTile({
           className="flex items-baseline gap-3"
           title={`${total} proje takipte — sadece vesselPlan.vesselStatus tanımlı projeler. Voyage durumlarına göre dağılım çubukta.`}
         >
-          {/* 30px matches Tahmini Gider's headline so the two tiles on
-              this row read as size-paired siblings; "proje takipte"
-              supporting label keeps its 11px scale and baseline. */}
-          <span className="text-[30px] font-semibold leading-none tracking-tight">
+          {/* Headline tracks live sidebar accent. Supporting label
+              uses the same accent at 75% so both lines belong to the
+              theme palette without going faded-grey. */}
+          <span
+            className="text-[30px] font-semibold leading-none tracking-tight"
+            style={{ color: accent.solid }}
+          >
             <AnimatedNumber value={total} preset="count" />
           </span>
-          <span className="text-[11px] text-muted-foreground">
+          <span
+            className="text-[11px] font-medium"
+            style={{ color: accent.stops[2], opacity: 0.75 }}
+          >
             proje takipte
           </span>
         </div>
@@ -128,8 +136,12 @@ export function ActivePipelineTile({
           </div>
 
           <div className="flex items-center justify-between gap-2 text-[10.5px] flex-wrap">
+            {/* Empty-status (count=0) categories are skipped — only
+                buckets with actual projects show up under the bar.
+                Avoids the dead "Nominated 0" row clutter. */}
             {STATUS_CATEGORIES.map((s) => {
               const value = counts[s.key] ?? 0;
+              if (value === 0) return null;
               const pct = sumStages > 0 ? (value / sumStages) * 100 : 0;
               return (
                 <div
@@ -141,7 +153,7 @@ export function ActivePipelineTile({
                     className="size-1.5 rounded-full shrink-0"
                     style={{ backgroundColor: s.color }}
                   />
-                  <span className="text-muted-foreground truncate">
+                  <span className="truncate font-medium text-foreground/80">
                     {s.label}
                   </span>
                   <span className="font-semibold tabular-nums text-foreground">

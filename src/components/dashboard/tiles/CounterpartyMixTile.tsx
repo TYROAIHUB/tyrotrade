@@ -37,11 +37,6 @@ export function CounterpartyMixTile({
     totalSup > 0 && topSupplier ? topSupplier.count / totalSup : 0;
   const buyShare = totalBuy > 0 && topBuyer ? topBuyer.count / totalBuy : 0;
 
-  // Top-share % readouts now track the live sidebar accent. The HHI
-  // status info underneath each row stays semantic so a critical
-  // concentration (>0.25) still shouts at the user via colour.
-  const concColor = (_hhi: number) => accent.solid;
-
   return (
     <BentoTile
       title="Karşı Taraf Dağılımı"
@@ -63,23 +58,23 @@ export function CounterpartyMixTile({
           }
         >
           <div
-            className="text-[9.5px] uppercase tracking-wider"
-            style={{ color: accent.solid, opacity: 0.6 }}
+            className="text-[9.5px] uppercase tracking-wider font-semibold"
+            style={{ color: accent.stops[2], opacity: 0.75 }}
           >
             Tedarikçi
           </div>
           <div className="flex items-baseline justify-between gap-2 min-w-0">
-            <span className="truncate font-semibold text-foreground/90">
+            <span className="truncate font-semibold text-foreground/95">
               {topSupplier?.name ?? "—"}
             </span>
             <span
-              className="shrink-0 tabular-nums font-semibold"
-              style={{ color: concColor(mix.supplierHHI) }}
+              className="shrink-0 tabular-nums font-bold"
+              style={{ color: accent.solid }}
             >
               {(supShare * 100).toFixed(0)}%
             </span>
           </div>
-          <div className="text-muted-foreground tabular-nums">
+          <div className="tabular-nums text-foreground/65 font-medium">
             HHI {(mix.supplierHHI * 100).toFixed(0)} ·{" "}
             {mix.suppliers.length} taraf
           </div>
@@ -97,23 +92,23 @@ export function CounterpartyMixTile({
           }
         >
           <div
-            className="text-[9.5px] uppercase tracking-wider"
-            style={{ color: accent.solid, opacity: 0.6 }}
+            className="text-[9.5px] uppercase tracking-wider font-semibold"
+            style={{ color: accent.stops[2], opacity: 0.75 }}
           >
             Alıcı
           </div>
           <div className="flex items-baseline justify-between gap-2 min-w-0">
-            <span className="truncate font-semibold text-foreground/90">
+            <span className="truncate font-semibold text-foreground/95">
               {topBuyer?.name ?? "—"}
             </span>
             <span
-              className="shrink-0 tabular-nums font-semibold"
-              style={{ color: concColor(mix.buyerHHI) }}
+              className="shrink-0 tabular-nums font-bold"
+              style={{ color: accent.solid }}
             >
               {(buyShare * 100).toFixed(0)}%
             </span>
           </div>
-          <div className="text-muted-foreground tabular-nums">
+          <div className="tabular-nums text-foreground/65 font-medium">
             HHI {(mix.buyerHHI * 100).toFixed(0)} · {mix.buyers.length} taraf
           </div>
         </div>

@@ -18,14 +18,15 @@ interface CurrencyExposureTileProps {
 
 const ORDER: CurrencyCode[] = ["USD", "EUR", "TRY", "OTHER"];
 
-/** Per-currency opacity stops — bars all use the live sidebar accent
- *  but step down through these alpha values so each currency reads as
- *  a distinct shade without leaving the accent palette. */
-const SHADE_OPACITY: Record<CurrencyCode, number> = {
-  USD: 1,
-  EUR: 0.7,
-  TRY: 0.45,
-  OTHER: 0.25,
+/** Per-currency stop index into `accent.stops` — each currency picks a
+ *  distinct colour from the live theme palette (light → mid → deep)
+ *  so USD/EUR/TRY read as visibly different bars even though they
+ *  belong to the same theme. OTHER reuses the lightest stop. */
+const STOP_INDEX: Record<CurrencyCode, 0 | 1 | 2> = {
+  USD: 2, // deep / dominant
+  EUR: 1, // mid
+  TRY: 0, // light
+  OTHER: 0,
 };
 
 /**
@@ -85,8 +86,8 @@ export function CurrencyExposureTile({
             {exposure.dominant}
           </span>
           <span
-            className="text-[11px]"
-            style={{ color: accent.solid, opacity: 0.6 }}
+            className="text-[11px] font-medium"
+            style={{ color: accent.stops[2], opacity: 0.75 }}
           >
             {(dominantShare * 100).toFixed(0)}% dominant
           </span>
@@ -108,10 +109,13 @@ export function CurrencyExposureTile({
                 title={`${c} — ${cnt} proje · %${pct.toFixed(1)} pay`}
               >
                 <div className="flex items-baseline justify-between gap-2 text-[10.5px] mb-0.5">
-                  <span className="font-semibold tabular-nums text-foreground/85">
+                  <span
+                    className="font-semibold tabular-nums"
+                    style={{ color: accent.stops[STOP_INDEX[c]] }}
+                  >
                     {c}
                   </span>
-                  <span className="tabular-nums text-muted-foreground">
+                  <span className="tabular-nums font-medium text-foreground/70">
                     {cnt} proje · {pct.toFixed(0)}%
                   </span>
                 </div>
@@ -127,8 +131,8 @@ export function CurrencyExposureTile({
                     className="block h-full rounded-full"
                     style={{
                       width: `${pct}%`,
-                      background: `linear-gradient(180deg, ${accent.solid} 0%, ${accent.solid} 55%, color-mix(in oklab, ${accent.solid} 75%, black 25%) 100%)`,
-                      opacity: SHADE_OPACITY[c],
+                      background: `linear-gradient(180deg, ${accent.stops[STOP_INDEX[c]]} 0%, ${accent.stops[STOP_INDEX[c]]} 55%, color-mix(in oklab, ${accent.stops[STOP_INDEX[c]]} 75%, black 25%) 100%)`,
+                      opacity: c === "OTHER" ? 0.6 : 1,
                       boxShadow:
                         "inset 0 1px 0 0 rgba(255,255,255,0.4), inset 0 -1px 0 0 rgba(0,0,0,0.08)",
                     }}
