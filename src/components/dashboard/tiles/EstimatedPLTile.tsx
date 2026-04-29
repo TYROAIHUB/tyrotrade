@@ -3,7 +3,6 @@ import { motion } from "framer-motion";
 import { Bar, BarChart, Rectangle, XAxis } from "recharts";
 import { Coins02Icon } from "@hugeicons/core-free-icons";
 import { BentoTile } from "../BentoTile";
-import { AnimatedNumber } from "../AnimatedNumber";
 import {
   TONE_PL,
   TONE_EXPENSE,
@@ -159,39 +158,39 @@ export function EstimatedPLTile({
             label/dot/value on the right (3-col grid for column-aligned
             dots and figures across rows). */}
         <div className="flex items-start justify-between gap-3">
-          <div className="flex items-stretch gap-3 min-w-0">
-            <div className="flex flex-col justify-between gap-1 min-w-0">
+          {/* Both value strings render as plain text spans with
+              IDENTICAL CSS — same font-size, weight, leading, family —
+              so their baselines line up naturally. AnimatedNumber was
+              dropped here because NumberFlow's internal box has its
+              own padding that shifts the visible baseline relative to
+              the plain "Kasım" string next to it; the animation gain
+              wasn't worth the alignment headache. */}
+          <div className="flex items-baseline gap-3 min-w-0">
+            <div className="flex flex-col gap-1.5 min-w-0">
               <span className="text-[10px] font-bold uppercase tracking-[0.12em] text-foreground/70 leading-none">
                 Toplam
               </span>
-              {/* Both value spans use identical inline-flex + fixed
-                  height so the AnimatedNumber wrapper and the plain
-                  "Kasım" string land on the same visual baseline. */}
               <span
-                className="text-[22px] font-semibold leading-none tracking-tight inline-flex items-end h-[22px]"
+                className="text-[22px] font-semibold leading-none tracking-tight tabular-nums"
                 style={{ color: tintColor }}
               >
-                <AnimatedNumber
-                  value={pl.pl}
-                  preset="currency"
-                  currency="USD"
-                  prefix={pl.pl > 0 ? "+" : undefined}
-                />
+                {pl.pl > 0 ? "+" : ""}
+                {formatCompactCurrency(pl.pl, "USD")}
               </span>
             </div>
 
             {peak && (
               <>
-                <span className="border-l border-dashed border-border/70 self-stretch" />
+                <span className="border-l border-dashed border-border/70 h-9 self-end mb-0.5" />
                 <div
-                  className="flex flex-col justify-between gap-1 min-w-0"
+                  className="flex flex-col gap-1.5 min-w-0"
                   title={`En yüksek |K&Z| ${peak.monthLong} ayı — ${peak.pl >= 0 ? "+" : ""}${formatCompactCurrency(peak.pl, "USD")}`}
                 >
                   <span className="text-[10px] font-bold uppercase tracking-[0.12em] text-foreground/70 leading-none">
                     Zirve
                   </span>
                   <span
-                    className="text-[22px] font-semibold leading-none tracking-tight truncate inline-flex items-end h-[22px]"
+                    className="text-[22px] font-semibold leading-none tracking-tight truncate"
                     style={{ color: peak.pl >= 0 ? tintColor : "rgb(159 18 57)" }}
                   >
                     {peak.monthLong}
