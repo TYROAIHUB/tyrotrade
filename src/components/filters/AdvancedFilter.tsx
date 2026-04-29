@@ -49,7 +49,14 @@ interface AdvancedFilterProps {
    *  full "Filtre" labelled pill. Used by ProjectList where the
    *  search input + a labelled pill would crowd the panel header. */
   iconOnly?: boolean;
-  /** Trigger paint:
+  /** When true, render a TyroWms-dialect collapsed pill: at rest a
+   *  36×36 round button (navy badge + white filter icon) inside a
+   *  white outer pill; on hover the width animates open to reveal
+   *  the "Filtre" wordmark in slate ink. Used on the dashboard so the
+   *  filter pill matches the AskAiButton + TyroWmsButton siblings'
+   *  collapse-on-rest behaviour. Mutually exclusive with `iconOnly`. */
+  collapsible?: boolean;
+  /** Trigger paint (only honoured when `collapsible=false`):
    *  - `"accent"` (default) → live sidebar accent gradient (matches AskAi)
    *  - `"muted"` → cool medium-dark slate gradient (theme-neutral, calmer
    *    next to the AI button on the dashboard topbar). Active-count badge
@@ -102,6 +109,7 @@ export function AdvancedFilter({
   resultCount,
   totalCount,
   iconOnly = false,
+  collapsible = false,
   tone = "accent",
   className,
 }: AdvancedFilterProps) {
@@ -109,6 +117,9 @@ export function AdvancedFilter({
   const triggerTone = tone === "muted" ? MUTED_TONE : accent;
   const activeCount = projectFilterCount(filters, shipPlanDefault);
   const hasFilters = activeCount > 0;
+  // Local hover state used by the collapsible variant — mirrors the
+  // animation pattern in TyroWmsButton + AskAiButton.
+  const [hovered, setHovered] = React.useState(false);
 
   const options = React.useMemo(
     () => extractAvailableOptions(projects),
@@ -169,6 +180,67 @@ export function AdvancedFilter({
                 {activeCount}
               </span>
             )}
+          </button>
+        ) : collapsible ? (
+          // Collapsed-by-default pill — same animation dialect as
+          // TyroWmsButton + AskAiButton. White outer shell, navy
+          // gradient badge holds the icon, "Filtre" wordmark fades in
+          // alongside the width animation.
+          <button
+            type="button"
+            aria-label="Gelişmiş filtre"
+            onMouseEnter={() => setHovered(true)}
+            onMouseLeave={() => setHovered(false)}
+            onFocus={() => setHovered(true)}
+            onBlur={() => setHovered(false)}
+            className={cn(
+              "group relative inline-flex items-center shrink-0 overflow-hidden",
+              "rounded-full h-9",
+              "bg-white text-slate-900",
+              "ring-1 ring-foreground/15 hover:ring-foreground/25",
+              "shadow-[0_2px_8px_-2px_rgba(15,23,42,0.12)]",
+              "transition-[width,box-shadow,transform] duration-300 ease-out",
+              hovered ? "w-[120px]" : "w-9",
+              "active:scale-95",
+              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+              className
+            )}
+          >
+            {/* Navy badge — pinned 36×36 so the collapsed pill reads
+                as a perfect navy circle inside a thin white halo. */}
+            <span
+              className="relative z-[1] size-9 rounded-full grid place-items-center shrink-0 text-white"
+              style={{
+                background: MUTED_TONE.gradient,
+                boxShadow: `inset 0 1px 0 0 rgba(255,255,255,0.20), 0 0 0 1px rgba(15,23,42,0.10)`,
+              }}
+            >
+              <HugeiconsIcon icon={FilterIcon} size={16} strokeWidth={2} />
+              {activeCount > 0 && (
+                <span
+                  className="absolute -top-1 -right-1 size-4 grid place-items-center rounded-full text-[9px] font-bold tabular-nums"
+                  style={{
+                    background: "white",
+                    color: MUTED_TONE.solid,
+                    boxShadow: `0 0 0 1.5px ${MUTED_TONE.solid}, 0 2px 6px -1px ${MUTED_TONE.ring}`,
+                  }}
+                >
+                  {activeCount}
+                </span>
+              )}
+            </span>
+
+            {/* Wordmark fades in alongside the width animation. */}
+            <span
+              className={cn(
+                "relative z-[1] flex-1 inline-flex items-center justify-center",
+                "text-[13px] font-semibold tracking-tight whitespace-nowrap pr-3",
+                "transition-opacity duration-200",
+                hovered ? "opacity-100 delay-100" : "opacity-0"
+              )}
+            >
+              Filtre
+            </span>
           </button>
         ) : (
           <button
