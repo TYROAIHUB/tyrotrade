@@ -241,6 +241,22 @@ function formatCell(v: unknown): string {
     return `${d}.${m}.${y}`;
   }
   if (typeof v === "string" && isNullSentinel(v)) return "";
+  // F&O option-set codes — 9-digit integers in the 100M–1B range.
+  // When they appear without a `FormattedValue` annotation it means
+  // the column carries a numeric enum code with no human-readable
+  // label set in F&O (e.g. "İşlem Yönü" defaulting to 200000000).
+  // Render those as empty strings instead of parading the raw code.
+  if (
+    typeof v === "number" &&
+    Number.isInteger(v) &&
+    v >= 100_000_000 &&
+    v < 1_000_000_000
+  ) {
+    return "";
+  }
+  if (typeof v === "string" && /^[12]\d{8}$/.test(v)) {
+    return "";
+  }
   return String(v);
 }
 
