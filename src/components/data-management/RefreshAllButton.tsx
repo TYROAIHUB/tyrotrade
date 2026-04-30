@@ -2,9 +2,16 @@ import * as React from "react";
 import { toast } from "sonner";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { RefreshIcon } from "@hugeicons/core-free-icons";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { useThemeAccent } from "@/components/layout/theme-accent";
 import { readCache } from "@/lib/storage/entityCache";
+import { describeProjectFilter } from "@/lib/dataverse/refreshAll";
 import {
   RefreshErrorToast,
   RefreshLoadingToast,
@@ -123,8 +130,9 @@ export function RefreshAllButton({
   const label = busy
     ? `${currentLabel}… ${progress.done}/${progress.total}`
     : "Güncelle";
+  const filterDescription = describeProjectFilter();
 
-  return (
+  const button = (
     <button
       type="button"
       onClick={refreshAll}
@@ -174,5 +182,63 @@ export function RefreshAllButton({
       />
       <span className="relative z-[1] tracking-tight">{label}</span>
     </button>
+  );
+
+  return (
+    <TooltipProvider delayDuration={200}>
+      <Tooltip>
+        <TooltipTrigger asChild>{button}</TooltipTrigger>
+        <TooltipContent
+          side="bottom"
+          align="end"
+          sideOffset={8}
+          className={cn(
+            "p-0 max-w-[340px]",
+            "bg-white/97 backdrop-blur-2xl backdrop-saturate-150",
+            "ring-1 ring-foreground/10",
+            "shadow-[0_18px_44px_-14px_rgba(15,23,42,0.32)]"
+          )}
+        >
+          <div
+            className="px-3.5 py-2 border-b border-border/40 flex items-center gap-2"
+            style={{
+              background: `linear-gradient(135deg, ${accent.tint} 0%, transparent 100%)`,
+            }}
+          >
+            <HugeiconsIcon
+              icon={RefreshIcon}
+              size={14}
+              strokeWidth={2}
+              style={{ color: accent.solid }}
+            />
+            <span className="text-[12px] font-bold uppercase tracking-wider text-slate-900">
+              Aktif Sorgu Filtresi
+            </span>
+          </div>
+          <div className="px-3.5 py-2.5 space-y-1.5">
+            <div className="text-[11px] text-slate-700 leading-relaxed">
+              Dataverse'ten <span className="font-semibold text-slate-900">aşağıdaki kriterlere uyan tüm projeler</span>
+              {" "}+ bağlı satır/gemi/gider/satış kayıtları çekilir:
+            </div>
+            <ul className="space-y-0.5 pt-1">
+              {filterDescription.split("\n").map((line, i) => (
+                <li
+                  key={i}
+                  className="text-[11px] font-mono leading-snug"
+                  style={{ color: accent.stops[2] }}
+                >
+                  {line}
+                </li>
+              ))}
+            </ul>
+            <div className="text-[10.5px] text-foreground/65 leading-snug pt-1.5 border-t border-border/30 mt-2">
+              7 adımlık zincir: Projeler → Satırlar → Gemi → Gider → Bütçe →
+              Satış Toplamları → Proje × Ay Satış. Bağlı satırlar çekilen
+              proje listesine göre filtrelenir.
+            </div>
+          </div>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
   );
 }

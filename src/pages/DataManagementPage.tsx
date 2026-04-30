@@ -79,11 +79,20 @@ export function DataManagementPage() {
     null
   );
 
-  // 🔒 5 entity hooks — read-only, manual trigger via "Verileri Güncelle"
+  // 🔒 5 entity hooks — read-only, manual trigger via "Verileri Güncelle".
+  // Projects scope: dlvmode=Gemi + segment ne null (+ optional TRADER
+  // narrow when env is set). Mirrors `buildProjectsFilter()` in
+  // refreshAll.ts so the inspector and the auto-refresh see the same
+  // working set.
+  const projectFilterClauses = [
+    "mserp_dlvmode eq 'Gemi'",
+    "mserp_tryprojectsegment ne null",
+  ];
+  if (TRADER) projectFilterClauses.push(`mserp_maintraderid eq '${TRADER}'`);
   const projects = useEntityRows<Record<string, unknown>>({
     entitySet: ENTITY_SETS.projects,
     query: {
-      ...(TRADER ? { $filter: `mserp_maintraderid eq '${TRADER}'` } : {}),
+      $filter: projectFilterClauses.join(" and "),
       // Only fetch the columns we display — drops mserp_isorganic and below
       // (sub-contract flags, financial dimensions, payment specs, etc.)
       $select: PROJECT_COLUMNS.join(","),
@@ -198,15 +207,17 @@ export function DataManagementPage() {
       { label: "Tahmini Bütçe", refetch: budget.refetch },
       {
         // Per-project invoiced sales totals (segmented by currency) — single
-        // server-side aggregation. Drives KingProjects ranking and the
-        // BudgetVsActual card. Result is small (~340 rows for 320 projects).
+        // server-side aggregation, scoped to the project IDs we just fetched
+        // (dlvmode=Gemi + segment ne null).
         label: "Satış Toplamları",
         refetch: async () => {
           const client = getDataverseClient();
-          const traderClause = TRADER
-            ? `mserp_etgmaintraderid eq '${TRADER}' and `
-            : "";
-          const apply = `filter(${traderClause}mserp_etgtryprojid ne null)/groupby((mserp_etgtryprojid,mserp_currencycode),aggregate(mserp_lineamount with sum as total,$count as cnt))`;
+          const projids = readProjids();
+          const inClause =
+            projids.length > 0
+              ? `Microsoft.Dynamics.CRM.In(PropertyName='mserp_etgtryprojid',PropertyValues=[${projids.map((p) => `'${p}'`).join(",")}])`
+              : "mserp_etgtryprojid eq null";
+          const apply = `filter(${inClause})/groupby((mserp_etgtryprojid,mserp_currencycode),aggregate(mserp_lineamount with sum as total,$count as cnt))`;
           const result = await client.list<Record<string, unknown>>(
             "mserp_tryaicustinvoicetransentities",
             { $apply: apply }
@@ -218,9 +229,9 @@ export function DataManagementPage() {
         },
       },
       {
-        // Raw USD invoice rows (per project × per date) for the tenant's
-        // TRD-FTB scope. Feeds the "Satış Bütçesi Nabzı" tile, which buckets
-        // them client-side into year-month per project.
+        // Raw USD invoice rows (per project × per date), scoped to the
+        // current project list. Feeds the "Satış Bütçesi Nabzı" tile,
+        // which buckets them client-side into year-month per project.
         //
         // Dataverse's $apply rejects both `groupby((..., datetime))` and
         // `year()/month()` functions, so we drop down to raw rows. With
@@ -228,16 +239,15 @@ export function DataManagementPage() {
         label: "Proje × Ay Satış",
         refetch: async () => {
           const client = getDataverseClient();
-          const traderClause = TRADER
-            ? `mserp_etgmaintraderid eq '${TRADER}' and `
-            : "";
-          // Note: `mserp_invoicedate ne null` is rejected by Dataverse
-          // (datetime null comparisons cause a string-to-date conversion
-          // error). The client filters out date-less rows when bucketing.
+          const projids = readProjids();
+          const projidClause =
+            projids.length > 0
+              ? `Microsoft.Dynamics.CRM.In(PropertyName='mserp_etgtryprojid',PropertyValues=[${projids.map((p) => `'${p}'`).join(",")}])`
+              : "mserp_etgtryprojid eq null";
           const result = await client.listAll<Record<string, unknown>>(
             "mserp_tryaicustinvoicetransentities",
             {
-              $filter: `${traderClause}mserp_currencycode eq 'USD' and mserp_etgtryprojid ne null`,
+              $filter: `${projidClause} and mserp_currencycode eq 'USD'`,
               $select:
                 "mserp_etgtryprojid,mserp_invoicedate,mserp_lineamount",
               $count: true,

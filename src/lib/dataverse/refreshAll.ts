@@ -27,6 +27,34 @@ import {
 
 const TRADER = (import.meta.env.VITE_PROJECT_TRADER_FILTER as string | undefined) ?? "";
 
+/**
+ * Server-side filter for the Projects header fetch. Reads "all
+ * sea-mode projects with a non-empty segment", which is the operational
+ * scope the dashboard cares about. The optional `TRADER` env var is
+ * still honoured (when set, narrows further to that trader's books)
+ * but is no longer the primary axis — production runs leave it empty.
+ */
+function buildProjectsFilter(): string {
+  const clauses = [
+    "mserp_dlvmode eq 'Gemi'",
+    "mserp_tryprojectsegment ne null",
+  ];
+  if (TRADER) clauses.push(`mserp_maintraderid eq '${TRADER}'`);
+  return clauses.join(" and ");
+}
+
+/** Human-readable summary of the active project scope — surfaced in
+ *  the RefreshAllButton tooltip so users know exactly which slice of
+ *  F&O they're pulling. */
+export function describeProjectFilter(): string {
+  const lines = [
+    "• Teslimat şekli (mserp_dlvmode) = Gemi",
+    "• Segment (mserp_tryprojectsegment) dolu (boş olmayan)",
+  ];
+  if (TRADER) lines.push(`• Trader (mserp_maintraderid) = ${TRADER}`);
+  return lines.join("\n");
+}
+
 const ENTITY_SETS = {
   projects: "mserp_etgtryprojecttableentities",
   ship: "mserp_tryaiprojectshiprelationentities",
@@ -107,9 +135,7 @@ export async function refreshAllEntities(
         const result = await client.listAll<Record<string, unknown>>(
           ENTITY_SETS.projects,
           {
-            ...(TRADER
-              ? { $filter: `mserp_maintraderid eq '${TRADER}'` }
-              : {}),
+            $filter: buildProjectsFilter(),
             $select: PROJECT_COLUMNS.join(","),
             $count: true,
           }
@@ -201,10 +227,16 @@ export async function refreshAllEntities(
     {
       label: "Satış Toplamları",
       run: async () => {
-        const traderClause = TRADER
-          ? `mserp_etgmaintraderid eq '${TRADER}' and `
-          : "";
-        const apply = `filter(${traderClause}mserp_etgtryprojid ne null)/groupby((mserp_etgtryprojid,mserp_currencycode),aggregate(mserp_lineamount with sum as total,$count as cnt))`;
+        // Sales aggregate now scopes to the project IDs already pulled
+        // in the first step (which themselves come from the
+        // dlvmode/segment filter). Drops the old trader-only narrow so
+        // every project we display has its sales total available.
+        const projids = readProjids();
+        const inClause =
+          projids.length > 0
+            ? `Microsoft.Dynamics.CRM.In(PropertyName='mserp_etgtryprojid',PropertyValues=[${projids.map((p) => `'${p}'`).join(",")}])`
+            : "mserp_etgtryprojid eq null";
+        const apply = `filter(${inClause})/groupby((mserp_etgtryprojid,mserp_currencycode),aggregate(mserp_lineamount with sum as total,$count as cnt))`;
         const result = await client.list<Record<string, unknown>>(
           SALES_ENTITY,
           { $apply: apply }
@@ -218,13 +250,15 @@ export async function refreshAllEntities(
     {
       label: "Proje × Ay Satış",
       run: async () => {
-        const traderClause = TRADER
-          ? `mserp_etgmaintraderid eq '${TRADER}' and `
-          : "";
+        const projids = readProjids();
+        const projidClause =
+          projids.length > 0
+            ? `Microsoft.Dynamics.CRM.In(PropertyName='mserp_etgtryprojid',PropertyValues=[${projids.map((p) => `'${p}'`).join(",")}])`
+            : "mserp_etgtryprojid eq null";
         const result = await client.listAll<Record<string, unknown>>(
           SALES_ENTITY,
           {
-            $filter: `${traderClause}mserp_currencycode eq 'USD' and mserp_etgtryprojid ne null`,
+            $filter: `${projidClause} and mserp_currencycode eq 'USD'`,
             $select:
               "mserp_etgtryprojid,mserp_invoicedate,mserp_lineamount",
             $count: true,
