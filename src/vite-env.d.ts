@@ -7,7 +7,6 @@ interface ImportMetaEnv {
   readonly VITE_AAD_REDIRECT_URI?: string;
   readonly VITE_DATAVERSE_URL?: string;
   readonly VITE_DATAVERSE_SCOPE?: string;
-  readonly VITE_PROJECT_TRADER_FILTER?: string;
 }
 
 interface ImportMeta {

@@ -1,11 +1,11 @@
 # Dataverse Schema Reference (Tiryaki F&O dual-write)
 
-> 🔒 **Read-only** — all entity sets accessed via GET only. Discovery captured from live tenant `https://operations-tiryaki.crm4.dynamics.com/api/data/v9.2/` on 2026-04-25 with token (TRD-FTB scope).
+> 🔒 **Read-only** — all entity sets accessed via GET only. Discovery captured from live tenant `https://operations-tiryaki.crm4.dynamics.com/api/data/v9.2/` on 2026-04-25.
 
 ## Filter
 
-- **TRD-FTB project count**: **440**
-- Filter expr: `mserp_maintraderid eq 'TRD-FTB'`
+- Filter expr: `mserp_dlvmode eq 'Gemi' and mserp_tryprojectsegment ne null`
+- Scope: sea-mode projects with a non-empty segment label
 - Apply on: `mserp_etgtryprojecttableentities` only (other tables join via project ID)
 
 ## Headers required
@@ -32,7 +32,7 @@ The `Prefer` header surfaces option-set codes as human strings via `@OData.Commu
 |---|---|---|---|
 | `mserp_projid` | string | `MESTHL00368` | Business key, FK target for child tables |
 | `mserp_projname` | string | `RED SEA - 30.000MT SORGHUM - APR '21 - MV WL LADOGA` | Free-text title |
-| `mserp_maintraderid` | string | `TRD-FTB` | **Filter field** |
+| `mserp_maintraderid` | string | `TRD-FTB` | Trader hierarchy |
 | `mserp_traderid` | string | `TRD-FTB` | |
 | `mserp_projgroupid` | string | `TAHIL` \| `YAGLITOHUM` | |
 | `mserp_currencycode` | string | `USD` \| `EUR` \| `TRY` | |

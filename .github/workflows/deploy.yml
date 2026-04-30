@@ -43,7 +43,6 @@ jobs:
           VITE_AAD_REDIRECT_URI: https://tyroaihub.github.io/tyrotrade/
           VITE_DATAVERSE_URL: https://operations-tiryaki.crm4.dynamics.com
           VITE_DATAVERSE_SCOPE: https://operations-tiryaki.crm4.dynamics.com/user_impersonation
-          VITE_PROJECT_TRADER_FILTER: TRD-FTB
 
       - uses: actions/upload-pages-artifact@v3
         with:

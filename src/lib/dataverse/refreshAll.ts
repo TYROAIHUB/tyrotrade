@@ -25,34 +25,20 @@ import {
  * 🔒 READ-ONLY — only GET via `client.list` / `client.listAll`.
  */
 
-const TRADER = (import.meta.env.VITE_PROJECT_TRADER_FILTER as string | undefined) ?? "";
-
-/**
- * Server-side filter for the Projects header fetch. Reads "all
- * sea-mode projects with a non-empty segment", which is the operational
- * scope the dashboard cares about. The optional `TRADER` env var is
- * still honoured (when set, narrows further to that trader's books)
- * but is no longer the primary axis — production runs leave it empty.
- */
-function buildProjectsFilter(): string {
-  const clauses = [
-    "mserp_dlvmode eq 'Gemi'",
-    "mserp_tryprojectsegment ne null",
-  ];
-  if (TRADER) clauses.push(`mserp_maintraderid eq '${TRADER}'`);
-  return clauses.join(" and ");
-}
+/** Server-side filter for the Projects header fetch — sea-mode
+ *  projects with a non-empty segment. Single source of truth for both
+ *  the auto-refresh chain and the Veri Yönetimi inspector tab. */
+const PROJECTS_FILTER =
+  "mserp_dlvmode eq 'Gemi' and mserp_tryprojectsegment ne null";
 
 /** Human-readable summary of the active project scope — surfaced in
  *  the RefreshAllButton tooltip so users know exactly which slice of
  *  F&O they're pulling. */
 export function describeProjectFilter(): string {
-  const lines = [
+  return [
     "• Teslimat şekli (mserp_dlvmode) = Gemi",
     "• Segment (mserp_tryprojectsegment) dolu (boş olmayan)",
-  ];
-  if (TRADER) lines.push(`• Trader (mserp_maintraderid) = ${TRADER}`);
-  return lines.join("\n");
+  ].join("\n");
 }
 
 const ENTITY_SETS = {
@@ -135,7 +121,7 @@ export async function refreshAllEntities(
         const result = await client.listAll<Record<string, unknown>>(
           ENTITY_SETS.projects,
           {
-            $filter: buildProjectsFilter(),
+            $filter: PROJECTS_FILTER,
             $select: PROJECT_COLUMNS.join(","),
             $count: true,
           }

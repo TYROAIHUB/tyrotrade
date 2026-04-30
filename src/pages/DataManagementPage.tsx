@@ -30,8 +30,6 @@ import {
 
 /* ─────────── Entity sets + filters ─────────── */
 
-const TRADER = import.meta.env.VITE_PROJECT_TRADER_FILTER ?? "";
-
 const ENTITY_SETS = {
   projects: "mserp_etgtryprojecttableentities",
   ship: "mserp_tryaiprojectshiprelationentities",
@@ -80,19 +78,13 @@ export function DataManagementPage() {
   );
 
   // 🔒 5 entity hooks — read-only, manual trigger via "Verileri Güncelle".
-  // Projects scope: dlvmode=Gemi + segment ne null (+ optional TRADER
-  // narrow when env is set). Mirrors `buildProjectsFilter()` in
-  // refreshAll.ts so the inspector and the auto-refresh see the same
-  // working set.
-  const projectFilterClauses = [
-    "mserp_dlvmode eq 'Gemi'",
-    "mserp_tryprojectsegment ne null",
-  ];
-  if (TRADER) projectFilterClauses.push(`mserp_maintraderid eq '${TRADER}'`);
+  // Projects scope: dlvmode=Gemi + segment ne null. Mirrors
+  // `PROJECTS_FILTER` in refreshAll.ts so the inspector and the
+  // auto-refresh see the same working set.
   const projects = useEntityRows<Record<string, unknown>>({
     entitySet: ENTITY_SETS.projects,
     query: {
-      $filter: projectFilterClauses.join(" and "),
+      $filter: "mserp_dlvmode eq 'Gemi' and mserp_tryprojectsegment ne null",
       // Only fetch the columns we display — drops mserp_isorganic and below
       // (sub-contract flags, financial dimensions, payment specs, etc.)
       $select: PROJECT_COLUMNS.join(","),
@@ -114,12 +106,13 @@ export function DataManagementPage() {
     entitySet: ENTITY_SETS.expense,
     query: { $select: EXPENSE_COLUMNS.join(","), $count: true },
   });
-  // Customer invoice transactions — per-PROJECT server-side fetch. Entity
-  // is huge tenant-wide (~2.4K invoiced rows for TRD-FTB alone, single
-  // project can have 600+), so we filter to the selected project and pull
-  // every matching invoice. No row cap — `listAll` paginates as needed.
-  // Sorted by invoice date desc so the table reads newest-first.
-  // Effect below auto-refetches when the user picks a different project.
+  // Customer invoice transactions — per-PROJECT server-side fetch.
+  // Entity is huge tenant-wide (thousands of invoiced rows; a single
+  // project can have 600+), so we filter to the selected project and
+  // pull every matching invoice. No row cap — `listAll` paginates as
+  // needed. Sorted by invoice date desc so the table reads newest-
+  // first. Effect below auto-refetches when the user picks a different
+  // project.
   const sales = useEntityRows<Record<string, unknown>>({
     entitySet: ENTITY_SETS.sales,
     query: selectedProjId
@@ -148,12 +141,13 @@ export function DataManagementPage() {
   /* Sequential refresh steps — RefreshAllButton fires these in order.
    *
    * Strategy:
-   *   1. Projeler — server filter `maintraderid='TRD-FTB'` → 440 rows.
+   *   1. Projeler — server filter `dlvmode='Gemi' AND segment ne null`
+   *      (+ optional trader narrow when env is set).
    *   2. Read fresh project IDs from the just-written cache.
    *   3. Lines / Ship / Expense — `Microsoft.Dynamics.CRM.In(...)` filter
    *      built from those IDs (~7.5KB URL, well under Dataverse limits).
    *      Reduces tenant-wide payloads (3.3K + 0.4K + 0.65K = ~4.3K rows)
-   *      to only the ~550 rows actually linked to TRD-FTB projects.
+   *      to only the rows actually linked to the in-scope projects.
    *   4. Tahmini Bütçe — segment-based, no project filter (1267 rows).
    *
    * Sales (invoices) intentionally OUT — fetched per selected project via

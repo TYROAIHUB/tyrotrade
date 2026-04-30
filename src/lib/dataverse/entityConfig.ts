@@ -21,8 +21,6 @@ export interface InspectorEntityConfig {
   hint?: string;
 }
 
-const traderFilter = import.meta.env.VITE_PROJECT_TRADER_FILTER;
-
 export const INSPECTOR_ENTITIES: InspectorEntityConfig[] = [
   {
     key: "projects",
@@ -30,12 +28,8 @@ export const INSPECTOR_ENTITIES: InspectorEntityConfig[] = [
     description: "Proje header tablosu (mserp_etgtryprojecttableentities)",
     entitySet: "mserp_etgtryprojecttableentities",
     defaultFilter: () =>
-      traderFilter
-        ? `mserp_maintraderid eq '${traderFilter}'`
-        : undefined,
-    hint: traderFilter
-      ? `Sadece mserp_maintraderid='${traderFilter}' filtreli sonuçlar geliyor (440 proje).`
-      : undefined,
+      "mserp_dlvmode eq 'Gemi' and mserp_tryprojectsegment ne null",
+    hint: "Teslimat şekli 'Gemi' + segment dolu projeler çekilir.",
   },
   {
     key: "project-ship",
