@@ -166,6 +166,22 @@ export interface AvailableOptions {
   projects: Array<{ value: string; label: string; keywords: string[]; sub?: string }>;
 }
 
+/**
+ * Canonical voyage statuses — always surfaced as filter chips even
+ * when no project in the current data set carries that value. Same
+ * order the F&O option-set defines + matches `composeProjects`'s
+ * normalisation outputs. Lets the user spot "no Nominated voyages
+ * exist right now" without losing the filter affordance.
+ */
+const CANONICAL_VOYAGE_STATUSES = [
+  "To Be Nominated",
+  "Nominated",
+  "Commenced",
+  "Completed",
+  "Closed",
+  "Cancelled",
+] as const;
+
 export function extractAvailableOptions(
   projects: Project[]
 ): AvailableOptions {
@@ -179,6 +195,9 @@ export function extractAvailableOptions(
   const sup = new Set<string>();
   const buy = new Set<string>();
   const ves = new Set<string>();
+  // Seed voyage statuses with the canonical 6 so chips always appear,
+  // even if a status currently has zero matching projects.
+  for (const cs of CANONICAL_VOYAGE_STATUSES) vs.add(cs);
   for (const p of projects) {
     if (p.status) s.add(p.status);
     if (p.projectGroup) g.add(p.projectGroup);
@@ -215,12 +234,23 @@ export function extractAvailableOptions(
     }))
     .sort((a, b) => b.value.localeCompare(a.value));
 
+  // Voyage statuses preserve workflow order (canonical first, then any
+  // non-canonical strings found in data appended alphabetically).
+  const voyageStatuses = [
+    ...CANONICAL_VOYAGE_STATUSES.filter((c) => vs.has(c)),
+    ...[...vs]
+      .filter(
+        (v) => !(CANONICAL_VOYAGE_STATUSES as readonly string[]).includes(v)
+      )
+      .sort(),
+  ];
+
   return {
     statuses: [...s].sort(),
     groups: [...g].sort(),
     incoterms: [...i].sort(),
     segments: [...seg].sort(),
-    voyageStatuses: [...vs].sort(),
+    voyageStatuses,
     traders: [...tr].sort(),
     companies: [...co].sort(),
     suppliers: [...sup].sort(),
