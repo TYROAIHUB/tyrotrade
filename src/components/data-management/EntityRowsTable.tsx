@@ -119,10 +119,10 @@ export function EntityRowsTable<T extends Record<string, unknown>>({
       )}
       style={{ maxHeight }}
     >
-      <table className="min-w-max border-collapse text-[11px] font-mono">
+      <table className="min-w-max border-collapse text-[12.5px] font-mono">
         <thead className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm">
           <tr>
-            <th className="px-2 py-1.5 text-left text-muted-foreground font-semibold border-b border-foreground/[0.08] tabular-nums w-10">
+            <th className="px-2.5 py-2 text-left text-[11.5px] text-muted-foreground font-semibold border-b border-foreground/[0.08] tabular-nums w-10">
               #
             </th>
             {cols.map((c) => {
@@ -136,7 +136,7 @@ export function EntityRowsTable<T extends Record<string, unknown>>({
                   // while the visible header reads in Turkish.
                   title={c}
                   className={cn(
-                    "px-2 py-1.5 text-left font-semibold border-b border-foreground/[0.08] whitespace-nowrap select-none",
+                    "px-2.5 py-2 text-left text-[11.5px] font-semibold uppercase tracking-wide border-b border-foreground/[0.08] whitespace-nowrap select-none",
                     isSortable && "cursor-pointer hover:bg-foreground/[0.04]",
                     active ? "text-foreground" : "text-muted-foreground"
                   )}
@@ -185,7 +185,7 @@ export function EntityRowsTable<T extends Record<string, unknown>>({
                     : undefined
                 }
               >
-                <td className="px-2 py-1.5 tabular-nums text-muted-foreground/60 w-10 sticky left-0 bg-inherit">
+                <td className="px-2.5 py-2 tabular-nums text-muted-foreground/60 w-10 sticky left-0 bg-inherit">
                   {i + 1}
                 </td>
                 {cols.map((c) => {
@@ -200,7 +200,7 @@ export function EntityRowsTable<T extends Record<string, unknown>>({
                   return (
                     <td
                       key={c}
-                      className="px-2 py-1.5 max-w-[320px] truncate whitespace-nowrap"
+                      className="px-2.5 py-2 max-w-[320px] truncate whitespace-nowrap"
                       title={
                         formatted
                           ? `${formatted} (${formatCellTitle(row[c])})`
