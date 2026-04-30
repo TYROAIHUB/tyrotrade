@@ -50,6 +50,11 @@ export interface UseRealProjectsReturn {
  *   vesselPlan / lines / costEstimate for affected projects). Only the
  *   `projects` header cache being absent triggers `isEmpty=true`.
  */
+/** Module-level memo of the last warning fingerprint we logged so the
+ *  console doesn't spam on every re-render — only when the actual list
+ *  of unresolved ports changes do we re-log. */
+let lastWarningFingerprint = "";
+
 export function useRealProjects(): UseRealProjectsReturn {
   // Cheap fingerprints: first 80 chars of the raw localStorage value.
   // Covers fetchedAt + start of array, enough to detect a real refresh.
@@ -90,6 +95,22 @@ export function useRealProjects(): UseRealProjectsReturn {
       budgetRows: budgetC?.value ?? [],
       salesAggregateRows: salesAggC?.value ?? [],
     });
+
+    // Surface unresolved ports proactively so they can all be added in
+    // one pass, instead of users having to click through each project
+    // and report missing-coordinate banners individually. Only logs
+    // when the set actually changes (refresh / new data).
+    const unresolved = composed.warnings.unresolvedPorts;
+    if (unresolved.length > 0) {
+      const fp = unresolved.join("|");
+      if (fp !== lastWarningFingerprint) {
+        lastWarningFingerprint = fp;
+        console.warn(
+          `[TYRO] ${unresolved.length} port adı portCoordinates.ts'te bulunamadı — eklenmesi gerekiyor:\n  ` +
+            unresolved.map((p) => `  • ${p}`).join("\n"),
+        );
+      }
+    }
 
     return {
       projects: composed.projects,

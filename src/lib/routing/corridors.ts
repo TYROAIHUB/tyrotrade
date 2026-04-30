@@ -140,12 +140,20 @@ const BRAZIL_PORTS = new Set([
   "recife",
   "maceio",
   "saosebastiao",
+  // Amazon delta + extra Atlantic terminals
+  "santana",
+  "itaqui",
+  "imbituba",
+  "pecem",
+  "suape",
+  "aratu",
 ]);
 
 /** Sea of Azov ports — must transit Kerch Strait to enter Black Sea. */
 const AZOV_PORTS = new Set(["yeisk", "rostov", "azov", "kavkaz", "mariupol"]);
 
-/** Black Sea proper — covers Ukraine/Russia/Bulgaria/Romania/Türkiye BS coasts.
+/** Black Sea proper — covers Ukraine/Russia/Bulgaria/Romania/Türkiye BS
+ *  coasts + Danube delta ports (accessed via Sulina branch) + Georgia.
  *  Includes Sea of Azov ports (they reach open Black Sea via Kerch). */
 const BLACK_SEA_PORTS = new Set([
   // Ukraine
@@ -153,12 +161,22 @@ const BLACK_SEA_PORTS = new Set([
   "odessa",
   "pivdennyi",
   "chornomorsk",
+  "reni",
+  "izmail",
   // Russia (Black Sea)
   "novorossiysk",
   "taman",
-  // Bulgaria / Romania
+  // Bulgaria
   "varna",
+  "burgas",
+  // Romania
   "constanta",
+  "galati",
+  // Moldova (Danube delta)
+  "giurgiulesti",
+  // Georgia
+  "batumi",
+  "poti",
   // Türkiye (Black Sea coast)
   "samsun",
   "giresun",
@@ -176,10 +194,21 @@ const MARMARA_PORTS = new Set([
   "gemlik",
   "bandirma",
   "tekirdag",
+  "marport",
+  "evyap",
 ]);
 
-/** Türkiye Mediterranean / Aegean ports. */
-const TURKEY_MED_PORTS = new Set(["izmir", "mersin", "iskenderun"]);
+/** Türkiye Mediterranean / Aegean ports — Sanko/Yumurtalık/Ceyhan
+ *  cluster sits on the same East Med coast as İskenderun. */
+const TURKEY_MED_PORTS = new Set([
+  "izmir",
+  "mersin",
+  "iskenderun",
+  "sanko",
+  "yumurtalik",
+  "ceyhan",
+  "toros",
+]);
 
 /** Egypt (Suez approach) — Mediterranean coast. */
 const EGYPT_PORTS = new Set(["alexandria", "damietta", "portsaid", "sokhna"]);
