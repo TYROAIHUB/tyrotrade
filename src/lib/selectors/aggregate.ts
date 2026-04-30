@@ -9,7 +9,7 @@ import {
   type RouteStage,
 } from "./project";
 import { selectProjectPL } from "./profitLoss";
-import { toUsd } from "@/lib/finance/fxRates";
+import { toUsdAtDate } from "@/lib/finance/fxRates";
 
 /**
  * Cross-project aggregations — pure, memoizable, reusable.
@@ -185,11 +185,11 @@ export interface EstimatedPLAggregate {
 }
 
 /**
- * Roll up estimated P&L across projects. EUR / TRY / GBP figures are
- * FX-converted to USD using the static rate table; the conversion is
- * deterministic (no live feed) so totals don't drift between renders
- * but they're not accounting-grade. The K&Z and Gider tiles share this
- * scope so they reconcile to the cent.
+ * Roll up estimated P&L across projects. EUR / TRY / RUB / GBP figures
+ * are FX-converted to USD using the *historical monthly rate* keyed on
+ * each project's `projectDate` — so a 2022-09 EUR project converts at
+ * that month's rate (≈0.99), not today's. The K&Z and Gider tiles share
+ * this scope so they reconcile to the cent.
  */
 export function aggregateEstimatedPL(projects: Project[]): EstimatedPLAggregate {
   let salesTotalUsd = 0;
@@ -198,13 +198,13 @@ export function aggregateEstimatedPL(projects: Project[]): EstimatedPLAggregate 
   let contributingCount = 0;
   let fxConvertedCount = 0;
   let unknownCurrencyCount = 0;
-  const KNOWN = new Set(["USD", "EUR", "TRY", "GBP"]);
+  const KNOWN = new Set(["USD", "EUR", "TRY", "RUB", "GBP"]);
   for (const p of projects) {
     const pl = selectProjectPL(p);
     if (pl.salesTotal <= 0 && pl.purchaseTotal <= 0) continue;
     const cur = (pl.currency ?? "USD").toUpperCase();
-    salesTotalUsd += toUsd(pl.salesTotal, cur);
-    purchaseTotalUsd += toUsd(pl.purchaseTotal, cur);
+    salesTotalUsd += toUsdAtDate(pl.salesTotal, cur, p.projectDate);
+    purchaseTotalUsd += toUsdAtDate(pl.purchaseTotal, cur, p.projectDate);
     // Expense lines are always denoted in USD per the entity model
     // (`mserp_expamountusdd`), so no conversion needed.
     expenseTotalUsd += pl.expenseTotal;
@@ -500,8 +500,9 @@ export interface SegmentRollup {
  * Group projects by `segment` field and roll up the same metrics the
  * project-level leaderboard ranks on. Projects with no segment are
  * bucketed under "Tanımsız". The rollup uses `selectProjectPL` so
- * EUR/TRY/GBP get FX-converted via the static rate table, matching
- * the K&Z and Gider tile scopes.
+ * EUR/TRY/RUB/GBP get FX-converted via the dated rate table (each
+ * project at its own `projectDate`), matching the K&Z and Gider tile
+ * scopes.
  */
 export function aggregateBySegment(projects: Project[]): SegmentRollup[] {
   const map = new Map<string, SegmentRollup>();
@@ -509,8 +510,8 @@ export function aggregateBySegment(projects: Project[]): SegmentRollup[] {
     const key = (p.segment ?? "").trim() || "Tanımsız";
     const pl = selectProjectPL(p);
     const cur = (pl.currency ?? "USD").toUpperCase();
-    const salesUsd = toUsd(pl.salesTotal, cur);
-    const purchaseUsd = toUsd(pl.purchaseTotal, cur);
+    const salesUsd = toUsdAtDate(pl.salesTotal, cur, p.projectDate);
+    const purchaseUsd = toUsdAtDate(pl.purchaseTotal, cur, p.projectDate);
     const expenseUsd = pl.expenseTotal;
     const salesActualUsd = p.salesActualUsd ?? 0;
     const existing = map.get(key);

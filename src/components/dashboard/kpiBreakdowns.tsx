@@ -28,7 +28,7 @@ import {
   aggregateAvgTransitDays,
   aggregateByCorridor,
 } from "@/lib/selectors/aggregate";
-import { toUsd } from "@/lib/finance/fxRates";
+import { toUsdAtDate } from "@/lib/finance/fxRates";
 import { formatCompactCurrency, formatTons } from "@/lib/format";
 import type { Project } from "@/lib/dataverse/entities";
 
@@ -634,11 +634,13 @@ export function EstimatedPLBreakdown({
       .map((p) => {
         const pl = selectProjectPL(p);
         const cur = (pl.currency ?? "USD").toUpperCase();
+        // Convert at the project's signing month rate (matches the
+        // dashboard tile rollups so figures reconcile to the cent).
         return {
           p,
-          plUsd: pl.salesTotal > 0 ? toUsd(pl.pl, cur) : 0,
+          plUsd: pl.salesTotal > 0 ? toUsdAtDate(pl.pl, cur, p.projectDate) : 0,
           marginPct: pl.marginPct,
-          salesUsd: toUsd(pl.salesTotal, cur),
+          salesUsd: toUsdAtDate(pl.salesTotal, cur, p.projectDate),
         };
       })
       .filter((r) => r.salesUsd > 0)

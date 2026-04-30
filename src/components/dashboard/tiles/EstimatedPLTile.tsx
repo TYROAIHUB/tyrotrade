@@ -15,7 +15,7 @@ import {
 import { useThemeAccent } from "@/components/layout/theme-accent";
 import { aggregateEstimatedPL } from "@/lib/selectors/aggregate";
 import { selectProjectPL } from "@/lib/selectors/profitLoss";
-import { toUsd } from "@/lib/finance/fxRates";
+import { toUsdAtDate } from "@/lib/finance/fxRates";
 import { getFinancialYear } from "@/lib/dashboard/financialPeriod";
 import { formatCompactCurrency } from "@/lib/format";
 import type { Project } from "@/lib/dataverse/entities";
@@ -105,7 +105,9 @@ export function EstimatedPLTile({
       const projPL = selectProjectPL(p);
       if (projPL.salesTotal <= 0) continue;
       const cur = (projPL.currency ?? "USD").toUpperCase();
-      const plUsd = toUsd(projPL.pl, cur);
+      // Convert at the project's signing month rate so a 2022 RUB
+      // project lands at its war-shock rate, not today's.
+      const plUsd = toUsdAtDate(projPL.pl, cur, p.projectDate);
       const t = new Date(p.projectDate);
       if (Number.isNaN(t.getTime())) continue;
       const key = `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, "0")}`;
