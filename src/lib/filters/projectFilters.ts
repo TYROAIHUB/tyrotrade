@@ -4,7 +4,6 @@ import {
   type PeriodKey,
 } from "@/lib/dashboard/periods";
 import { getCurrentFyKey } from "@/lib/dashboard/financialPeriod";
-import { hasUsableShipPlan } from "@/lib/selectors/project";
 import type { Project } from "@/lib/dataverse/entities";
 
 /**
@@ -85,7 +84,13 @@ export function applyProjectFilter(
 ): Project[] {
   const periodFiltered = applyPeriodFilter(projects, f.period, f.fyKey, now);
   return periodFiltered.filter((p) => {
-    if (!f.includeWithoutShipPlan && !hasUsableShipPlan(p)) return false;
+    // "Gemi planı olmayanları dahil et" — checks ONLY whether the
+    // project carries a vesselPlan row at all. Vessel name + port
+    // coordinates being unresolved is NOT a disqualifier here, since
+    // F&O's `mserp_tryai*` virtual entity already filters out rows
+    // with empty vessel names — any vesselPlan we have IS a real plan
+    // even if the vessel hasn't been named yet.
+    if (!f.includeWithoutShipPlan && !p.vesselPlan) return false;
     if (f.voyageStatuses.size > 0) {
       const vs = p.vesselPlan?.vesselStatus ?? "";
       if (!f.voyageStatuses.has(vs)) return false;
