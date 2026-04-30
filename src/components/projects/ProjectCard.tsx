@@ -24,6 +24,8 @@ const STATUS_TONE: Record<
     ring: "ring-emerald-500/30",
     label: "text-emerald-700",
   },
+  // "Open" comes from the project-level status fallback when no vessel
+  // status is set (legacy projects, mock data).
   Open: {
     dot: "bg-sky-500",
     ring: "ring-sky-500/30",
@@ -33,6 +35,26 @@ const STATUS_TONE: Record<
     dot: "bg-slate-400",
     ring: "ring-slate-400/30",
     label: "text-slate-600",
+  },
+  // Voyage-level statuses surfaced from F&O when the option-set carries
+  // a value (or the option-set code defaults to "To Be Nominated" via
+  // composer fallback). Each tone matches the Aktif Pipeline tile's
+  // segment palette so the card chip and the dashboard pipeline bar
+  // read in the same colour family.
+  "To Be Nominated": {
+    dot: "bg-violet-500",
+    ring: "ring-violet-500/30",
+    label: "text-violet-700",
+  },
+  Nominated: {
+    dot: "bg-indigo-500",
+    ring: "ring-indigo-500/30",
+    label: "text-indigo-700",
+  },
+  Cancelled: {
+    dot: "bg-rose-500",
+    ring: "ring-rose-500/30",
+    label: "text-rose-700",
   },
 };
 

@@ -557,6 +557,14 @@ function normaliseVesselStatus(
     readString(s, "mserp_voyagestatus") ||
     "";
   if (!fv) return undefined;
+  // Raw F&O option-set integer code (no FormattedValue annotation
+  // surfaced for this row). An unset voyage status defaults to the
+  // option-set's "no value" code in the 100M–1B range; semantically
+  // that means the voyage hasn't been assigned yet → "To Be Nominated".
+  // Without this fallback the field would surface as undefined and
+  // ProjectCard would drop back to project.status (Açık/Open), losing
+  // the actual voyage state.
+  if (/^[12]\d{8}$/.test(fv.trim())) return "To Be Nominated";
   const u = fv.toLowerCase();
 
   // Order matters — "to be nominated" must be tested before "nominated"
