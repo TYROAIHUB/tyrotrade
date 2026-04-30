@@ -112,14 +112,21 @@ export function MultiSelectCombobox({
             aria-haspopup="listbox"
             aria-expanded={open}
             className={cn(
-              "w-full min-h-9 rounded-lg border bg-background/80",
-              "px-2.5 py-1.5 text-left text-[12px]",
+              // Bigger trigger surface — was min-h-9 + 12px text + tight
+              // px-2.5/py-1.5. Bumped to min-h-10 + 13.5px + px-3/py-2
+              // so labels read clearly and chips inside breathe; keeps
+              // the same rounded shape so the popover still anchors
+              // cleanly. Solid white background (was 80% translucent)
+              // so the border and chips read as a crisp form field
+              // rather than a faint ghost.
+              "w-full min-h-10 rounded-lg border bg-white",
+              "px-3 py-2 text-left text-[13.5px] leading-tight",
               "flex flex-wrap items-center gap-1.5",
-              "transition-colors hover:bg-foreground/[0.03]",
+              "transition-colors hover:bg-foreground/[0.02]",
               "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
               hasSelection
                 ? "border-foreground/20"
-                : "border-input border-dashed",
+                : "border-input",
               triggerClassName
             )}
             style={
@@ -130,11 +137,14 @@ export function MultiSelectCombobox({
           >
             {hasSelection ? (
               <>
-                {/* Up to 3 chips inline; +N more when overflow */}
-                {[...selected].slice(0, 3).map((v) => (
+                {/* Up to 4 chips inline (was 3); each chip wider
+                    (max-w 220 vs 160) and roomier (px-2 py-1 vs
+                    px-1.5 py-0.5) so long counterparty names stay
+                    legible without truncating to 2 chars. */}
+                {[...selected].slice(0, 4).map((v) => (
                   <span
                     key={v}
-                    className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[11px] font-semibold max-w-[160px]"
+                    className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-[12px] font-semibold max-w-[220px]"
                     style={{
                       backgroundColor: accent.tint,
                       color: accent.solid,
@@ -143,7 +153,7 @@ export function MultiSelectCombobox({
                   >
                     <span className="truncate">{labelByValue.get(v) ?? v}</span>
                     <X
-                      className="size-2.5 shrink-0 opacity-70 hover:opacity-100"
+                      className="size-3 shrink-0 opacity-70 hover:opacity-100 cursor-pointer"
                       onClick={(e) => {
                         e.stopPropagation();
                         toggle(v);
@@ -151,33 +161,33 @@ export function MultiSelectCombobox({
                     />
                   </span>
                 ))}
-                {selected.size > 3 && (
+                {selected.size > 4 && (
                   <span
-                    className="inline-flex items-center px-1.5 py-0.5 rounded-md text-[11px] font-bold tabular-nums"
+                    className="inline-flex items-center px-2 py-1 rounded-md text-[12px] font-bold tabular-nums"
                     style={{
                       backgroundColor: accent.solid,
                       color: "white",
                     }}
                   >
-                    +{selected.size - 3}
+                    +{selected.size - 4}
                   </span>
                 )}
               </>
             ) : (
-              <span className="text-muted-foreground/85 truncate">
+              <span className="text-muted-foreground/80 truncate">
                 {placeholder}
               </span>
             )}
-            <ChevronsUpDown className="ml-auto size-3.5 shrink-0 opacity-50" />
+            <ChevronsUpDown className="ml-auto size-4 shrink-0 opacity-60" />
           </button>
         </PopoverTrigger>
         <PopoverContent
           align="start"
           sideOffset={4}
-          className="p-0 w-[var(--radix-popover-trigger-width)] min-w-[240px]"
+          className="p-0 w-[var(--radix-popover-trigger-width)] min-w-[280px]"
         >
           <Command shouldFilter>
-            <CommandInput placeholder={searchPlaceholder} />
+            <CommandInput placeholder={searchPlaceholder} className="text-[13px]" />
             <CommandList style={{ maxHeight: maxListHeight }}>
               <CommandEmpty>{emptyText}</CommandEmpty>
               <CommandGroup>
@@ -194,10 +204,13 @@ export function MultiSelectCombobox({
                       value={n.value}
                       keywords={n.keywords}
                       onSelect={() => toggle(n.value)}
-                      className="cursor-pointer"
+                      // Bigger checklist row — px-2.5/py-2 so the
+                      // checkbox + label have visual room and rows
+                      // don't read as cramped lines.
+                      className="cursor-pointer px-2.5 py-2 text-[13px] gap-2.5"
                     >
                       <span
-                        className="size-4 rounded-[5px] grid place-items-center shrink-0 transition-colors"
+                        className="size-[18px] rounded-[5px] grid place-items-center shrink-0 transition-colors"
                         style={{
                           backgroundColor: isSelected ? accent.solid : "transparent",
                           boxShadow: `inset 0 0 0 1.5px ${
@@ -206,15 +219,15 @@ export function MultiSelectCombobox({
                         }}
                       >
                         {isSelected && (
-                          <Check className="size-3 text-white" strokeWidth={3} />
+                          <Check className="size-3.5 text-white" strokeWidth={3} />
                         )}
                       </span>
                       <div className="min-w-0 flex-1">
-                        <div className="truncate text-foreground/90">
+                        <div className="truncate text-foreground/95 leading-tight">
                           {n.label}
                         </div>
                         {n.sub && (
-                          <div className="truncate text-[10.5px] text-muted-foreground/80">
+                          <div className="truncate text-[11.5px] text-muted-foreground/80 mt-0.5 leading-tight">
                             {n.sub}
                           </div>
                         )}
@@ -229,10 +242,10 @@ export function MultiSelectCombobox({
                   <CommandGroup>
                     <CommandItem
                       onSelect={clearAll}
-                      className="cursor-pointer text-rose-600 hover:text-rose-700"
+                      className="cursor-pointer text-rose-600 hover:text-rose-700 px-2.5 py-2 text-[13px] gap-2"
                     >
-                      <X className="size-3.5 mr-1.5" />
-                      <span>Tümünü temizle ({count})</span>
+                      <X className="size-4" />
+                      <span className="font-medium">Tümünü temizle ({count})</span>
                     </CommandItem>
                   </CommandGroup>
                 </>

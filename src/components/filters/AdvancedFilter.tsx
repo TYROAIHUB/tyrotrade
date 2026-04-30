@@ -137,6 +137,7 @@ export function AdvancedFilter({
       segments: new Set(),
       voyageStatuses: new Set(),
       traders: new Set(),
+      mainTraders: new Set(),
       companies: new Set(),
       suppliers: new Set(),
       buyers: new Set(),
@@ -469,7 +470,25 @@ export function AdvancedFilter({
             />
           )}
 
-          {/* 5. Trader — combobox */}
+          {/* 5a. Ana Trader — combobox (lead/desk owner per project,
+              `mserp_maintraderid`). Surfaced ahead of the operational
+              `traders` set because portfolio-level reporting (e.g.
+              "show me all of TRD-FTB's deals") starts from the desk
+              leader, not the executor. */}
+          {options.mainTraders.length > 0 && (
+            <ComboboxSection
+              title="Ana Trader"
+              count={filters.mainTraders.size}
+              options={options.mainTraders}
+              selected={filters.mainTraders}
+              onChange={(next) => onChange({ ...filters, mainTraders: next })}
+              placeholder="Tüm ana trader'lar"
+              accent={accent}
+            />
+          )}
+
+          {/* 5b. Trader — combobox (per-project executor,
+              `mserp_traderid`). */}
           {options.traders.length > 0 && (
             <ComboboxSection
               title="Trader"

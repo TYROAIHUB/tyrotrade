@@ -31,7 +31,12 @@ export interface ProjectFilterState {
   incoterms: Set<string>;
   segments: Set<string>;
   voyageStatuses: Set<string>;
+  /** Operational trader assigned to the project (`mserp_traderid`). */
   traders: Set<string>;
+  /** Lead/master trader (`mserp_maintraderid`) — the senior trader who
+   *  owns the deal. Distinct from `traders` so the user can filter by
+   *  desk leader vs. project executor independently. */
+  mainTraders: Set<string>;
   companies: Set<string>;
   suppliers: Set<string>;
   buyers: Set<string>;
@@ -65,6 +70,7 @@ export function makeEmptyFilters(
     segments: new Set(),
     voyageStatuses: new Set(),
     traders: new Set(),
+    mainTraders: new Set(),
     companies: new Set(),
     suppliers: new Set(),
     buyers: new Set(),
@@ -102,6 +108,8 @@ export function applyProjectFilter(
       if (!p.segment || !f.segments.has(p.segment)) return false;
     }
     if (f.traders.size > 0 && !f.traders.has(p.traderNo)) return false;
+    if (f.mainTraders.size > 0 && !f.mainTraders.has(p.mainTraderNo))
+      return false;
     if (
       f.companies.size > 0 &&
       !f.companies.has(p.vesselPlan?.companyId ?? "")
@@ -141,6 +149,7 @@ export function projectFilterCount(
     f.segments.size +
     f.voyageStatuses.size +
     f.traders.size +
+    f.mainTraders.size +
     f.companies.size +
     f.suppliers.size +
     f.buyers.size +
@@ -160,6 +169,7 @@ export interface AvailableOptions {
   segments: string[];
   voyageStatuses: string[];
   traders: string[];
+  mainTraders: string[];
   companies: string[];
   suppliers: string[];
   buyers: string[];
@@ -196,6 +206,7 @@ export function extractAvailableOptions(
   const seg = new Set<string>();
   const vs = new Set<string>();
   const tr = new Set<string>();
+  const mtr = new Set<string>();
   const co = new Set<string>();
   const sup = new Set<string>();
   const buy = new Set<string>();
@@ -210,6 +221,7 @@ export function extractAvailableOptions(
     if (p.segment) seg.add(p.segment);
     if (p.vesselPlan?.vesselStatus) vs.add(p.vesselPlan.vesselStatus);
     if (p.traderNo) tr.add(p.traderNo);
+    if (p.mainTraderNo) mtr.add(p.mainTraderNo);
     if (p.vesselPlan?.companyId) co.add(p.vesselPlan.companyId);
     const supplier = p.vesselPlan?.supplier?.trim();
     if (supplier) sup.add(supplier);
@@ -257,6 +269,7 @@ export function extractAvailableOptions(
     segments: [...seg].sort(),
     voyageStatuses,
     traders: [...tr].sort(),
+    mainTraders: [...mtr].sort(),
     companies: [...co].sort(),
     suppliers: [...sup].sort(),
     buyers: [...buy].sort(),
