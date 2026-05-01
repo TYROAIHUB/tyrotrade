@@ -167,6 +167,52 @@ export function DataManagementPage() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedProjId]);
+
+  // Diagnostic: log row counts + first-row keys for the two recently
+  // added entities so we can spot FK mismatches or empty-result fetches
+  // without users digging through localStorage. Console-only; no UI.
+  React.useEffect(() => {
+    const probe = (
+      label: string,
+      rows: Record<string, unknown>[],
+      fetchedAt: string | null,
+      expectedFkField: string
+    ) => {
+      if (rows.length > 0) {
+        const first = rows[0];
+        const keys = Object.keys(first);
+        const fkValue = first[expectedFkField];
+        console.log(
+          `[${label}] ${rows.length} satır cache'te. ` +
+            `İlk satırın "${expectedFkField}" değeri: ${JSON.stringify(fkValue)}. ` +
+            `Tüm alanlar:`,
+          keys
+        );
+      } else if (fetchedAt) {
+        console.warn(
+          `[${label}] Fetch çalıştı (${fetchedAt}) ama 0 satır döndü — ` +
+            `bu projeler için bu entity'de kayıt olmayabilir veya FK eşleşmiyor.`
+        );
+      }
+    };
+    probe(
+      "Gerçekleşen Gider",
+      actualExpense.rows,
+      actualExpense.fetchedAt,
+      "mserp_etgtryprojid"
+    );
+    probe(
+      "Proje Satınalma",
+      purchase.rows,
+      purchase.fetchedAt,
+      "mserp_purchtable_etgtryprojid"
+    );
+  }, [
+    actualExpense.rows,
+    actualExpense.fetchedAt,
+    purchase.rows,
+    purchase.fetchedAt,
+  ]);
   const budget = useEntityRows<Record<string, unknown>>({
     entitySet: ENTITY_SETS.budget,
     query: { $select: BUDGET_COLUMNS.join(","), $count: true },
