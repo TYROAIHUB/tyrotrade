@@ -6,6 +6,10 @@ import { useEntityRows } from "@/hooks/useEntityRows";
 import { getDataverseClient } from "@/lib/dataverse";
 import { readCache, writeCache } from "@/lib/storage/entityCache";
 import {
+  applyByInChunked,
+  listAllByInChunked,
+} from "@/lib/dataverse/refreshAll";
+import {
   EntityRowsTable,
   sortRows,
   type SortState,
@@ -153,10 +157,14 @@ export function DataManagementPage() {
    * Sales (invoices) intentionally OUT — fetched per selected project via
    * the effect above; can hit hundreds of rows for a single big project. */
   const refreshSteps = React.useMemo(() => {
-    const buildInFilter = (field: string, projids: string[]): string =>
-      projids.length === 0
-        ? `${field} eq null` // empty list — return nothing rather than blowing up
-        : `Microsoft.Dynamics.CRM.In(PropertyName='${field}',PropertyValues=[${projids.map((p) => `'${p}'`).join(",")}])`;
+    // Project-id IN filters get URL-encoded into ~10KB+ when we send
+    // every project as one request. Some networks (proxies / CDNs in
+    // front of Dataverse) reject those at HTTP 400/414 — auto-refresh
+    // hit it post-login while the manual click later succeeded only
+    // because the proxy state had warmed up. Solution: chunk the IN
+    // list (100/batch) via the helpers from refreshAll.ts. Both the
+    // post-login auto-refresh and this manual button now share the
+    // same code path, so success/failure modes stay aligned.
     const readProjids = (): string[] => {
       const cached = readCache<Record<string, unknown>>(ENTITY_SETS.projects);
       return (cached?.value ?? [])
@@ -168,53 +176,77 @@ export function DataManagementPage() {
       {
         label: "Proje Satırları",
         refetch: async () => {
+          const client = getDataverseClient();
           const projids = readProjids();
-          await lines.refetch({
-            $filter: buildInFilter("mserp_projid", projids),
-            $select: PROJECT_LINE_COLUMNS.join(","),
-            $count: true,
+          const result = await listAllByInChunked<Record<string, unknown>>(
+            client,
+            ENTITY_SETS.lines,
+            "mserp_projid",
+            projids,
+            { $select: PROJECT_LINE_COLUMNS.join(","), $count: true }
+          );
+          writeCache(ENTITY_SETS.lines, {
+            fetchedAt: new Date().toISOString(),
+            value: result.value,
+            totalCount: result.totalCount,
           });
         },
       },
       {
         label: "Gemi Planı",
         refetch: async () => {
+          const client = getDataverseClient();
           const projids = readProjids();
-          await ship.refetch({
-            $filter: buildInFilter("mserp_tryshipprojid", projids),
-            $select: SHIP_COLUMNS.join(","),
-            $count: true,
+          const result = await listAllByInChunked<Record<string, unknown>>(
+            client,
+            ENTITY_SETS.ship,
+            "mserp_tryshipprojid",
+            projids,
+            { $select: SHIP_COLUMNS.join(","), $count: true }
+          );
+          writeCache(ENTITY_SETS.ship, {
+            fetchedAt: new Date().toISOString(),
+            value: result.value,
+            totalCount: result.totalCount,
           });
         },
       },
       {
         label: "Tahmini Gider",
         refetch: async () => {
+          const client = getDataverseClient();
           const projids = readProjids();
-          await expense.refetch({
-            $filter: buildInFilter("mserp_etgtryprojid", projids),
-            $select: EXPENSE_COLUMNS.join(","),
-            $count: true,
+          const result = await listAllByInChunked<Record<string, unknown>>(
+            client,
+            ENTITY_SETS.expense,
+            "mserp_etgtryprojid",
+            projids,
+            { $select: EXPENSE_COLUMNS.join(","), $count: true }
+          );
+          writeCache(ENTITY_SETS.expense, {
+            fetchedAt: new Date().toISOString(),
+            value: result.value,
+            totalCount: result.totalCount,
           });
         },
       },
       { label: "Tahmini Bütçe", refetch: budget.refetch },
       {
-        // Per-project invoiced sales totals (segmented by currency) — single
-        // server-side aggregation, scoped to the project IDs we just fetched
-        // (dlvmode=Gemi + segment ne null).
+        // Per-project invoiced sales totals (segmented by currency).
+        // Chunked $apply pipeline — each chunk groups its slice of
+        // projids; chunks don't overlap so the row arrays just
+        // concatenate.
         label: "Satış Toplamları",
         refetch: async () => {
           const client = getDataverseClient();
           const projids = readProjids();
-          const inClause =
-            projids.length > 0
-              ? `Microsoft.Dynamics.CRM.In(PropertyName='mserp_etgtryprojid',PropertyValues=[${projids.map((p) => `'${p}'`).join(",")}])`
-              : "mserp_etgtryprojid eq null";
-          const apply = `filter(${inClause})/groupby((mserp_etgtryprojid,mserp_currencycode),aggregate(mserp_lineamount with sum as total,$count as cnt))`;
-          const result = await client.list<Record<string, unknown>>(
+          const result = await applyByInChunked<Record<string, unknown>>(
+            client,
             "mserp_tryaicustinvoicetransentities",
-            { $apply: apply }
+            "mserp_etgtryprojid",
+            projids,
+            (inClause) =>
+              `filter(${inClause})/groupby((mserp_etgtryprojid,mserp_currencycode),aggregate(mserp_lineamount with sum as total,$count as cnt))`
           );
           writeCache("salesAggregateByProject", {
             fetchedAt: new Date().toISOString(),
@@ -223,45 +255,51 @@ export function DataManagementPage() {
         },
       },
       {
-        // Raw USD invoice rows (per project × per date), scoped to the
-        // current project list. Feeds the "Satış Bütçesi Nabzı" tile,
-        // which buckets them client-side into year-month per project.
-        //
-        // Dataverse's $apply rejects both `groupby((..., datetime))` and
-        // `year()/month()` functions, so we drop down to raw rows. With
-        // $select limited to 4 fields × ~1.9K rows the payload stays tiny.
+        // Raw USD invoice rows for the monthly timeline. Currency gate
+        // is AND-ed with each chunk's IN clause inside the loop because
+        // the chunked helpers don't compose extra filter terms.
         label: "Proje × Ay Satış",
         refetch: async () => {
           const client = getDataverseClient();
           const projids = readProjids();
-          const projidClause =
-            projids.length > 0
-              ? `Microsoft.Dynamics.CRM.In(PropertyName='mserp_etgtryprojid',PropertyValues=[${projids.map((p) => `'${p}'`).join(",")}])`
-              : "mserp_etgtryprojid eq null";
-          const result = await client.listAll<Record<string, unknown>>(
-            "mserp_tryaicustinvoicetransentities",
-            {
-              $filter: `${projidClause} and mserp_currencycode eq 'USD'`,
-              $select:
-                "mserp_etgtryprojid,mserp_invoicedate,mserp_lineamount",
-              $count: true,
+          if (projids.length === 0) {
+            writeCache("salesByProjectMonth", {
+              fetchedAt: new Date().toISOString(),
+              value: [],
+              totalCount: 0,
+            });
+            return;
+          }
+          const all: Record<string, unknown>[] = [];
+          let totalCount: number | undefined;
+          for (let i = 0; i < projids.length; i += 100) {
+            const chunk = projids.slice(i, i + 100);
+            const inClause = `Microsoft.Dynamics.CRM.In(PropertyName='mserp_etgtryprojid',PropertyValues=[${chunk
+              .map((p) => `'${p}'`)
+              .join(",")}])`;
+            const result = await client.listAll<Record<string, unknown>>(
+              "mserp_tryaicustinvoicetransentities",
+              {
+                $filter: `${inClause} and mserp_currencycode eq 'USD'`,
+                $select:
+                  "mserp_etgtryprojid,mserp_invoicedate,mserp_lineamount",
+                $count: true,
+              }
+            );
+            all.push(...result.value);
+            if (typeof result.totalCount === "number") {
+              totalCount = (totalCount ?? 0) + result.totalCount;
             }
-          );
+          }
           writeCache("salesByProjectMonth", {
             fetchedAt: new Date().toISOString(),
-            value: result.value,
-            totalCount: result.totalCount,
+            value: all,
+            totalCount,
           });
         },
       },
     ];
-  }, [
-    projects.refetch,
-    lines.refetch,
-    ship.refetch,
-    expense.refetch,
-    budget.refetch,
-  ]);
+  }, [projects.refetch, budget.refetch]);
 
   // Apply unified filter (period + categorical) on the domain Project
   // list, derive the allowed projectNo set, then narrow the raw rows

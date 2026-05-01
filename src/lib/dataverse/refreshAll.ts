@@ -1,4 +1,5 @@
-import { getDataverseClient } from "@/lib/dataverse";
+import { getDataverseClient, type DataverseClient } from "@/lib/dataverse";
+import type { ODataQuery } from "@/lib/dataverse/odata";
 import { readCache, writeCache } from "@/lib/storage/entityCache";
 import {
   PROJECT_COLUMNS,
@@ -74,7 +75,23 @@ export interface RefreshResult {
   projectCount?: number;
 }
 
-/* ─────────── Filter helper ─────────── */
+/* ─────────── Filter helpers ─────────── */
+
+/** Maximum project IDs per `Microsoft.Dynamics.CRM.In(...)` clause.
+ *
+ *  At ~12 chars per project ID + URL-encoded quotes/commas (~22 chars
+ *  per encoded ID), a single batch fits comfortably under Dataverse's
+ *  ~16KB URL ceiling AND under the smaller proxy/CDN limits some
+ *  enterprise networks impose between the browser and Dataverse.
+ *
+ *  Sized at 100 so even 1,000-project tenants take only 10 batches —
+ *  five sequential ~250ms fetches stay well under the visible refresh
+ *  toast budget. Originally we sent all 440 IDs in a single 10KB+ URL,
+ *  which auto-refresh saw fail intermittently with HTTP 400 (post-login
+ *  network warm-up + proxy buffering); manual "Verileri Güncelle"
+ *  succeeded against the same query because the proxy state had
+ *  settled by the time the user clicked. */
+const PROJID_CHUNK_SIZE = 100;
 
 function buildInFilter(field: string, projids: string[]): string {
   if (projids.length === 0) {
@@ -91,6 +108,69 @@ function readProjids(): string[] {
   return (cached?.value ?? [])
     .map((p) => p.mserp_projid as string | undefined)
     .filter((s): s is string => !!s);
+}
+
+/**
+ * Run `client.listAll` once per chunk of project IDs and concatenate
+ * the results. Drops a request URL of ~10KB+ down to ~2.5KB per call,
+ * which keeps Dataverse + any proxy in the path happy. Returns the
+ * combined value list and a summed `totalCount` for the success toast.
+ *
+ * Use this for any `mserp_*` child entity that's filtered by an IN
+ * clause over the projects-cache project IDs (lines, ship, expense).
+ */
+export async function listAllByInChunked<T>(
+  client: DataverseClient,
+  entitySet: string,
+  field: string,
+  projids: string[],
+  baseQuery: Omit<ODataQuery, "$filter">,
+  chunkSize: number = PROJID_CHUNK_SIZE
+): Promise<{ value: T[]; totalCount?: number }> {
+  if (projids.length === 0) {
+    // Empty list → no fetch (server would otherwise scan the entire entity).
+    return { value: [], totalCount: 0 };
+  }
+  const all: T[] = [];
+  let totalCount: number | undefined;
+  for (let i = 0; i < projids.length; i += chunkSize) {
+    const chunk = projids.slice(i, i + chunkSize);
+    const result = await client.listAll<T>(entitySet, {
+      ...baseQuery,
+      $filter: buildInFilter(field, chunk),
+    });
+    all.push(...result.value);
+    if (typeof result.totalCount === "number") {
+      totalCount = (totalCount ?? 0) + result.totalCount;
+    }
+  }
+  return { value: all, totalCount };
+}
+
+/**
+ * Same chunking pattern but for `$apply` aggregates. Each chunk runs an
+ * independent groupby so the (projid, currencycode) pairs can simply
+ * be concatenated — they don't overlap across chunks since each project
+ * lives in exactly one chunk.
+ */
+export async function applyByInChunked<T>(
+  client: DataverseClient,
+  entitySet: string,
+  field: string,
+  projids: string[],
+  buildApply: (inClause: string) => string,
+  chunkSize: number = PROJID_CHUNK_SIZE
+): Promise<{ value: T[] }> {
+  if (projids.length === 0) return { value: [] };
+  const all: T[] = [];
+  for (let i = 0; i < projids.length; i += chunkSize) {
+    const chunk = projids.slice(i, i + chunkSize);
+    const inClause = buildInFilter(field, chunk);
+    const apply = buildApply(inClause);
+    const result = await client.list<T>(entitySet, { $apply: apply });
+    all.push(...result.value);
+  }
+  return { value: all };
 }
 
 /* ─────────── Main entry ─────────── */
@@ -140,10 +220,12 @@ export async function refreshAllEntities(
       label: "Proje Satırları",
       run: async () => {
         const projids = readProjids();
-        const result = await client.listAll<Record<string, unknown>>(
+        const result = await listAllByInChunked<Record<string, unknown>>(
+          client,
           ENTITY_SETS.lines,
+          "mserp_projid",
+          projids,
           {
-            $filter: buildInFilter("mserp_projid", projids),
             $select: PROJECT_LINE_COLUMNS.join(","),
             $count: true,
           }
@@ -159,10 +241,12 @@ export async function refreshAllEntities(
       label: "Gemi Planı",
       run: async () => {
         const projids = readProjids();
-        const result = await client.listAll<Record<string, unknown>>(
+        const result = await listAllByInChunked<Record<string, unknown>>(
+          client,
           ENTITY_SETS.ship,
+          "mserp_tryshipprojid",
+          projids,
           {
-            $filter: buildInFilter("mserp_tryshipprojid", projids),
             $select: SHIP_COLUMNS.join(","),
             $count: true,
           }
@@ -178,10 +262,12 @@ export async function refreshAllEntities(
       label: "Tahmini Gider",
       run: async () => {
         const projids = readProjids();
-        const result = await client.listAll<Record<string, unknown>>(
+        const result = await listAllByInChunked<Record<string, unknown>>(
+          client,
           ENTITY_SETS.expense,
+          "mserp_etgtryprojid",
+          projids,
           {
-            $filter: buildInFilter("mserp_etgtryprojid", projids),
             $select: EXPENSE_COLUMNS.join(","),
             $count: true,
           }
@@ -213,19 +299,18 @@ export async function refreshAllEntities(
     {
       label: "Satış Toplamları",
       run: async () => {
-        // Sales aggregate now scopes to the project IDs already pulled
-        // in the first step (which themselves come from the
-        // dlvmode/segment filter). Drops the old trader-only narrow so
-        // every project we display has its sales total available.
+        // Sales aggregate scopes to the project IDs already pulled in
+        // the first step (which themselves come from the dlvmode/segment
+        // filter). Chunked so the `$apply=filter(IN(...))` URL stays
+        // small even when the project list is large.
         const projids = readProjids();
-        const inClause =
-          projids.length > 0
-            ? `Microsoft.Dynamics.CRM.In(PropertyName='mserp_etgtryprojid',PropertyValues=[${projids.map((p) => `'${p}'`).join(",")}])`
-            : "mserp_etgtryprojid eq null";
-        const apply = `filter(${inClause})/groupby((mserp_etgtryprojid,mserp_currencycode),aggregate(mserp_lineamount with sum as total,$count as cnt))`;
-        const result = await client.list<Record<string, unknown>>(
+        const result = await applyByInChunked<Record<string, unknown>>(
+          client,
           SALES_ENTITY,
-          { $apply: apply }
+          "mserp_etgtryprojid",
+          projids,
+          (inClause) =>
+            `filter(${inClause})/groupby((mserp_etgtryprojid,mserp_currencycode),aggregate(mserp_lineamount with sum as total,$count as cnt))`
         );
         writeCache("salesAggregateByProject", {
           fetchedAt: new Date().toISOString(),
@@ -236,24 +321,43 @@ export async function refreshAllEntities(
     {
       label: "Proje × Ay Satış",
       run: async () => {
+        // Per-project per-currency raw rows for the monthly USD timeline.
+        // We can't push the `currencycode eq 'USD'` term into the chunked
+        // helper's $filter directly because it builds the IN clause and
+        // returns it as the entire $filter — so we layer the currency
+        // gate by chunking ourselves and AND-ing the IN clause with it.
         const projids = readProjids();
-        const projidClause =
-          projids.length > 0
-            ? `Microsoft.Dynamics.CRM.In(PropertyName='mserp_etgtryprojid',PropertyValues=[${projids.map((p) => `'${p}'`).join(",")}])`
-            : "mserp_etgtryprojid eq null";
-        const result = await client.listAll<Record<string, unknown>>(
-          SALES_ENTITY,
-          {
-            $filter: `${projidClause} and mserp_currencycode eq 'USD'`,
-            $select:
-              "mserp_etgtryprojid,mserp_invoicedate,mserp_lineamount",
-            $count: true,
+        if (projids.length === 0) {
+          writeCache("salesByProjectMonth", {
+            fetchedAt: new Date().toISOString(),
+            value: [],
+            totalCount: 0,
+          });
+          return;
+        }
+        const all: Record<string, unknown>[] = [];
+        let totalCount: number | undefined;
+        for (let i = 0; i < projids.length; i += 100) {
+          const chunk = projids.slice(i, i + 100);
+          const inClause = buildInFilter("mserp_etgtryprojid", chunk);
+          const result = await client.listAll<Record<string, unknown>>(
+            SALES_ENTITY,
+            {
+              $filter: `${inClause} and mserp_currencycode eq 'USD'`,
+              $select:
+                "mserp_etgtryprojid,mserp_invoicedate,mserp_lineamount",
+              $count: true,
+            }
+          );
+          all.push(...result.value);
+          if (typeof result.totalCount === "number") {
+            totalCount = (totalCount ?? 0) + result.totalCount;
           }
-        );
+        }
         writeCache("salesByProjectMonth", {
           fetchedAt: new Date().toISOString(),
-          value: result.value,
-          totalCount: result.totalCount,
+          value: all,
+          totalCount,
         });
       },
     },

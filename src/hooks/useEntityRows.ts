@@ -5,8 +5,10 @@ import {
   type ODataQuery,
 } from "@/lib/dataverse";
 import {
+  CACHE_UPDATED_EVENT,
   readCache,
   writeCache,
+  type CacheUpdatedDetail,
   type EntityCacheEntry,
 } from "@/lib/storage/entityCache";
 
@@ -80,6 +82,36 @@ export function useEntityRows<T = Record<string, unknown>>({
         error: null,
       });
     }
+  }, [entitySet]);
+
+  // Cross-cutting cache writes (e.g. the chunked refresh helpers in
+  // `refreshAll.ts` invoked from `RefreshAllButton`) bypass `refetch()`
+  // entirely — they `writeCache(...)` directly, then dispatch
+  // `tyro:cache-updated`. Listen for that event so this hook's state
+  // stays in sync without forcing every refresh path to call our own
+  // refetch. Only updates when NOT mid-fetch (so an in-flight call's
+  // own writeCache dispatch doesn't race with its setState).
+  React.useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent<CacheUpdatedDetail>).detail;
+      if (!detail || detail.entitySet !== entitySet) return;
+      const cached = readCache<T>(entitySet);
+      if (!cached) return;
+      setState((s) => {
+        if (s.isFetching) return s; // own refetch will set state
+        return {
+          ...s,
+          rows: cached.value,
+          totalCount: cached.totalCount,
+          fetchedAt: cached.fetchedAt,
+          loaded: cached.value.length,
+          isError: false,
+          error: null,
+        };
+      });
+    };
+    window.addEventListener(CACHE_UPDATED_EVENT, handler);
+    return () => window.removeEventListener(CACHE_UPDATED_EVENT, handler);
   }, [entitySet]);
 
   const refetch = React.useCallback(async (queryOverride?: ODataQuery) => {
