@@ -4,7 +4,10 @@ import { readCache, writeCache } from "@/lib/storage/entityCache";
 import {
   PROJECT_COLUMNS,
   PROJECT_LINE_COLUMNS,
-  SHIP_COLUMNS,
+  // SHIP_COLUMNS intentionally unimported — the Gemi Planı step ships
+  // the ship row without a $select clause now (F&O virtual entity
+  // tolerates pair-incomplete $select inconsistently). Inspector still
+  // imports it directly for `priorityColumns` ordering.
   EXPENSE_COLUMNS,
   ACTUAL_EXPENSE_COLUMNS,
   PURCHASE_COLUMNS,
