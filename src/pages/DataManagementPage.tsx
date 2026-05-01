@@ -126,12 +126,23 @@ export function DataManagementPage() {
     entitySet: ENTITY_SETS.expense,
     query: { $select: EXPENSE_COLUMNS.join(","), $count: true },
   });
-  // Realised expense distribution lines — narrowed to the 10 columns
-  // the inspector renders so the cache slot doesn't carry F&O system
-  // fields we don't surface.
+  // Realised expense distribution lines — fetched **per-selected
+  // project** on demand (same pattern as `sales` below). The entity
+  // is granular distribution lines whose tenant-wide payload blew
+  // the browser localStorage quota when included in the global
+  // refresh chain. Per-project fetches stay tiny (a few KB each)
+  // and only one project's data is in cache at a time. Effect
+  // below auto-refetches when `selectedProjId` changes.
   const actualExpense = useEntityRows<Record<string, unknown>>({
     entitySet: ENTITY_SETS.actualExpense,
-    query: { $select: ACTUAL_EXPENSE_COLUMNS.join(","), $count: true },
+    query: selectedProjId
+      ? {
+          $filter: `mserp_etgtryprojid eq '${selectedProjId}'`,
+          $select: ACTUAL_EXPENSE_COLUMNS.join(","),
+          $orderby: "mserp_datefinancial desc",
+          $count: true,
+        }
+      : { $top: 0 },
   });
   // Realised project purchases — vendor invoice transactions, narrowed
   // to the 12 inspector columns. Project FK lives at
@@ -159,11 +170,16 @@ export function DataManagementPage() {
       : { $top: 0 },
   });
 
-  // Auto-fetch sales when the selected project changes. The hook memoises
-  // `refetch` by entitySet + JSON(query) so the latest closure is invoked.
+  // Auto-fetch per-selected-project entities when the project changes.
+  // Both `sales` (customer invoices) and `actualExpense` (vendor
+  // distribution lines) are too granular for global caching and use
+  // this on-demand pattern. The hook memoises `refetch` by entitySet
+  // + JSON(query), so the latest closure (with the new $filter)
+  // fires correctly.
   React.useEffect(() => {
     if (selectedProjId) {
       void sales.refetch();
+      void actualExpense.refetch();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedProjId]);
@@ -306,31 +322,14 @@ export function DataManagementPage() {
           });
         },
       },
-      {
-        // Realised expense distribution. Same chunked-IN pattern as the
-        // sibling Tahmini Gider step. Narrowed to the 10 inspector
-        // columns so the localStorage cache stays lean.
-        label: "Gerçekleşen Gider",
-        refetch: async () => {
-          const client = getDataverseClient();
-          const projids = readProjids();
-          const result = await listAllByInChunked<Record<string, unknown>>(
-            client,
-            ENTITY_SETS.actualExpense,
-            "mserp_etgtryprojid",
-            projids,
-            {
-              $select: ACTUAL_EXPENSE_COLUMNS.join(","),
-              $count: true,
-            }
-          );
-          writeCache(ENTITY_SETS.actualExpense, {
-            fetchedAt: new Date().toISOString(),
-            value: result.value,
-            totalCount: result.totalCount,
-          });
-        },
-      },
+      // "Gerçekleşen Gider" intentionally OUT of the bulk refresh.
+      // Granular distribution lines per project — the tenant-wide
+      // payload pushed the localStorage cache over its quota when
+      // bundled with lines / ship / expense / sales / etc, causing
+      // those caches to be evicted by the older "smart eviction"
+      // implementation. Now fetched per-project on demand by the
+      // `actualExpense` useEntityRows hook above (effect refetches
+      // whenever `selectedProjId` changes).
       {
         // Realised project purchases — vendor invoice transactions.
         // Same chunked-IN pattern; FK is `mserp_purchtable_etgtryprojid`
@@ -709,15 +708,13 @@ export function DataManagementPage() {
             {childTab === "actualExpense" && (
               <EntityRowsTable
                 rows={childActualExpense}
-                // Explicit columns — only the 10 confirmed fields render.
-                // Any extra system fields that may already sit in the
-                // localStorage cache from earlier fetches are hidden.
+                // Per-project on-demand fetch (server-filtered by
+                // mserp_etgtryprojid). Client-side
+                // `childActualExpense` re-filters as a safety net.
                 columns={[...ACTUAL_EXPENSE_COLUMNS]}
                 emptyText={
                   selectedProjId
-                    ? actualExpense.rows.length === 0
-                      ? "Henüz çekilmedi — üstten Verileri Güncelle"
-                      : "Bu projeye ait gerçekleşen gider satırı yok"
+                    ? "Bu projeye ait gerçekleşen gider kaydı yok"
                     : "Üstten bir proje seç"
                 }
                 maxHeight="55vh"

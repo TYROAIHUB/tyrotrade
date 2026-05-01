@@ -6,7 +6,11 @@ import {
   PROJECT_LINE_COLUMNS,
   SHIP_COLUMNS,
   EXPENSE_COLUMNS,
-  ACTUAL_EXPENSE_COLUMNS,
+  // ACTUAL_EXPENSE_COLUMNS intentionally not imported — actualExpense
+  // is fetched per-project on-demand from the inspector hook (see
+  // DataManagementPage's `actualExpense` useEntityRows query). The
+  // global refresh chain skips it to keep the localStorage cache
+  // under quota.
   PURCHASE_COLUMNS,
   BUDGET_COLUMNS,
 } from "@/lib/dataverse/columnOrder";
@@ -294,32 +298,15 @@ export async function refreshAllEntities(
         });
       },
     },
-    {
-      label: "Gerçekleşen Gider",
-      run: async () => {
-        // Realised expense distribution lines, scoped by project ID.
-        // Narrowed to the 10 columns the user surfaces in the Veri
-        // Yönetimi Gerçekleşen Gider tab — keeps payload + cache slot
-        // small even when the underlying entity carries extra system
-        // fields we don't render.
-        const projids = readProjids();
-        const result = await listAllByInChunked<Record<string, unknown>>(
-          client,
-          ENTITY_SETS.actualExpense,
-          "mserp_etgtryprojid",
-          projids,
-          {
-            $select: ACTUAL_EXPENSE_COLUMNS.join(","),
-            $count: true,
-          }
-        );
-        writeCache(ENTITY_SETS.actualExpense, {
-          fetchedAt: new Date().toISOString(),
-          value: result.value,
-          totalCount: result.totalCount,
-        });
-      },
-    },
+    // NOTE: "Gerçekleşen Gider" intentionally OUT of the global
+    // refresh chain. The entity is granular distribution lines and
+    // its payload (~5-10 MB depending on tenant scope) blew the
+    // browser localStorage quota when bundled alongside lines, ship,
+    // expense, sales, etc. Inspector tab fetches per-project on
+    // demand instead (same pattern as `sales` invoices). When the
+    // dashboard later needs cross-project actual-expense rollups
+    // we'll add a server-side `$apply=groupby` aggregate step here
+    // — small per-project totals only.
     {
       label: "Gerçekleşen Satınalma",
       run: async () => {
