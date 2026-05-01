@@ -128,27 +128,24 @@ export const SHIP_COLUMNS = [
   "mserp_trylinenum",
   "mserp_paymentsched",
   "mserp_primaryfield",
-  // RecID lookups (numeric — least useful for humans, last)
+  // RecID lookups (numeric — least useful for humans, last). The
+  // matching `_bigint` shadow columns were dropped 2026-05 because:
+  //   - Nothing in the app actually reads them.
+  //   - F&O virtual entities sometimes refuse `$select` over the
+  //     bigint shadow even when the regular RecID column works,
+  //     producing a 400 that takes the entire Gemi Planı refresh
+  //     down with it. Removing them slims the fetch + sidesteps that
+  //     class of failure entirely.
   "mserp_loadingport",
-  "mserp_loadingport_bigint",
   "mserp_dischargeporting",
-  "mserp_dischargeporting_bigint",
   "mserp_vessel",
-  "mserp_vessel_bigint",
   "mserp_vesseltype",
-  "mserp_vesseltype_bigint",
   "mserp_shipoperator",
-  "mserp_shipoperator_bigint",
   "mserp_cargogood",
-  "mserp_cargogood_bigint",
   "mserp_chartererpartys",
-  "mserp_chartererpartys_bigint",
   "mserp_tradedesk",
-  "mserp_tradedesk_bigint",
   "mserp_buyerrec",
-  "mserp_buyerrec_bigint",
   "mserp_sellerrec",
-  "mserp_sellerrec_bigint",
   "mserp_tryaiprojectshiprelationentityid",
 ] as const;
 
