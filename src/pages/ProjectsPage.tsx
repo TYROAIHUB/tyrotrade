@@ -7,6 +7,7 @@ import { ProjectsEmptyState } from "@/components/projects/ProjectsEmptyState";
 import { RouteMap } from "@/components/map/RouteMap";
 import { ProjectOverviewCard } from "@/components/details/ProjectOverviewCard";
 import { CommoditySalesCard } from "@/components/details/CommoditySalesCard";
+import { ExpectedRealizedExpenseCard } from "@/components/details/ExpectedRealizedExpenseCard";
 import { ProfitLossCard } from "@/components/details/ProfitLossCard";
 import { BudgetSalesCard } from "@/components/details/BudgetSalesCard";
 import { BudgetPLCard } from "@/components/details/BudgetPLCard";
@@ -159,6 +160,7 @@ export function ProjectsPage() {
               <div className="space-y-3 pb-4">
                 <ProjectOverviewCard project={selected} />
                 <CommoditySalesCard project={selected} />
+                <ExpectedRealizedExpenseCard project={selected} />
                 <ProfitLossCard project={selected} />
                 <BudgetSalesCard project={selected} />
                 <BudgetPLCard project={selected} />
@@ -192,6 +194,7 @@ export function ProjectsPage() {
             <div className="space-y-3">
               <ProjectOverviewCard project={selected} />
               <CommoditySalesCard project={selected} />
+              <ExpectedRealizedExpenseCard project={selected} />
               <ProfitLossCard project={selected} />
               <BudgetSalesCard project={selected} />
               <BudgetPLCard project={selected} />
