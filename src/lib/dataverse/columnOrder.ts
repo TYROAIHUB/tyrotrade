@@ -210,10 +210,30 @@ export const BUDGET_COLUMNS = [
  *  "Gerçekleşen Gider Satırları". Project FK = `mserp_etgtryprojid`,
  *  matches the same convention as `mserp_tryaiotherexpenseentities`.
  *
- *  We don't yet know the full column list — the priority below covers
- *  the project link first; remaining fields surface in the inspector
- *  via auto-discovery (`priorityColumns` not `columns`) so we can see
- *  what the entity carries and narrow later. */
+ *  Operationally relevant fields, confirmed by the user:
+ *   - `mserp_etgtryprojid` — project FK (joins to Projeler)
+ *   - `mserp_datefinancial` — financial posting date
+ *   - `mserp_expensenum` — expense voucher number
+ *   - `mserp_dataareaid` — F&O legal entity / company code
+ *   - `mserp_expenseid` — expense category id
+ *   - `mserp_qty` — booked quantity
+ *   - `mserp_lineamount` — booked amount in the row's currency
+ *   - `mserp_currencycode` — currency of `mserp_lineamount`
+ *   - `mserp_etgtraderid` — trader the cost is allocated to
+ *   - `mserp_itemname` — line item / cargo description
+ *
+ *  Fetched with `$select` so the payload (and localStorage cache) stays
+ *  small; rendered with explicit `columns={[...ACTUAL_EXPENSE_COLUMNS]}`
+ *  so the inspector hides anything else that may already be cached. */
 export const ACTUAL_EXPENSE_COLUMNS = [
   "mserp_etgtryprojid",
+  "mserp_datefinancial",
+  "mserp_expensenum",
+  "mserp_dataareaid",
+  "mserp_expenseid",
+  "mserp_qty",
+  "mserp_lineamount",
+  "mserp_currencycode",
+  "mserp_etgtraderid",
+  "mserp_itemname",
 ] as const;

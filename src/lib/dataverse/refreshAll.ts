@@ -6,6 +6,7 @@ import {
   PROJECT_LINE_COLUMNS,
   SHIP_COLUMNS,
   EXPENSE_COLUMNS,
+  ACTUAL_EXPENSE_COLUMNS,
   BUDGET_COLUMNS,
 } from "@/lib/dataverse/columnOrder";
 
@@ -287,17 +288,20 @@ export async function refreshAllEntities(
       label: "Gerçekleşen Gider",
       run: async () => {
         // Realised expense distribution lines, scoped by project ID.
-        // No `$select` yet — we don't have the full column list from the
-        // F&O team, so all fields come back for the inspector. Once the
-        // priority columns are confirmed, narrow this with $select like
-        // the sibling `expense` step.
+        // Narrowed to the 10 columns the user surfaces in the Veri
+        // Yönetimi Gerçekleşen Gider tab — keeps payload + cache slot
+        // small even when the underlying entity carries extra system
+        // fields we don't render.
         const projids = readProjids();
         const result = await listAllByInChunked<Record<string, unknown>>(
           client,
           ENTITY_SETS.actualExpense,
           "mserp_etgtryprojid",
           projids,
-          { $count: true }
+          {
+            $select: ACTUAL_EXPENSE_COLUMNS.join(","),
+            $count: true,
+          }
         );
         writeCache(ENTITY_SETS.actualExpense, {
           fetchedAt: new Date().toISOString(),

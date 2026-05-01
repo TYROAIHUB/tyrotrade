@@ -120,13 +120,12 @@ export function DataManagementPage() {
     entitySet: ENTITY_SETS.expense,
     query: { $select: EXPENSE_COLUMNS.join(","), $count: true },
   });
-  // Realised expense distribution lines — no $select yet so all columns
-  // come back for first-pass discovery in the inspector. Once the F&O
-  // team confirms which fields matter, narrow with $select like the
-  // sibling `expense` hook above.
+  // Realised expense distribution lines — narrowed to the 10 columns
+  // the inspector renders so the cache slot doesn't carry F&O system
+  // fields we don't surface.
   const actualExpense = useEntityRows<Record<string, unknown>>({
     entitySet: ENTITY_SETS.actualExpense,
-    query: { $count: true },
+    query: { $select: ACTUAL_EXPENSE_COLUMNS.join(","), $count: true },
   });
   // Customer invoice transactions — per-PROJECT server-side fetch.
   // Entity is huge tenant-wide (thousands of invoiced rows; a single
@@ -250,9 +249,8 @@ export function DataManagementPage() {
       },
       {
         // Realised expense distribution. Same chunked-IN pattern as the
-        // sibling Tahmini Gider step; no $select while the column list
-        // is still being explored, so the inspector can show every field
-        // the entity carries.
+        // sibling Tahmini Gider step. Narrowed to the 10 inspector
+        // columns so the localStorage cache stays lean.
         label: "Gerçekleşen Gider",
         refetch: async () => {
           const client = getDataverseClient();
@@ -262,7 +260,10 @@ export function DataManagementPage() {
             ENTITY_SETS.actualExpense,
             "mserp_etgtryprojid",
             projids,
-            { $count: true }
+            {
+              $select: ACTUAL_EXPENSE_COLUMNS.join(","),
+              $count: true,
+            }
           );
           writeCache(ENTITY_SETS.actualExpense, {
             fetchedAt: new Date().toISOString(),
@@ -608,11 +609,10 @@ export function DataManagementPage() {
             {childTab === "actualExpense" && (
               <EntityRowsTable
                 rows={childActualExpense}
-                // priorityColumns (not `columns`) so all discovered fields
-                // remain visible — we don't have the column whitelist yet
-                // for this freshly-added entity. Switch to `columns` once
-                // the operationally relevant fields are confirmed.
-                priorityColumns={ACTUAL_EXPENSE_COLUMNS}
+                // Explicit columns — only the 10 confirmed fields render.
+                // Any extra system fields that may already sit in the
+                // localStorage cache from earlier fetches are hidden.
+                columns={[...ACTUAL_EXPENSE_COLUMNS]}
                 emptyText={
                   selectedProjId
                     ? actualExpense.rows.length === 0
