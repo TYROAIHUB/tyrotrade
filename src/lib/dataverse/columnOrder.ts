@@ -134,21 +134,21 @@ export const SHIP_COLUMNS = [
   "mserp_primaryfield",
   // RecID lookups (numeric — least useful for humans, last).
   //
-  // 2026-05-01: Dataverse rejected `mserp_vesselname` and
-  // `mserp_vesseltype` from $select on this virtual entity (400
-  // "Could not find a property named …"). Both removed below; the
-  // remaining friendly + bigint pairs stayed valid in the same
-  // refresh, so we leave them alone for now. If a subsequent refresh
-  // surfaces another invalid field via the diagnostic toast, drop it
-  // here too.
+  // 2026-05-01 (post F&O schema refresh, ~20h old metadata): a
+  // sample row from the entity confirmed that exactly THREE columns
+  // were removed — `mserp_vesselname`, `mserp_vesseltype`, and
+  // `mserp_vesseltype_bigint`. All other RecID lookup pairs
+  // (vessel, loadingport, dischargeporting, shipoperator, cargogood,
+  // chartererpartys, tradedesk, buyerrec, sellerrec) remain valid in
+  // $select. Don't preemptively widen this removal — the sample
+  // proved the rest of the section is intact.
   "mserp_loadingport",
   "mserp_loadingport_bigint",
   "mserp_dischargeporting",
   "mserp_dischargeporting_bigint",
   "mserp_vessel",
   "mserp_vessel_bigint",
-  // mserp_vesseltype dropped 2026-05-01 — Dataverse 400.
-  "mserp_vesseltype_bigint",
+  // mserp_vesseltype + _bigint dropped — both halves removed by F&O.
   "mserp_shipoperator",
   "mserp_shipoperator_bigint",
   "mserp_cargogood",
