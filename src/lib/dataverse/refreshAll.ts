@@ -4,10 +4,7 @@ import { readCache, writeCache } from "@/lib/storage/entityCache";
 import {
   PROJECT_COLUMNS,
   PROJECT_LINE_COLUMNS,
-  // SHIP_COLUMNS intentionally unimported — the Gemi Planı step ships
-  // the ship row without a $select clause now (F&O virtual entity
-  // tolerates pair-incomplete $select inconsistently). Inspector still
-  // imports it directly for `priorityColumns` ordering.
+  SHIP_COLUMNS,
   EXPENSE_COLUMNS,
   ACTUAL_EXPENSE_COLUMNS,
   PURCHASE_COLUMNS,
@@ -253,24 +250,21 @@ export async function refreshAllEntities(
     {
       label: "Gemi Planı",
       run: async () => {
-        // No `$select` — multiple columns we used to ship in $select
-        // (`mserp_vesselname`, `mserp_vesseltype`, …) don't actually
-        // exist on the F&O virtual entity's schema, and Dataverse
-        // 400s the entire request whenever $select references a
-        // missing property. Without $select the row carries every
-        // valid field by default. Ship is a small entity (~440 rows
-        // tenant-wide for the Gemi-mode project scope), so the wider
-        // payload is acceptable in exchange for not playing field-
-        // existence whack-a-mole. The composer reads vessel name +
-        // milestones + ports defensively (multi-candidate fallback)
-        // so any future column rename surfaces gracefully.
+        // $select includes the full SHIP_COLUMNS list, with the
+        // `_bigint` shadow lookups kept paired with their friendly
+        // counterparts. F&O virtual entities resolve these as pairs
+        // — separating them caused a "property not found" 400. Don't
+        // re-touch the lookup section without re-testing.
         const projids = readProjids();
         const result = await listAllByInChunked<Record<string, unknown>>(
           client,
           ENTITY_SETS.ship,
           "mserp_tryshipprojid",
           projids,
-          { $count: true }
+          {
+            $select: SHIP_COLUMNS.join(","),
+            $count: true,
+          }
         );
         writeCache(ENTITY_SETS.ship, {
           fetchedAt: new Date().toISOString(),
