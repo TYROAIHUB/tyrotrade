@@ -68,9 +68,13 @@ export const PROJECT_LINE_COLUMNS = [
 
 /** mserp_tryaiprojectshiprelationentities — Vessel plan + voyage milestones */
 export const SHIP_COLUMNS = [
-  // Identity
+  // Identity. `mserp_vesselname` is intentionally absent — Dataverse
+  // rejects it in $select with "Could not find a property named …"
+  // (verified via the diagnostic-enriched 400 toast). The composer
+  // resolves vessel name from `mserp_vessel`'s FormattedValue
+  // annotation instead, which the `Prefer: odata.include-annotations`
+  // header already brings in.
   "mserp_tryshipprojid",
-  "mserp_vesselname",
   "mserp_assignmentid",
   "mserp_vesselvoyagenumber",
   "mserp_voyagestatus",
