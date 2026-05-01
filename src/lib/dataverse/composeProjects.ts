@@ -462,18 +462,33 @@ function toVesselPlan(s: Record<string, unknown>): VesselPlan {
   const voyageType = pickFriendly("mserp_tryexpenseprojecttype");
   const netFreightAmount = num(s["mserp_netfreightamount"]);
 
-  // Vessel name resolution — the entity dropped the direct
-  // `mserp_vesselname` string column (Dataverse 400's it in $select).
-  // Order of preference:
-  //   1. `mserp_vessel`'s FormattedValue annotation (canonical lookup
-  //      display string from Dataverse).
-  //   2. Raw `mserp_vessel` value (RecID — last resort, useful as
-  //      a placeholder in development if the FV is absent).
-  //   3. Em-dash so the UI never shows an empty cell.
-  const vesselName =
-    getFormattedValue(s, "mserp_vessel") ||
-    readString(s, "mserp_vessel") ||
-    "—";
+  // Vessel name resolution — the entity dropped `mserp_vesselname`
+  // from its $select-able schema (Dataverse 400's it). Fall back
+  // through every candidate field that could carry the vessel string
+  // so we don't lose vessel names under any F&O virtual-entity
+  // exposure pattern:
+  //   1. Direct `mserp_vesselname` if Dataverse still returns it in
+  //      the row body even though it rejects in $select (some virtual
+  //      entities behave this way — read works, $select doesn't).
+  //   2. `mserp_vessel`'s @FormattedValue annotation (the canonical
+  //      lookup display string brought in by the
+  //      `Prefer: odata.include-annotations` header).
+  //   3. Plausible alternate column names a future schema rename
+  //      might use — costless extra reads, no harm if absent.
+  //   4. Raw `mserp_vessel` RecID as a last-resort visible value.
+  //   5. Em-dash placeholder.
+  // Numeric-only strings (RecIDs leaking past FV) are rejected so the
+  // UI never shows "5637148123" as a vessel name.
+  const isUsableVesselString = (v: string | undefined | null): v is string =>
+    !!v && v.trim().length > 0 && !/^\d+$/.test(v.trim());
+  const vesselCandidates = [
+    readString(s, "mserp_vesselname"),
+    getFormattedValue(s, "mserp_vessel"),
+    readString(s, "mserp_vesselnameid"),
+    readString(s, "mserp_shipname"),
+  ];
+  const resolvedVesselName = vesselCandidates.find(isUsableVesselString);
+  const vesselName = resolvedVesselName ?? readString(s, "mserp_vessel") ?? "—";
 
   return {
     vesselName,

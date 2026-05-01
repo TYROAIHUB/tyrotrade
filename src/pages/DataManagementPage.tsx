@@ -116,7 +116,12 @@ export function DataManagementPage() {
   // don't blow past the 5–10 MB browser quota (lines table alone has ~3000 rows).
   const ship = useEntityRows<Record<string, unknown>>({
     entitySet: ENTITY_SETS.ship,
-    query: { $select: SHIP_COLUMNS.join(","), $count: true },
+    // No $select — F&O tightened the virtual entity schema and our
+    // old SHIP_COLUMNS list references properties that no longer
+    // exist on the entity. Default response carries every currently
+    // valid field; inspector renders via priorityColumns ordering,
+    // composer picks vessel name + type via multi-candidate fallback.
+    query: { $count: true },
   });
   const lines = useEntityRows<Record<string, unknown>>({
     entitySet: ENTITY_SETS.lines,
@@ -225,6 +230,16 @@ export function DataManagementPage() {
       {
         label: "Gemi Planı",
         refetch: async () => {
+          // No `$select` on the chunked ship fetch — F&O recently
+          // tightened the virtual entity schema and several columns
+          // we used to ship in $select (`mserp_vesselname`,
+          // `mserp_vesseltype`, …) no longer exist as $select-able
+          // properties. With $select dropped, every currently valid
+          // field comes back by default; the composer uses
+          // multi-candidate fallbacks so vessel name + type still
+          // render under whichever exposure the entity has now.
+          // Ship is small (~440 rows tenant-wide) so the wider
+          // payload is acceptable.
           const client = getDataverseClient();
           const projids = readProjids();
           const result = await listAllByInChunked<Record<string, unknown>>(
@@ -232,7 +247,7 @@ export function DataManagementPage() {
             ENTITY_SETS.ship,
             "mserp_tryshipprojid",
             projids,
-            { $select: SHIP_COLUMNS.join(","), $count: true }
+            { $count: true }
           );
           writeCache(ENTITY_SETS.ship, {
             fetchedAt: new Date().toISOString(),
