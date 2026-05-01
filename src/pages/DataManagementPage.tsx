@@ -28,6 +28,7 @@ import {
   PROJECT_LINE_COLUMNS,
   SHIP_COLUMNS,
   EXPENSE_COLUMNS,
+  ACTUAL_EXPENSE_COLUMNS,
   SALES_COLUMNS,
   BUDGET_COLUMNS,
 } from "@/lib/dataverse/columnOrder";
@@ -42,6 +43,10 @@ const ENTITY_SETS = {
   // (project-line variant) to this direct expense entity. Project FK is now
   // `mserp_etgtryprojid` instead of `mserp_tryplanprojectid`.
   expense: "mserp_tryaiotherexpenseentities",
+  // Realised expense distribution lines — booked freight/expense actually
+  // applied to each project. New entity (added by F&O team). FK is
+  // `mserp_etgtryprojid`, mirroring the sibling estimate table.
+  actualExpense: "mserp_tryaifrtexpenselinedistlineentities",
   // Customer invoice transactions (posted invoices), filtered per-project.
   // Replaced earlier salesline entity which mostly carried the same data
   // but in unposted form; invoice trans are the realised "actual" sales.
@@ -52,7 +57,12 @@ const ENTITY_SETS = {
 /* ─────────── Page ─────────── */
 
 type TopTabKey = "projects" | "budget";
-type ChildTabKey = "lines" | "ship" | "expense" | "sales";
+type ChildTabKey =
+  | "lines"
+  | "ship"
+  | "expense"
+  | "actualExpense"
+  | "sales";
 
 export function DataManagementPage() {
   const [topTab, setTopTab] = React.useState<TopTabKey>("projects");
@@ -109,6 +119,14 @@ export function DataManagementPage() {
   const expense = useEntityRows<Record<string, unknown>>({
     entitySet: ENTITY_SETS.expense,
     query: { $select: EXPENSE_COLUMNS.join(","), $count: true },
+  });
+  // Realised expense distribution lines — no $select yet so all columns
+  // come back for first-pass discovery in the inspector. Once the F&O
+  // team confirms which fields matter, narrow with $select like the
+  // sibling `expense` hook above.
+  const actualExpense = useEntityRows<Record<string, unknown>>({
+    entitySet: ENTITY_SETS.actualExpense,
+    query: { $count: true },
   });
   // Customer invoice transactions — per-PROJECT server-side fetch.
   // Entity is huge tenant-wide (thousands of invoiced rows; a single
@@ -224,6 +242,29 @@ export function DataManagementPage() {
             { $select: EXPENSE_COLUMNS.join(","), $count: true }
           );
           writeCache(ENTITY_SETS.expense, {
+            fetchedAt: new Date().toISOString(),
+            value: result.value,
+            totalCount: result.totalCount,
+          });
+        },
+      },
+      {
+        // Realised expense distribution. Same chunked-IN pattern as the
+        // sibling Tahmini Gider step; no $select while the column list
+        // is still being explored, so the inspector can show every field
+        // the entity carries.
+        label: "Gerçekleşen Gider",
+        refetch: async () => {
+          const client = getDataverseClient();
+          const projids = readProjids();
+          const result = await listAllByInChunked<Record<string, unknown>>(
+            client,
+            ENTITY_SETS.actualExpense,
+            "mserp_etgtryprojid",
+            projids,
+            { $count: true }
+          );
+          writeCache(ENTITY_SETS.actualExpense, {
             fetchedAt: new Date().toISOString(),
             value: result.value,
             totalCount: result.totalCount,
@@ -366,6 +407,17 @@ export function DataManagementPage() {
         : [],
     [expense.rows, selectedProjId]
   );
+  // Realised expense distribution rows for the selected project — same
+  // FK convention as the estimate table.
+  const childActualExpense = React.useMemo(
+    () =>
+      selectedProjId
+        ? actualExpense.rows.filter(
+            (r) => r["mserp_etgtryprojid"] === selectedProjId
+          )
+        : [],
+    [actualExpense.rows, selectedProjId]
+  );
   // Sales rows for the selected project — joined via mserp_etgtryprojid
   // (custom Tiryaki field on the sales line carrying the project ID).
   const childSales = React.useMemo(
@@ -407,6 +459,11 @@ export function DataManagementPage() {
       key: "expense",
       label: "Tahmini Gider Satırları",
       count: childExpense.length,
+    },
+    {
+      key: "actualExpense",
+      label: "Gerçekleşen Gider Satırları",
+      count: childActualExpense.length,
     },
     {
       key: "sales",
@@ -543,6 +600,24 @@ export function DataManagementPage() {
                 emptyText={
                   selectedProjId
                     ? "Bu projeye ait gider satırı yok"
+                    : "Üstten bir proje seç"
+                }
+                maxHeight="55vh"
+              />
+            )}
+            {childTab === "actualExpense" && (
+              <EntityRowsTable
+                rows={childActualExpense}
+                // priorityColumns (not `columns`) so all discovered fields
+                // remain visible — we don't have the column whitelist yet
+                // for this freshly-added entity. Switch to `columns` once
+                // the operationally relevant fields are confirmed.
+                priorityColumns={ACTUAL_EXPENSE_COLUMNS}
+                emptyText={
+                  selectedProjId
+                    ? actualExpense.rows.length === 0
+                      ? "Henüz çekilmedi — üstten Verileri Güncelle"
+                      : "Bu projeye ait gerçekleşen gider satırı yok"
                     : "Üstten bir proje seç"
                 }
                 maxHeight="55vh"

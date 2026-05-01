@@ -204,3 +204,16 @@ export const BUDGET_COLUMNS = [
   "mserp_amount",
   "mserp_qty",
 ] as const;
+
+/** mserp_tryaifrtexpenselinedistlineentities — Realised (actual) expense
+ *  distribution lines. New entity supplied by the F&O team for
+ *  "Gerçekleşen Gider Satırları". Project FK = `mserp_etgtryprojid`,
+ *  matches the same convention as `mserp_tryaiotherexpenseentities`.
+ *
+ *  We don't yet know the full column list — the priority below covers
+ *  the project link first; remaining fields surface in the inspector
+ *  via auto-discovery (`priorityColumns` not `columns`) so we can see
+ *  what the entity carries and narrow later. */
+export const ACTUAL_EXPENSE_COLUMNS = [
+  "mserp_etgtryprojid",
+] as const;

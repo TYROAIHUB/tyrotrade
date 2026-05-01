@@ -47,6 +47,10 @@ const ENTITY_SETS = {
   ship: "mserp_tryaiprojectshiprelationentities",
   lines: "mserp_tryaiprojectlineentities",
   expense: "mserp_tryaiotherexpenseentities",
+  /** Realised expense distribution — what actually got booked against
+   *  each project (vs. `expense` which is the upfront estimate). FK is
+   *  `mserp_etgtryprojid`, same as the estimate table. */
+  actualExpense: "mserp_tryaifrtexpenselinedistlineentities",
   budget: "mserp_tryaiprojectbudgetlineentities",
 } as const;
 
@@ -273,6 +277,29 @@ export async function refreshAllEntities(
           }
         );
         writeCache(ENTITY_SETS.expense, {
+          fetchedAt: new Date().toISOString(),
+          value: result.value,
+          totalCount: result.totalCount,
+        });
+      },
+    },
+    {
+      label: "Gerçekleşen Gider",
+      run: async () => {
+        // Realised expense distribution lines, scoped by project ID.
+        // No `$select` yet — we don't have the full column list from the
+        // F&O team, so all fields come back for the inspector. Once the
+        // priority columns are confirmed, narrow this with $select like
+        // the sibling `expense` step.
+        const projids = readProjids();
+        const result = await listAllByInChunked<Record<string, unknown>>(
+          client,
+          ENTITY_SETS.actualExpense,
+          "mserp_etgtryprojid",
+          projids,
+          { $count: true }
+        );
+        writeCache(ENTITY_SETS.actualExpense, {
           fetchedAt: new Date().toISOString(),
           value: result.value,
           totalCount: result.totalCount,

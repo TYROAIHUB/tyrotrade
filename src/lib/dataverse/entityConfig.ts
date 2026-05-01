@@ -55,6 +55,13 @@ export const INSPECTOR_ENTITIES: InspectorEntityConfig[] = [
     entitySet: "mserp_tryaiotherexpenseentities",
   },
   {
+    key: "actual-expense-lines",
+    label: "Gerçekleşen Gider Satırları",
+    description:
+      "Realised expense distribution (mserp_tryaifrtexpenselinedistlineentities) — projectId (mserp_etgtryprojid) üzerinden",
+    entitySet: "mserp_tryaifrtexpenselinedistlineentities",
+  },
+  {
     key: "budget-lines",
     label: "Tahmini Bütçe (Segment)",
     description:
