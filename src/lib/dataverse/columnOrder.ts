@@ -134,21 +134,20 @@ export const SHIP_COLUMNS = [
   "mserp_primaryfield",
   // RecID lookups (numeric — least useful for humans, last).
   //
-  // ⚠ Each lookup column is paired with its `_bigint` shadow.
-  // F&O virtual entities expose these as a pair: when only one half
-  // is in $select, Dataverse's metadata resolver may report the
-  // friendly name as missing ("Could not find a property named ...")
-  // even though both halves are valid together. Empirically, keeping
-  // the pair intact is what makes `$select` succeed on this entity.
-  // Don't remove `_bigint` columns again unless you've verified the
-  // entity schema has decoupled the pair end-to-end.
+  // 2026-05-01: Dataverse rejected `mserp_vesselname` and
+  // `mserp_vesseltype` from $select on this virtual entity (400
+  // "Could not find a property named …"). Both removed below; the
+  // remaining friendly + bigint pairs stayed valid in the same
+  // refresh, so we leave them alone for now. If a subsequent refresh
+  // surfaces another invalid field via the diagnostic toast, drop it
+  // here too.
   "mserp_loadingport",
   "mserp_loadingport_bigint",
   "mserp_dischargeporting",
   "mserp_dischargeporting_bigint",
   "mserp_vessel",
   "mserp_vessel_bigint",
-  "mserp_vesseltype",
+  // mserp_vesseltype dropped 2026-05-01 — Dataverse 400.
   "mserp_vesseltype_bigint",
   "mserp_shipoperator",
   "mserp_shipoperator_bigint",
