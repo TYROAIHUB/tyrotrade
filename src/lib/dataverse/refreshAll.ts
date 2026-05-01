@@ -7,6 +7,7 @@ import {
   SHIP_COLUMNS,
   EXPENSE_COLUMNS,
   ACTUAL_EXPENSE_COLUMNS,
+  PURCHASE_COLUMNS,
   BUDGET_COLUMNS,
 } from "@/lib/dataverse/columnOrder";
 
@@ -52,6 +53,11 @@ const ENTITY_SETS = {
    *  each project (vs. `expense` which is the upfront estimate). FK is
    *  `mserp_etgtryprojid`, same as the estimate table. */
   actualExpense: "mserp_tryaifrtexpenselinedistlineentities",
+  /** Realised project purchases — vendor invoice transactions linked
+   *  via the parent purchase table's project field
+   *  `mserp_purchtable_etgtryprojid`. Counterpart of the customer-side
+   *  sales `mserp_tryaicustinvoicetransentities`. */
+  purchase: "mserp_tryaivendinvoicetransentities",
   budget: "mserp_tryaiprojectbudgetlineentities",
 } as const;
 
@@ -304,6 +310,32 @@ export async function refreshAllEntities(
           }
         );
         writeCache(ENTITY_SETS.actualExpense, {
+          fetchedAt: new Date().toISOString(),
+          value: result.value,
+          totalCount: result.totalCount,
+        });
+      },
+    },
+    {
+      label: "Gerçekleşen Satınalma",
+      run: async () => {
+        // Realised project purchases — vendor invoice transactions
+        // joined via the parent purchase table's project FK
+        // (`mserp_purchtable_etgtryprojid`). Narrowed to 12 columns the
+        // inspector renders, chunked the same way as siblings so a
+        // 440-project IN list never blows past the URL limit.
+        const projids = readProjids();
+        const result = await listAllByInChunked<Record<string, unknown>>(
+          client,
+          ENTITY_SETS.purchase,
+          "mserp_purchtable_etgtryprojid",
+          projids,
+          {
+            $select: PURCHASE_COLUMNS.join(","),
+            $count: true,
+          }
+        );
+        writeCache(ENTITY_SETS.purchase, {
           fetchedAt: new Date().toISOString(),
           value: result.value,
           totalCount: result.totalCount,

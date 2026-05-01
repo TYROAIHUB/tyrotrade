@@ -29,6 +29,7 @@ import {
   SHIP_COLUMNS,
   EXPENSE_COLUMNS,
   ACTUAL_EXPENSE_COLUMNS,
+  PURCHASE_COLUMNS,
   SALES_COLUMNS,
   BUDGET_COLUMNS,
 } from "@/lib/dataverse/columnOrder";
@@ -47,6 +48,10 @@ const ENTITY_SETS = {
   // applied to each project. New entity (added by F&O team). FK is
   // `mserp_etgtryprojid`, mirroring the sibling estimate table.
   actualExpense: "mserp_tryaifrtexpenselinedistlineentities",
+  // Realised project purchases — vendor invoice transactions. Linked
+  // via the parent purchase table's `mserp_purchtable_etgtryprojid`.
+  // Counterpart of the customer-side `sales` entity below.
+  purchase: "mserp_tryaivendinvoicetransentities",
   // Customer invoice transactions (posted invoices), filtered per-project.
   // Replaced earlier salesline entity which mostly carried the same data
   // but in unposted form; invoice trans are the realised "actual" sales.
@@ -62,7 +67,8 @@ type ChildTabKey =
   | "ship"
   | "expense"
   | "actualExpense"
-  | "sales";
+  | "sales"
+  | "purchase";
 
 export function DataManagementPage() {
   const [topTab, setTopTab] = React.useState<TopTabKey>("projects");
@@ -126,6 +132,13 @@ export function DataManagementPage() {
   const actualExpense = useEntityRows<Record<string, unknown>>({
     entitySet: ENTITY_SETS.actualExpense,
     query: { $select: ACTUAL_EXPENSE_COLUMNS.join(","), $count: true },
+  });
+  // Realised project purchases — vendor invoice transactions, narrowed
+  // to the 12 inspector columns. Project FK lives at
+  // `mserp_purchtable_etgtryprojid` (different prefix from siblings).
+  const purchase = useEntityRows<Record<string, unknown>>({
+    entitySet: ENTITY_SETS.purchase,
+    query: { $select: PURCHASE_COLUMNS.join(","), $count: true },
   });
   // Customer invoice transactions — per-PROJECT server-side fetch.
   // Entity is huge tenant-wide (thousands of invoiced rows; a single
@@ -266,6 +279,31 @@ export function DataManagementPage() {
             }
           );
           writeCache(ENTITY_SETS.actualExpense, {
+            fetchedAt: new Date().toISOString(),
+            value: result.value,
+            totalCount: result.totalCount,
+          });
+        },
+      },
+      {
+        // Realised project purchases — vendor invoice transactions.
+        // Same chunked-IN pattern; FK is `mserp_purchtable_etgtryprojid`
+        // (purchtable_ prefix, NOT the standard `mserp_etgtryprojid`).
+        label: "Gerçekleşen Satınalma",
+        refetch: async () => {
+          const client = getDataverseClient();
+          const projids = readProjids();
+          const result = await listAllByInChunked<Record<string, unknown>>(
+            client,
+            ENTITY_SETS.purchase,
+            "mserp_purchtable_etgtryprojid",
+            projids,
+            {
+              $select: PURCHASE_COLUMNS.join(","),
+              $count: true,
+            }
+          );
+          writeCache(ENTITY_SETS.purchase, {
             fetchedAt: new Date().toISOString(),
             value: result.value,
             totalCount: result.totalCount,
@@ -419,6 +457,17 @@ export function DataManagementPage() {
         : [],
     [actualExpense.rows, selectedProjId]
   );
+  // Realised purchase rows for the selected project — FK is the
+  // flattened parent-table column `mserp_purchtable_etgtryprojid`.
+  const childPurchase = React.useMemo(
+    () =>
+      selectedProjId
+        ? purchase.rows.filter(
+            (r) => r["mserp_purchtable_etgtryprojid"] === selectedProjId
+          )
+        : [],
+    [purchase.rows, selectedProjId]
+  );
   // Sales rows for the selected project — joined via mserp_etgtryprojid
   // (custom Tiryaki field on the sales line carrying the project ID).
   const childSales = React.useMemo(
@@ -470,6 +519,11 @@ export function DataManagementPage() {
       key: "sales",
       label: "Proje Satış Satırları",
       count: childSales.length,
+    },
+    {
+      key: "purchase",
+      label: "Proje Satınalma Satırları",
+      count: childPurchase.length,
     },
   ];
 
@@ -632,6 +686,21 @@ export function DataManagementPage() {
                     ? sales.rows.length === 0
                       ? "Henüz çekilmedi — üstten Güncelle"
                       : "Bu projeye ait fatura kesilmiş satış satırı yok"
+                    : "Üstten bir proje seç"
+                }
+                maxHeight="55vh"
+              />
+            )}
+            {childTab === "purchase" && (
+              <EntityRowsTable
+                rows={childPurchase}
+                // Explicit columns — only the 12 confirmed fields render.
+                columns={[...PURCHASE_COLUMNS]}
+                emptyText={
+                  selectedProjId
+                    ? purchase.rows.length === 0
+                      ? "Henüz çekilmedi — üstten Verileri Güncelle"
+                      : "Bu projeye ait satınalma satırı yok"
                     : "Üstten bir proje seç"
                 }
                 maxHeight="55vh"

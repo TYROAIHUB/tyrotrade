@@ -237,3 +237,44 @@ export const ACTUAL_EXPENSE_COLUMNS = [
   "mserp_etgtraderid",
   "mserp_itemname",
 ] as const;
+
+/** mserp_tryaivendinvoicetransentities — Realised (actual) project
+ *  purchases. Vendor invoice transactions linked to a project line
+ *  (counterpart of `mserp_tryaicustinvoicetransentities` for sales).
+ *
+ *  Project FK = `mserp_purchtable_etgtryprojid` (note the
+ *  `purchtable_` prefix — different from the standard
+ *  `mserp_etgtryprojid` other entities use; the FK lives on the
+ *  parent purchase table, exposed here as a flattened column).
+ *
+ *  Operationally relevant fields, confirmed by the user:
+ *   - `mserp_purchtable_etgtryprojid` — project FK (joins to Projeler)
+ *   - `mserp_purchid` — purchase voucher / order number
+ *   - `mserp_purchtable_etgtraderid` — operational trader on the PO
+ *   - `mserp_purchtable_etgmaintraderid` — main / desk-leader trader
+ *   - `mserp_invoicedate` — vendor invoice date
+ *   - `mserp_purchtable_purchname` — purchase order title / vendor desc
+ *   - `mserp_itemid` — item code
+ *   - `mserp_name` — item display name
+ *   - `mserp_qty` — invoiced quantity
+ *   - `mserp_purchprice` — unit purchase price (in row currency)
+ *   - `mserp_lineamount` — line total in row currency
+ *   - `mserp_currencycode` — currency of `mserp_lineamount`/`mserp_purchprice`
+ *
+ *  Fetched with `$select` to keep the payload + cache lean; rendered
+ *  with explicit `columns={[...PURCHASE_COLUMNS]}` so only these
+ *  fields surface in the inspector. */
+export const PURCHASE_COLUMNS = [
+  "mserp_purchtable_etgtryprojid",
+  "mserp_purchid",
+  "mserp_purchtable_etgtraderid",
+  "mserp_purchtable_etgmaintraderid",
+  "mserp_invoicedate",
+  "mserp_purchtable_purchname",
+  "mserp_itemid",
+  "mserp_name",
+  "mserp_qty",
+  "mserp_purchprice",
+  "mserp_lineamount",
+  "mserp_currencycode",
+] as const;

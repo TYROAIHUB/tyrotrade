@@ -62,6 +62,13 @@ export const INSPECTOR_ENTITIES: InspectorEntityConfig[] = [
     entitySet: "mserp_tryaifrtexpenselinedistlineentities",
   },
   {
+    key: "purchase-lines",
+    label: "Proje Satınalma Satırları",
+    description:
+      "Realised project purchases — vendor invoice transactions (mserp_tryaivendinvoicetransentities) — projectId (mserp_purchtable_etgtryprojid) üzerinden",
+    entitySet: "mserp_tryaivendinvoicetransentities",
+  },
+  {
     key: "budget-lines",
     label: "Tahmini Bütçe (Segment)",
     description:
