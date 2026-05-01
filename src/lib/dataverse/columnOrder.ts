@@ -68,9 +68,12 @@ export const PROJECT_LINE_COLUMNS = [
 
 /** mserp_tryaiprojectshiprelationentities — Vessel plan + voyage milestones */
 export const SHIP_COLUMNS = [
-  // Identity
+  // Identity. Vessel name is NOT a direct property on this virtual
+  // entity (Dataverse rejects `mserp_vesselname` in $select with
+  // "Could not find a property named …" → 400) — it surfaces via the
+  // `mserp_vessel` lookup's FormattedValue annotation, which the
+  // composer reads from the response without needing to $select it.
   "mserp_tryshipprojid",
-  "mserp_vesselname",
   "mserp_assignmentid",
   "mserp_vesselvoyagenumber",
   "mserp_voyagestatus",

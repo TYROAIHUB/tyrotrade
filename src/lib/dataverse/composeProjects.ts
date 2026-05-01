@@ -462,8 +462,21 @@ function toVesselPlan(s: Record<string, unknown>): VesselPlan {
   const voyageType = pickFriendly("mserp_tryexpenseprojecttype");
   const netFreightAmount = num(s["mserp_netfreightamount"]);
 
+  // Vessel name resolution — the entity dropped the direct
+  // `mserp_vesselname` string column (Dataverse 400's it in $select).
+  // Order of preference:
+  //   1. `mserp_vessel`'s FormattedValue annotation (canonical lookup
+  //      display string from Dataverse).
+  //   2. Raw `mserp_vessel` value (RecID — last resort, useful as
+  //      a placeholder in development if the FV is absent).
+  //   3. Em-dash so the UI never shows an empty cell.
+  const vesselName =
+    getFormattedValue(s, "mserp_vessel") ||
+    readString(s, "mserp_vessel") ||
+    "—";
+
   return {
-    vesselName: readString(s, "mserp_vesselname") || "—",
+    vesselName,
     fixtureId: readString(s, "mserp_assignmentid") || "",
     voyage:
       Number(readString(s, "mserp_vesselvoyagenumber") || "1") || 1,
