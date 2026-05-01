@@ -264,8 +264,11 @@ export function RefreshErrorToast({
           {message && (
             <>
               {stepLabel && <span className="text-slate-300 mx-1">·</span>}
-              <span className="text-slate-500">
-                {message.slice(0, 120)}
+              <span
+                className="text-slate-500 break-words"
+                title={message}
+              >
+                {message.slice(0, 240)}
               </span>
             </>
           )}

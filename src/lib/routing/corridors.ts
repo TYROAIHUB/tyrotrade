@@ -149,8 +149,21 @@ const BRAZIL_PORTS = new Set([
   "aratu",
 ]);
 
-/** Sea of Azov ports — must transit Kerch Strait to enter Black Sea. */
-const AZOV_PORTS = new Set(["yeisk", "rostov", "azov", "kavkaz", "mariupol"]);
+/** Sea of Azov ports — must transit Kerch Strait to enter Black Sea.
+ *  Includes Don/Volga river ports (Bagaevskaya, Balakovo) which reach
+ *  the Azov/Black Sea via inland waterways; for corridor purposes they
+ *  enter open water at the Azov coast. */
+const AZOV_PORTS = new Set([
+  "yeisk",
+  "rostov",
+  "azov",
+  "kavkaz",
+  "mariupol",
+  "taganrog",
+  "temryuk",
+  "bagaevskaya",
+  "balakovo",
+]);
 
 /** Black Sea proper — covers Ukraine/Russia/Bulgaria/Romania/Türkiye BS
  *  coasts + Danube delta ports (accessed via Sulina branch) + Georgia.
@@ -199,7 +212,8 @@ const MARMARA_PORTS = new Set([
 ]);
 
 /** Türkiye Mediterranean / Aegean ports — Sanko/Yumurtalık/Ceyhan
- *  cluster sits on the same East Med coast as İskenderun. */
+ *  cluster sits on the same East Med coast as İskenderun. Adana
+ *  anchors at Karataş on the Med coast for routing purposes. */
 const TURKEY_MED_PORTS = new Set([
   "izmir",
   "mersin",
@@ -208,6 +222,7 @@ const TURKEY_MED_PORTS = new Set([
   "yumurtalik",
   "ceyhan",
   "toros",
+  "adana",
 ]);
 
 /** Egypt (Suez approach) — Mediterranean coast. */
@@ -226,6 +241,7 @@ const ITALY_GREECE_PORTS = new Set([
   "tarragona",
   "pozzallo",
   "algeciras",
+  "molfetta",
 ]);
 
 /** Levant ports — between Türkiye Med and Egypt on the East Med coast. */

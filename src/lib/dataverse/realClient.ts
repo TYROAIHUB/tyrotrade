@@ -98,6 +98,28 @@ async function readJson<T>(res: Response): Promise<T> {
   }
 }
 
+/** Try to extract the human-readable error message Dataverse buries in
+ *  its 400/403/etc payloads. The standard OData error envelope is
+ *  `{ error: { code, message } }` but virtual entities sometimes send
+ *  back `{ Message }` or `{ ExceptionMessage }` from the underlying
+ *  F&O service — handle both shapes so the toast surfaces something
+ *  diagnosable instead of bare `"400"`. */
+function extractDataverseError(body: unknown): string | undefined {
+  if (!body || typeof body !== "object") return undefined;
+  const obj = body as Record<string, unknown>;
+  // Standard OData v4 envelope
+  if (obj.error && typeof obj.error === "object") {
+    const err = obj.error as Record<string, unknown>;
+    const msg = err.message;
+    if (typeof msg === "string" && msg.length > 0) return msg;
+  }
+  // F&O virtual entity / legacy fall-throughs
+  if (typeof obj.Message === "string") return obj.Message;
+  if (typeof obj.ExceptionMessage === "string") return obj.ExceptionMessage;
+  if (typeof obj.message === "string") return obj.message;
+  return undefined;
+}
+
 class RealDataverseClient implements DataverseClient {
   async list<T>(
     entitySet: string,
@@ -112,8 +134,14 @@ class RealDataverseClient implements DataverseClient {
     const res = await authedFetch(url);
     if (!res.ok) {
       const body = await readJson<unknown>(res);
+      const detail = extractDataverseError(body);
       throw new DataverseError(
-        `Dataverse list failed: ${res.status} ${res.statusText}`,
+        // Surface the real error message from the response body so the
+        // refresh toast (and console) shows something actionable like
+        // "Property mserp_tryshipprojid not found" instead of just 400.
+        detail
+          ? `${res.status} ${res.statusText} — ${detail}`
+          : `Dataverse list failed: ${res.status} ${res.statusText}`,
         res.status,
         body
       );
@@ -158,8 +186,11 @@ class RealDataverseClient implements DataverseClient {
       const res = await authedFetch(nextLink);
       if (!res.ok) {
         const body = await readJson<unknown>(res);
+        const detail = extractDataverseError(body);
         throw new DataverseError(
-          `Dataverse listAll page failed: ${res.status} ${res.statusText}`,
+          detail
+            ? `${res.status} ${res.statusText} — ${detail}`
+            : `Dataverse listAll page failed: ${res.status} ${res.statusText}`,
           res.status,
           body
         );

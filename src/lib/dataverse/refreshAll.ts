@@ -95,14 +95,13 @@ export interface RefreshResult {
  *  ~16KB URL ceiling AND under the smaller proxy/CDN limits some
  *  enterprise networks impose between the browser and Dataverse.
  *
- *  Sized at 100 so even 1,000-project tenants take only 10 batches —
- *  five sequential ~250ms fetches stay well under the visible refresh
- *  toast budget. Originally we sent all 440 IDs in a single 10KB+ URL,
- *  which auto-refresh saw fail intermittently with HTTP 400 (post-login
- *  network warm-up + proxy buffering); manual "Verileri Güncelle"
- *  succeeded against the same query because the proxy state had
- *  settled by the time the user clicked. */
-const PROJID_CHUNK_SIZE = 100;
+ *  Originally sized at 100; reduced to 50 after a follow-up 400 still
+ *  hit the Gemi Planı step on `mserp_tryaiprojectshiprelationentities`
+ *  with full chunks. F&O virtual entities can be touchier with large
+ *  `In(...)` lists than regular Dataverse tables — 50 keeps each URL
+ *  under ~1.5KB and gives the server a smaller working set per
+ *  request. 440 projects → 9 sequential fetches, still fast. */
+const PROJID_CHUNK_SIZE = 50;
 
 function buildInFilter(field: string, projids: string[]): string {
   if (projids.length === 0) {

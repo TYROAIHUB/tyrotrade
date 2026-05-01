@@ -1127,6 +1127,69 @@ export const PORT_RECORDS: Record<string, PortRecord> = {
     lat: 13.0792,
     aliases: ["laemchabang", "laem chabang", "bangkok"],
   },
+
+  // ── 2026-05 unresolved port batch ────────────────────────────────────────
+  // Reported via console.warn diagnostic in `useRealProjects` after a
+  // refresh — added so route corridors render correctly for these
+  // projects' loading/discharge ports.
+  adana: {
+    // F&O data calls the discharge area "Adana" — the actual seaport is
+    // ~50km south at Karataş on the Mediterranean coast. Coords here
+    // anchor on Karataş so the route doesn't cross inland.
+    name: "Adana",
+    country: "Türkiye",
+    lon: 35.3725,
+    lat: 36.5685,
+    aliases: ["adana", "karatas", "karataş"],
+  },
+  taganrog: {
+    name: "Taganrog",
+    country: "Russia",
+    lon: 38.9168,
+    lat: 47.2362,
+    aliases: ["taganrog"],
+  },
+  temryuk: {
+    name: "Temryuk",
+    country: "Russia",
+    lon: 37.3859,
+    lat: 45.2737,
+    aliases: ["temryuk"],
+  },
+  bagaevskaya: {
+    // River port on the Don, ~50km upriver from Rostov-on-Don. Accessed
+    // via Sea of Azov → Don River. Treated as an Azov port for routing
+    // (Kerch Strait crossing required to reach Black Sea proper).
+    name: "Bagaevskaya",
+    country: "Russia",
+    lon: 40.4067,
+    lat: 47.3197,
+    aliases: ["bagaevskaya"],
+  },
+  balakovo: {
+    // River port on the Volga. Reaches the sea via Volga-Don Canal →
+    // Sea of Azov → Black Sea. Long inland transit; routed as Azov for
+    // corridor selection.
+    name: "Balakovo",
+    country: "Russia",
+    lon: 47.7869,
+    lat: 52.0264,
+    aliases: ["balakovo"],
+  },
+  molfetta: {
+    name: "Molfetta",
+    country: "Italy",
+    lon: 16.5994,
+    lat: 41.2003,
+    aliases: ["molfetta"],
+  },
+  moreheadcity: {
+    name: "Morehead City",
+    country: "USA",
+    lon: -76.7269,
+    lat: 34.7229,
+    aliases: ["moreheadcity", "morehead city", "morehead"],
+  },
 };
 
 /** Normalisation: lowercase → strip Turkish diacritics → strip non-alphanumerics.
