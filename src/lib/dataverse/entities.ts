@@ -115,6 +115,15 @@ export interface VesselPlan {
    *  `cargoValueUsd` which we synthesize from line totals when this field
    *  is missing. */
   netFreightAmount?: number;
+  /** mserp_loadingtime — Yükleme Süresi (gün). Surfaced in the
+   *  RouteMap header pill row alongside Tahliye + Transit, replacing
+   *  the older single "transit" pill that was derived from the
+   *  milestone span. */
+  loadingDays?: number | null;
+  /** mserp_evacuationtime — Tahliye Süresi (gün). */
+  evacuationDays?: number | null;
+  /** mserp_transfertime — Transit Süresi (gün). */
+  transferDays?: number | null;
 }
 
 export interface VesselDemurrageNotes {

@@ -569,6 +569,13 @@ function toVesselPlan(
     paymentStatus,
     voyageType,
     netFreightAmount: netFreightAmount > 0 ? netFreightAmount : undefined,
+    // Voyage-leg durations as captured on the F&O Gemi Planı —
+    // surfaced in the RouteMap header pill row. `num()` collapses
+    // missing/non-finite to 0; we treat 0 as "not set" so the pill
+    // hides itself rather than rendering "0g".
+    loadingDays: positiveOrNull(num(s["mserp_loadingtime"])),
+    evacuationDays: positiveOrNull(num(s["mserp_evacuationtime"])),
+    transferDays: positiveOrNull(num(s["mserp_transfertime"])),
   };
 }
 
@@ -798,6 +805,14 @@ function num(v: unknown): number {
     return Number.isFinite(n) ? n : 0;
   }
   return 0;
+}
+
+/** Treat a 0 / non-finite numeric as "not set". Used by the duration
+ *  fields on the ship plan — F&O writes 0 when the operator hasn't
+ *  filled in the loading / discharge / transit time, and we'd rather
+ *  hide the pill than render "0g". */
+function positiveOrNull(v: number): number | null {
+  return Number.isFinite(v) && v > 0 ? v : null;
 }
 
 function isoDate(v: unknown): string | null {

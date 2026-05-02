@@ -43,7 +43,6 @@ import { DEFAULT_STYLE } from "@/lib/map/style";
 import { useRouteGeometry } from "@/hooks/useRouteGeometry";
 import { useRouteProgress } from "@/hooks/useRouteProgress";
 import { formatDate } from "@/lib/format";
-import { selectTransitDays } from "@/lib/selectors/project";
 import type { Project } from "@/lib/dataverse/entities";
 import { useThemeAccent } from "@/components/layout/theme-accent";
 
@@ -541,99 +540,174 @@ export function RouteMap({ project }: RouteMapProps) {
   );
 }
 
-/* ─────────── Duration pills (Transit + Operasyon) ─────────── */
+/* ─────────── Duration pills (Yükleme + Tahliye + Transit + Operasyon) ─────────── */
 
-/** Days between two ISO date strings (start → end). Negative or non-finite
- *  spans collapse to 0 so the pill never shows a misleading "-3g". */
-function diffDays(startIso: string, endIso: string): number | null {
+/** Calendar-day count strictly BETWEEN two ISO date strings — excludes
+ *  both the start and the end day from the result. Used for the
+ *  "Operasyon" pill: the voyage's first milestone (LP-ETA) and last
+ *  milestone (DP-ED) are NOT counted as operation days; only the
+ *  full days strictly in between are. Returns 0 for adjacent or
+ *  same-day pairs and null when either side is missing.
+ *
+ * Examples:
+ *   2026-01-01 → 2026-01-10 → 8  (days 2-9 inclusive)
+ *   2026-01-01 → 2026-01-02 → 0  (no full day in between)
+ *   2026-01-01 → 2026-01-01 → 0  (clamped, never negative) */
+function daysBetweenExclusive(
+  startIso: string | null | undefined,
+  endIso: string | null | undefined
+): number | null {
+  if (!startIso || !endIso) return null;
   const start = new Date(startIso).getTime();
   const end = new Date(endIso).getTime();
   if (!Number.isFinite(start) || !Number.isFinite(end)) return null;
-  if (end < start) return null;
-  return Math.round((end - start) / 86_400_000);
+  const span = Math.round((end - start) / 86_400_000);
+  return Math.max(0, span - 1);
 }
 
-/** Operasyon Süresi — earliest known LP milestone → DP NOR accepted.
- *  When the voyage is Completed / Closed and DP NOR is missing, fall
- *  back to the latest available DP date (dpEd > dpSd > dpEta) so closed
- *  projects still display a duration. */
+/** Operasyon Süresi — full-day count between LP-ETA and DP-ED on the
+ *  voyage timeline, exclusive of both endpoints (per user spec). The
+ *  start and end milestones themselves don't count as operation
+ *  days, only what's strictly in between. */
 function operationDays(p: Project): number | null {
   const ms = p.vesselPlan?.milestones;
   if (!ms) return null;
-  const start = ms.lpEta ?? ms.lpNorAccepted ?? ms.lpSd ?? ms.lpEd;
-  if (!start) return null;
-
-  let end = ms.dpNorAccepted;
-  if (!end) {
-    const status = p.vesselPlan?.vesselStatus;
-    const isTerminal =
-      status === "Completed" ||
-      status === "Closed" ||
-      p.status === "Kapalı" ||
-      p.status === "Closed";
-    if (isTerminal) {
-      end = ms.dpEd ?? ms.dpSd ?? ms.dpEta ?? null;
-    }
-  }
-  if (!end) return null;
-  return diffDays(start, end);
+  return daysBetweenExclusive(ms.lpEta, ms.dpEd);
 }
 
-/** Two compact day-count pills shown next to the stage chip in the map
- *  header. Either pill renders only when both endpoints are known. */
+/** Pill colour palette per metric — picked so the four pills read as
+ *  a group but each carries its own hue.
+ *
+ *   Yükleme   → amber  (loading: warming up)
+ *   Tahliye   → emerald (discharge: arrival side / "boşaltma yeşili")
+ *   Transit   → sky    (the dominant blue we already used)
+ *   Operasyon → indigo (the dominant indigo we already used) */
+const PILL_TONES = {
+  loading: {
+    bg: "rgba(245,158,11,0.13)",
+    ring: "rgba(245,158,11,0.34)",
+    label: "rgb(180 83 9 / 0.85)", // amber-700 @ 85
+    value: "rgb(120 53 15)", // amber-900
+  },
+  discharge: {
+    bg: "rgba(16,185,129,0.13)",
+    ring: "rgba(16,185,129,0.34)",
+    label: "rgb(4 120 87 / 0.85)", // emerald-700 @ 85
+    value: "rgb(6 78 59)", // emerald-900
+  },
+  transit: {
+    bg: "rgba(56,189,248,0.14)",
+    ring: "rgba(56,189,248,0.35)",
+    label: "rgb(2 132 199 / 0.85)", // sky-700 @ 85
+    value: "rgb(12 74 110)", // sky-900
+  },
+  operation: {
+    bg: "rgba(99,102,241,0.13)",
+    ring: "rgba(99,102,241,0.32)",
+    label: "rgb(67 56 202 / 0.85)", // indigo-700 @ 85
+    value: "rgb(49 46 129)", // indigo-900
+  },
+} as const;
+
+/** Compact day-count pill shared by all four metrics. Renders only
+ *  when `value` is a finite number — null collapses to nothing. */
+function DurationPill({
+  value,
+  label,
+  tone,
+  title,
+}: {
+  value: number | null;
+  label: string;
+  tone: (typeof PILL_TONES)[keyof typeof PILL_TONES];
+  title: string;
+}) {
+  if (value == null) return null;
+  return (
+    <span
+      className="ml-1 inline-flex items-center rounded-full px-2 py-0.5 text-[10.5px] font-medium tracking-tight"
+      style={{
+        backgroundColor: tone.bg,
+        boxShadow: `inset 0 0 0 1px ${tone.ring}`,
+      }}
+      title={title}
+    >
+      <Clock className="size-2.5 mr-1" strokeWidth={2.5} />
+      <span
+        className="uppercase tracking-wider"
+        style={{ color: tone.label }}
+      >
+        {label}
+      </span>
+      <span aria-hidden className="mx-1" style={{ color: tone.label, opacity: 0.4 }}>
+        ·
+      </span>
+      <span
+        className="font-semibold tabular-nums"
+        style={{ color: tone.value }}
+      >
+        {value}g
+      </span>
+    </span>
+  );
+}
+
+/** Four duration pills shown next to the stage chip in the map
+ *  header — all four sourced from the F&O Gemi Planı:
+ *
+ *    Yükleme  ← `mserp_loadingtime`
+ *    Tahliye  ← `mserp_evacuationtime`
+ *    Transit  ← `mserp_transfertime`
+ *    Operasyon ← derived: full days between LP-ETA and DP-ED
+ *                 (endpoints excluded; milestone days don't count
+ *                 against the operation span).
+ *
+ *  Each pill self-hides when its source value is missing/zero, so
+ *  voyages with partial data still render whatever's available. */
 function DurationPills({ project }: { project: Project }) {
-  // Same selector the dashboard's Velocity tile + drawer use, so the
-  // header pill here and the "Min/Max/Avg" line on the dashboard are
-  // always reading from the identical formula.
-  const transit = selectTransitDays(project);
+  const vp = project.vesselPlan;
+  const loading = vp?.loadingDays ?? null;
+  const discharge = vp?.evacuationDays ?? null;
+  const transit = vp?.transferDays ?? null;
   const operation = operationDays(project);
-  if (transit == null && operation == null) return null;
+  if (
+    loading == null &&
+    discharge == null &&
+    transit == null &&
+    operation == null
+  ) {
+    return null;
+  }
   return (
     <>
-      {transit != null && (
-        <span
-          className="ml-1 inline-flex items-center rounded-full px-2 py-0.5 text-[10.5px] font-medium tracking-tight"
-          style={{
-            backgroundColor: "rgba(56,189,248,0.14)",
-            color: "#0c4a6e",
-            boxShadow: "inset 0 0 0 1px rgba(56,189,248,0.35)",
-          }}
-          title={`Transit Süre: ${transit} gün (Yükleme bitişi → DP NOR Kabul)`}
-        >
-          <Clock className="size-2.5 mr-1" strokeWidth={2.5} />
-          <span className="uppercase tracking-wider text-sky-700/85">
-            Transit
-          </span>
-          <span aria-hidden className="text-sky-700/35 mx-1">
-            ·
-          </span>
-          <span className="font-semibold tabular-nums text-sky-900">
-            {transit}g
-          </span>
-        </span>
-      )}
-      {operation != null && (
-        <span
-          className="ml-1 inline-flex items-center rounded-full px-2 py-0.5 text-[10.5px] font-medium tracking-tight"
-          style={{
-            backgroundColor: "rgba(99,102,241,0.13)",
-            color: "#312e81",
-            boxShadow: "inset 0 0 0 1px rgba(99,102,241,0.32)",
-          }}
-          title={`Operasyon Süresi: ${operation} gün (Toplam operasyon süresi)`}
-        >
-          <Clock className="size-2.5 mr-1" strokeWidth={2.5} />
-          <span className="uppercase tracking-wider text-indigo-700/85">
-            Operasyon
-          </span>
-          <span aria-hidden className="text-indigo-700/35 mx-1">
-            ·
-          </span>
-          <span className="font-semibold tabular-nums text-indigo-900">
-            {operation}g
-          </span>
-        </span>
-      )}
+      <DurationPill
+        value={loading}
+        label="Yükleme"
+        tone={PILL_TONES.loading}
+        title={`Yükleme Süresi: ${loading} gün (mserp_loadingtime)`}
+      />
+      <DurationPill
+        value={discharge}
+        label="Tahliye"
+        tone={PILL_TONES.discharge}
+        title={`Tahliye Süresi: ${discharge} gün (mserp_evacuationtime)`}
+      />
+      <DurationPill
+        value={transit}
+        label="Transit"
+        tone={PILL_TONES.transit}
+        title={`Transit Süresi: ${transit} gün (mserp_transfertime)`}
+      />
+      <DurationPill
+        value={operation}
+        label="Operasyon"
+        tone={PILL_TONES.operation}
+        title={
+          operation != null
+            ? `Operasyon Süresi: ${operation} gün (LP-ETA → DP-ED, başlangıç/bitiş günleri hariç)`
+            : ""
+        }
+      />
     </>
   );
 }
