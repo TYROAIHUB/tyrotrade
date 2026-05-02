@@ -7,7 +7,6 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { useThemeAccent } from "@/components/layout/theme-accent";
 import { useProjects } from "@/hooks/useProjects";
 import { formatDate } from "@/lib/format";
@@ -199,7 +198,12 @@ export function NotificationButton() {
         collisionPadding={12}
         className={cn(
           "w-[min(22rem,calc(100vw-1rem))] p-0 overflow-hidden flex flex-col",
-          "max-h-[min(calc(100vh-120px),580px)]",
+          // Use Radix's collision-aware height variable — Popover
+          // measures the available viewport space and exposes it as
+          // a CSS custom property, so the panel always shrinks to
+          // fit. Also clamp to a sane upper bound (640px) so the
+          // popover doesn't span 1100px on a tall display.
+          "max-h-[min(var(--radix-popover-content-available-height),640px)]",
           "bg-white/95 backdrop-blur-2xl backdrop-saturate-150",
           "ring-1 ring-white/55",
           "shadow-[0_28px_72px_-16px_rgba(15,23,42,0.45)]"
@@ -228,7 +232,22 @@ export function NotificationButton() {
           </div>
         </div>
 
-        <ScrollArea className="flex-1 min-h-0">
+        {/* Native vertical scroll — earlier shadcn ScrollArea
+            occasionally measured 0px height inside the Popover's flex
+            column, leaving overflow content unreachable. `flex-1
+            min-h-0 overflow-y-auto` is the simplest combination that
+            always yields a working scroll inside a constrained-height
+            flex parent. Light styling keeps the scrollbar minimal so
+            the glass aesthetic isn't broken. */}
+        <div
+          className={cn(
+            "flex-1 min-h-0 overflow-y-auto overscroll-contain",
+            "[&::-webkit-scrollbar]:w-1.5",
+            "[&::-webkit-scrollbar-thumb]:rounded-full",
+            "[&::-webkit-scrollbar-thumb]:bg-foreground/15",
+            "[&::-webkit-scrollbar-thumb:hover]:bg-foreground/25"
+          )}
+        >
           <div className="px-3 py-3">
             {/* Upcoming first — actionable */}
             <SectionHeader
@@ -290,7 +309,7 @@ export function NotificationButton() {
               )}
             </ol>
           </div>
-        </ScrollArea>
+        </div>
       </PopoverContent>
     </Popover>
   );
