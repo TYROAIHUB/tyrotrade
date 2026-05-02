@@ -335,12 +335,20 @@ function EventRow({
   onClick: () => void;
 }) {
   const stageColors = STAGE_COLORS[event.stage] ?? STAGE_COLORS["Yolda"];
+  // Relative-time pill colours follow `kind` (past vs. upcoming),
+  // not the milestone stage — the eye should resolve "yarın / 5 gün
+  // önce" first, then drill into the stage chip on the left. Two
+  // separate colour systems keep them visually independent.
+  const timePillBg =
+    event.kind === "done" ? "rgba(16,185,129,0.13)" : "rgba(14,165,233,0.15)";
+  const timePillFg =
+    event.kind === "done" ? "rgb(4 120 87)" : "rgb(2 132 199)";
   return (
     <li>
       <button
         type="button"
         onClick={onClick}
-        className="w-full flex gap-2.5 text-left hover:bg-foreground/[0.04] rounded-lg p-2 transition-colors"
+        className="w-full flex gap-2.5 text-left hover:bg-foreground/[0.05] rounded-lg p-2.5 transition-colors"
       >
         <div className="shrink-0 mt-0.5">
           {event.kind === "done" ? (
@@ -353,10 +361,15 @@ function EventRow({
             </span>
           )}
         </div>
-        <div className="min-w-0 flex-1">
-          <div className="flex items-baseline gap-1.5">
+        <div className="min-w-0 flex-1 space-y-1">
+          {/* Top row: stage chip + milestone label + right-aligned
+              relative-time pill. Time pill is the headline metric
+              for a notification ("yarın" / "5 gün önce"), so it
+              gets its own coloured chip on the right edge instead
+              of being buried in the meta line below. */}
+          <div className="flex items-center gap-1.5">
             <span
-              className="px-1.5 py-0.5 rounded text-[9.5px] font-semibold tracking-tight shrink-0"
+              className="px-1.5 py-[1.5px] rounded text-[10px] font-semibold tracking-tight shrink-0"
               style={{
                 backgroundColor: stageColors.bg,
                 color: stageColors.fg,
@@ -366,28 +379,42 @@ function EventRow({
             </span>
             <span
               className={cn(
-                "text-xs leading-snug truncate",
-                event.kind === "done" ? "text-foreground" : "text-foreground/85"
+                "text-[12.5px] font-semibold leading-snug truncate flex-1 min-w-0",
+                event.kind === "done" ? "text-foreground" : "text-foreground/90"
               )}
             >
               {event.label}
             </span>
+            <span
+              className="shrink-0 px-1.5 py-[1.5px] rounded-full text-[10.5px] font-semibold tabular-nums"
+              style={{ backgroundColor: timePillBg, color: timePillFg }}
+            >
+              {relativeTime(event.date, now)}
+            </span>
           </div>
-          <div className="text-[10px] text-muted-foreground mt-0.5 truncate">
-            <span className="font-mono">{event.projectNo}</span>
+          {/* Bottom meta row: identity + absolute date. Each piece
+              now has its own contrast level so they stop reading as
+              one undifferentiated wall of grey:
+                projectNo  → mono, foreground/70 (identity anchor)
+                vesselName → foreground/65, truncates first
+                tarih      → tabular-nums, foreground/65
+              Dot separators are rendered as their own muted spans
+              so they sit visually behind the data, not next to it. */}
+          <div className="text-[11px] flex items-center gap-1.5 min-w-0 leading-tight">
+            <span className="font-mono font-semibold text-foreground/70 shrink-0">
+              {event.projectNo}
+            </span>
             {event.vesselName && (
               <>
-                {" · "}
-                <span>{event.vesselName}</span>
+                <span className="text-muted-foreground/40 shrink-0">·</span>
+                <span className="truncate text-foreground/65">
+                  {event.vesselName}
+                </span>
               </>
             )}
-            {" · "}
-            <span className="tabular-nums">
+            <span className="text-muted-foreground/40 shrink-0">·</span>
+            <span className="tabular-nums text-foreground/65 shrink-0">
               {formatDate(event.date.toISOString())}
-            </span>
-            <span className="text-muted-foreground/70">
-              {" "}
-              · {relativeTime(event.date, now)}
             </span>
           </div>
         </div>
