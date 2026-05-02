@@ -93,6 +93,7 @@ export const FIELD_LABELS: Record<string, string> = {
   mserp_projname: "Proje Adı",
   mserp_projgroupid: "Proje Grubu",
   mserp_contractdate: "Sözleşme Tarihi",
+  mserp_executionperiod: "Operasyon Periyodu",
   mserp_status: "Durum",
   mserp_workflowstatus: "İş Akışı Durumu",
   mserp_traderid: "Trader",

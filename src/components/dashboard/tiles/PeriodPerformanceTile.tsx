@@ -13,7 +13,10 @@ import { AnimatedNumber } from "../AnimatedNumber";
 import { useThemeAccent } from "@/components/layout/theme-accent";
 import { TONE_FORECAST } from "@/components/details/AccentIconBadge";
 import { aggregateEstimatedPL } from "@/lib/selectors/aggregate";
-import { selectCargoValueUsd } from "@/lib/selectors/project";
+import {
+  selectCargoValueUsd,
+  selectExecutionDate,
+} from "@/lib/selectors/project";
 import { getFinancialYear } from "@/lib/dashboard/financialPeriod";
 import type { Project } from "@/lib/dataverse/entities";
 
@@ -74,7 +77,8 @@ export function PeriodPerformanceTile({
     }
     const indexByKey = new Map(buckets.map((b, i) => [b.monthKey, i]));
     for (const p of projects) {
-      const t = new Date(p.projectDate);
+      // Bucket on operasyon periyodu when set, signing date otherwise.
+      const t = new Date(selectExecutionDate(p));
       if (Number.isNaN(t.getTime())) continue;
       const key = `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, "0")}`;
       const idx = indexByKey.get(key);

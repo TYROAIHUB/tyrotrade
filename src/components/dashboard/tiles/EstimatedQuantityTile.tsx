@@ -11,7 +11,11 @@ import {
   GridBarBackground,
   type GridBarProps,
 } from "@/components/evilcharts/blocks/grid-bar-chart";
-import { selectTotalKg, selectTotalTons } from "@/lib/selectors/project";
+import {
+  selectExecutionDate,
+  selectTotalKg,
+  selectTotalTons,
+} from "@/lib/selectors/project";
 import { getFinancialYear } from "@/lib/dashboard/financialPeriod";
 import type { Project } from "@/lib/dataverse/entities";
 
@@ -117,7 +121,7 @@ export function EstimatedQuantityTile({
       indexByKey.set(key, i);
     }
     for (const p of projects) {
-      const t = new Date(p.projectDate);
+      const t = new Date(selectExecutionDate(p));
       if (Number.isNaN(t.getTime())) continue;
       const key = `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, "0")}`;
       const idx = indexByKey.get(key);

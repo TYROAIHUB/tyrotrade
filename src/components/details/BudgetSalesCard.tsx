@@ -17,7 +17,10 @@ import {
   selectSalesTotal,
   selectPurchaseTotal,
 } from "@/lib/selectors/profitLoss";
-import { selectEstimateTotal } from "@/lib/selectors/project";
+import {
+  selectEstimateTotal,
+  selectExecutionDate,
+} from "@/lib/selectors/project";
 import { toUsdAtDate } from "@/lib/finance/fxRates";
 import { readCache } from "@/lib/storage/entityCache";
 import { useProjectInvoices } from "@/hooks/useProjectInvoices";
@@ -119,16 +122,22 @@ export function BudgetSalesCard({ project }: Props) {
     [project.costEstimateLines]
   );
 
-  /* ─────────── Estimate totals (USD-equivalent at projectDate) ─────────── */
+  /* ─────────── Estimate totals (USD-equivalent at execution date) ───────────
+   * Operasyon periyodu (`mserp_executionperiod`) is the FX anchor when set;
+   * legacy projects without it fall back to the signing date via the
+   * `selectExecutionDate` helper. Same precedence the dashboard FY filter
+   * + per-row aggregations use, so the right rail and the executive tiles
+   * agree on which month's rate applies. */
+  const fxDate = selectExecutionDate(project);
   const tahminiSatisUsd = toUsdAtDate(
     selectSalesTotal(project),
     lineCurrency,
-    project.projectDate
+    fxDate
   );
   const tahminiAlimUsd = toUsdAtDate(
     selectPurchaseTotal(project),
     lineCurrency,
-    project.projectDate
+    fxDate
   );
   const tahminiGiderUsd = selectEstimateTotal(project);
 

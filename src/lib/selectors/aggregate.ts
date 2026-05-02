@@ -3,6 +3,7 @@ import {
   selectActualBooked,
   selectCargoValueUsd,
   selectEstimateTotal,
+  selectExecutionDate,
   selectStage,
   selectTotalKg,
   selectTransitDays,
@@ -203,8 +204,12 @@ export function aggregateEstimatedPL(projects: Project[]): EstimatedPLAggregate 
     const pl = selectProjectPL(p);
     if (pl.salesTotal <= 0 && pl.purchaseTotal <= 0) continue;
     const cur = (pl.currency ?? "USD").toUpperCase();
-    salesTotalUsd += toUsdAtDate(pl.salesTotal, cur, p.projectDate);
-    purchaseTotalUsd += toUsdAtDate(pl.purchaseTotal, cur, p.projectDate);
+    // FX-convert at the project's execution date when set, else
+    // fall back to the signing date — same precedence the FY filter
+    // and other date-keyed dashboard math now use.
+    const fxDate = selectExecutionDate(p);
+    salesTotalUsd += toUsdAtDate(pl.salesTotal, cur, fxDate);
+    purchaseTotalUsd += toUsdAtDate(pl.purchaseTotal, cur, fxDate);
     // Expense lines are always denoted in USD per the entity model
     // (`mserp_expamountusdd`), so no conversion needed.
     expenseTotalUsd += pl.expenseTotal;
@@ -510,8 +515,9 @@ export function aggregateBySegment(projects: Project[]): SegmentRollup[] {
     const key = (p.segment ?? "").trim() || "Tanımsız";
     const pl = selectProjectPL(p);
     const cur = (pl.currency ?? "USD").toUpperCase();
-    const salesUsd = toUsdAtDate(pl.salesTotal, cur, p.projectDate);
-    const purchaseUsd = toUsdAtDate(pl.purchaseTotal, cur, p.projectDate);
+    const fxDate = selectExecutionDate(p);
+    const salesUsd = toUsdAtDate(pl.salesTotal, cur, fxDate);
+    const purchaseUsd = toUsdAtDate(pl.purchaseTotal, cur, fxDate);
     const expenseUsd = pl.expenseTotal;
     const salesActualUsd = p.salesActualUsd ?? 0;
     const existing = map.get(key);

@@ -12,6 +12,28 @@ import { describeProgress } from "@/lib/routing/progress";
  * Read-only — selectors never mutate `Project`. They only derive numbers.
  */
 
+/* ─────────── Execution date ─────────── */
+
+/**
+ * Primary date for FY filtering, period bucketing, and per-row FX
+ * conversion. Prefers the F&O `mserp_executionperiod` (Operasyon
+ * Periyodu) when set — that's when the project actually executes,
+ * which matches accounting expectations better than the signing
+ * date (`mserp_contractdate`) for projects that span fiscal years.
+ *
+ * Falls back to `projectDate` for legacy rows (and projects whose
+ * F&O record predates the executionperiod column being added).
+ *
+ * Returns the ISO `"YYYY-MM-DD"` string, or `""` when neither date
+ * is set — keeps callers simple (`new Date(value)` → invalid date,
+ * filter helpers skip invalid via `Number.isFinite`).
+ */
+export function selectExecutionDate(
+  p: Pick<Project, "operationPeriod" | "projectDate">
+): string {
+  return p.operationPeriod || p.projectDate || "";
+}
+
 /* ─────────── Ship plan validity ─────────── */
 
 /**

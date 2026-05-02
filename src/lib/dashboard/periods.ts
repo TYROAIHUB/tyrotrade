@@ -35,23 +35,25 @@ export const PERIODS: PeriodMeta[] = [
 export const DEFAULT_PERIOD: PeriodKey = "fy";
 
 /**
- * Return only items whose `projectDate` falls within the rolling window
- * specified by `period`. "all" / "fy" returns the input unchanged — for
- * those, prefer `applyPeriodFilter` which knows how to dispatch.
+ * Return only items whose execution date falls within the rolling
+ * window specified by `period`. "all" / "fy" returns the input
+ * unchanged — for those, prefer `applyPeriodFilter` which knows how
+ * to dispatch.
  *
- * Kept for backwards compat (King Projects panel still calls this with
- * the legacy 4-key set).
+ * Date priority (2026-05): `operationPeriod` (F&O Operasyon
+ * Periyodu) → `projectDate` (signing-date fallback).
+ *
+ * Kept for backwards compat (King Projects panel still calls this
+ * with the legacy 4-key set).
  */
-export function filterByPeriod<T extends { projectDate: string }>(
-  items: T[],
-  period: PeriodKey,
-  now: Date = new Date()
-): T[] {
+export function filterByPeriod<
+  T extends { projectDate: string; operationPeriod?: string | null },
+>(items: T[], period: PeriodKey, now: Date = new Date()): T[] {
   const meta = PERIODS.find((p) => p.key === period);
   if (!meta || meta.days == null) return items;
   const cutoff = now.getTime() - meta.days * 24 * 60 * 60 * 1000;
   return items.filter((it) => {
-    const t = new Date(it.projectDate).getTime();
+    const t = new Date(it.operationPeriod || it.projectDate).getTime();
     return Number.isFinite(t) && t >= cutoff;
   });
 }
@@ -62,8 +64,12 @@ export function filterByPeriod<T extends { projectDate: string }>(
  * Falls back to current FY if `fyKey` is null/invalid.
  *
  * This is the function dashboard tiles + leaderboards should call.
+ * Both inner helpers (`filterByPeriod`, `filterByFinancialYear`) key
+ * on `operationPeriod ?? projectDate`.
  */
-export function applyPeriodFilter<T extends { projectDate: string }>(
+export function applyPeriodFilter<
+  T extends { projectDate: string; operationPeriod?: string | null },
+>(
   items: T[],
   period: PeriodKey,
   fyKey: string | null,

@@ -330,7 +330,12 @@ export function composeProjects(input: ComposeInput): ComposeResult {
       projectDate: isoDate(p["mserp_contractdate"]) ?? "",
       organic: undefined,
       transactionDirection: null,
-      operationPeriod: null,
+      // Operasyon periyodu — F&O `mserp_executionperiod`. When set,
+      // this is the date the dashboard FY filter + period bucketing
+      // + per-row FX conversion key on (vs. signing-date
+      // `projectDate`). Falls back to `projectDate` everywhere via
+      // `selectExecutionDate(p)`.
+      operationPeriod: isoDate(p["mserp_executionperiod"]),
       vesselPlan,
       lines: projectLines,
       costEstimate,

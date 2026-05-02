@@ -37,6 +37,12 @@ export const PROJECT_COLUMNS = [
   "mserp_projname",
   "mserp_projgroupid",
   "mserp_contractdate",
+  // Operasyon periyodu — added 2026-05 by F&O. Distinct from the
+  // signing-date `mserp_contractdate`; this is when the project is
+  // actually executing. Used as the primary date for dashboard FY
+  // filtering, period bucketing, and per-row FX conversion (with
+  // `mserp_contractdate` as the fallback for legacy rows).
+  "mserp_executionperiod",
   "mserp_status",
   "mserp_tryprojectsegment",
   "mserp_tryexpenseprojecttype",

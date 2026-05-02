@@ -152,8 +152,8 @@ export function ProjectOverviewCard({ project }: Props) {
           <Row icon={<User />} label="Trader" value={project.traderNo} />
           <Row
             icon={<Calendar />}
-            label="Tarih"
-            value={formatDate(project.projectDate)}
+            label="Proje / Operasyon Tarihi"
+            value={formatProjectDates(project)}
           />
           <Row
             icon={<Building2 />}
@@ -351,4 +351,24 @@ function isMeaningfulName(s: string): boolean {
   if (t === "—") return false;
   if (/^\d[\d\s,.]*$/.test(t)) return false;
   return true;
+}
+
+/**
+ * Render "<projectDate> / <operationPeriod>" with em-dash
+ * placeholders for missing sides:
+ *
+ *   both set    → "21.04.2026 / 15.05.2026"
+ *   only signing→ "21.04.2026 / —"
+ *   only exec   → "— / 15.05.2026"
+ *   neither     → "—"
+ *
+ * Compact enough to share the right-rail row with the icon + label,
+ * scannable enough that operators see the operasyon periyodu next
+ * to the signing date without expanding anything.
+ */
+function formatProjectDates(p: Project): string {
+  const proje = p.projectDate ? formatDate(p.projectDate) : "—";
+  const operasyon = p.operationPeriod ? formatDate(p.operationPeriod) : "—";
+  if (proje === "—" && operasyon === "—") return "—";
+  return `${proje} / ${operasyon}`;
 }

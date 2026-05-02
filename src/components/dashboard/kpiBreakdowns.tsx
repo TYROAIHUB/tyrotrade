@@ -17,6 +17,7 @@ import {
 } from "./KpiDetailDrawer";
 import {
   selectCargoValueUsd,
+  selectExecutionDate,
   selectTotalKg,
   selectTotalTons,
   selectStage,
@@ -634,13 +635,15 @@ export function EstimatedPLBreakdown({
       .map((p) => {
         const pl = selectProjectPL(p);
         const cur = (pl.currency ?? "USD").toUpperCase();
-        // Convert at the project's signing month rate (matches the
-        // dashboard tile rollups so figures reconcile to the cent).
+        // Convert at the project's execution date (operasyon
+        // periyodu) — falls back to signing date for legacy rows.
+        // Matches the dashboard tile rollups so figures reconcile.
+        const fxDate = selectExecutionDate(p);
         return {
           p,
-          plUsd: pl.salesTotal > 0 ? toUsdAtDate(pl.pl, cur, p.projectDate) : 0,
+          plUsd: pl.salesTotal > 0 ? toUsdAtDate(pl.pl, cur, fxDate) : 0,
           marginPct: pl.marginPct,
-          salesUsd: toUsdAtDate(pl.salesTotal, cur, p.projectDate),
+          salesUsd: toUsdAtDate(pl.salesTotal, cur, fxDate),
         };
       })
       .filter((r) => r.salesUsd > 0)

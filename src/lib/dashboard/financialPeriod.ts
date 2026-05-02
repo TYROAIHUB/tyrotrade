@@ -92,12 +92,21 @@ export function isInFinancialYear(
   return t >= fy.start && t <= fy.end;
 }
 
-/** Liste filtrele: yalnızca belirtilen FY içindeki öğeler kalsın. */
-export function filterByFinancialYear<T extends { projectDate: string }>(
-  items: T[],
-  fy: FinancialYear
-): T[] {
-  return items.filter((it) => isInFinancialYear(it.projectDate, fy));
+/**
+ * Liste filtrele: yalnızca belirtilen FY içindeki öğeler kalsın.
+ *
+ * Tarih önceliği (2026-05): `operationPeriod` (Operasyon Periyodu —
+ * F&O `mserp_executionperiod`) → `projectDate` (sözleşme tarihi).
+ * Operasyon periyodu set edilmiş projelerde FY filtreleri buna göre
+ * çalışır; eski projelerde (alan boş) projectDate fallback devreye
+ * girer.
+ */
+export function filterByFinancialYear<
+  T extends { projectDate: string; operationPeriod?: string | null },
+>(items: T[], fy: FinancialYear): T[] {
+  return items.filter((it) =>
+    isInFinancialYear(it.operationPeriod || it.projectDate, fy)
+  );
 }
 
 /** Mevcut FY'nin key'ini döner (örn "25-26"). Default helper. */
