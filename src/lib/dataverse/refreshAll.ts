@@ -177,6 +177,22 @@ export async function fetchVesselMasterAndEnrichShipCache(
 
 /* ─────────── Filter helpers ─────────── */
 
+/**
+ * OData filter clause that excludes intercompany invoice rows from
+ * sales + purchase fetches. We never want intercompany trans rows in
+ * the inspector or the calculations — they're internal transfers,
+ * not realised customer/vendor activity. Single source of truth so
+ * the same wording is used in every call site (auto-refresh, manual
+ * refresh, per-project hooks, dashboard rollups).
+ *
+ * `eq null` is the OData v4 standard for "field unset"; F&O virtual
+ * entities accept it on string columns. If a tenant ever surfaces
+ * empty-string sentinels instead, widen this to
+ * `(mserp_intercompanyinventtransid eq null or mserp_intercompanyinventtransid eq '')`.
+ */
+export const NON_INTERCOMPANY_FILTER =
+  "mserp_intercompanyinventtransid eq null";
+
 /** Maximum project IDs per `Microsoft.Dynamics.CRM.In(...)` clause.
  *
  *  At ~12 chars per project ID + URL-encoded quotes/commas (~22 chars
@@ -224,7 +240,12 @@ export async function listAllByInChunked<T>(
   field: string,
   projids: string[],
   baseQuery: Omit<ODataQuery, "$filter">,
-  chunkSize: number = PROJID_CHUNK_SIZE
+  chunkSize: number = PROJID_CHUNK_SIZE,
+  /** Optional clause AND-ed onto the IN filter for every chunk —
+   *  e.g. `mserp_intercompanyinventtransid eq null` for the sales /
+   *  purchase fetches. Wrapped in parens so OR-chains at the caller
+   *  side still bind correctly. */
+  extraFilter?: string
 ): Promise<{ value: T[]; totalCount?: number }> {
   if (projids.length === 0) {
     // Empty list → no fetch (server would otherwise scan the entire entity).
@@ -234,9 +255,13 @@ export async function listAllByInChunked<T>(
   let totalCount: number | undefined;
   for (let i = 0; i < projids.length; i += chunkSize) {
     const chunk = projids.slice(i, i + chunkSize);
+    const inClause = buildInFilter(field, chunk);
+    const $filter = extraFilter
+      ? `${inClause} and (${extraFilter})`
+      : inClause;
     const result = await client.listAll<T>(entitySet, {
       ...baseQuery,
-      $filter: buildInFilter(field, chunk),
+      $filter,
     });
     all.push(...result.value);
     if (typeof result.totalCount === "number") {
@@ -410,6 +435,7 @@ export async function refreshAllEntities(
         // (`mserp_purchtable_etgtryprojid`). Narrowed to 12 columns the
         // inspector renders, chunked the same way as siblings so a
         // 440-project IN list never blows past the URL limit.
+        // Intercompany rows excluded — see NON_INTERCOMPANY_FILTER.
         const projids = readProjids();
         const result = await listAllByInChunked<Record<string, unknown>>(
           client,
@@ -419,7 +445,9 @@ export async function refreshAllEntities(
           {
             $select: PURCHASE_COLUMNS.join(","),
             $count: true,
-          }
+          },
+          undefined,
+          NON_INTERCOMPANY_FILTER
         );
         writeCache(ENTITY_SETS.purchase, {
           fetchedAt: new Date().toISOString(),
@@ -452,6 +480,7 @@ export async function refreshAllEntities(
         // the first step (which themselves come from the dlvmode/segment
         // filter). Chunked so the `$apply=filter(IN(...))` URL stays
         // small even when the project list is large.
+        // Intercompany rows excluded — see NON_INTERCOMPANY_FILTER.
         const projids = readProjids();
         const result = await applyByInChunked<Record<string, unknown>>(
           client,
@@ -459,7 +488,7 @@ export async function refreshAllEntities(
           "mserp_etgtryprojid",
           projids,
           (inClause) =>
-            `filter(${inClause})/groupby((mserp_etgtryprojid,mserp_currencycode),aggregate(mserp_lineamount with sum as total,$count as cnt))`
+            `filter((${inClause}) and (${NON_INTERCOMPANY_FILTER}))/groupby((mserp_etgtryprojid,mserp_currencycode),aggregate(mserp_lineamount with sum as total,$count as cnt))`
         );
         writeCache("salesAggregateByProject", {
           fetchedAt: new Date().toISOString(),
@@ -492,7 +521,7 @@ export async function refreshAllEntities(
           const result = await client.listAll<Record<string, unknown>>(
             SALES_ENTITY,
             {
-              $filter: `${inClause} and mserp_currencycode eq 'USD'`,
+              $filter: `${inClause} and mserp_currencycode eq 'USD' and (${NON_INTERCOMPANY_FILTER})`,
               $select:
                 "mserp_etgtryprojid,mserp_invoicedate,mserp_lineamount",
               $count: true,

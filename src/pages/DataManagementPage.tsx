@@ -12,6 +12,7 @@ import {
   applyByInChunked,
   fetchVesselMasterAndEnrichShipCache,
   listAllByInChunked,
+  NON_INTERCOMPANY_FILTER,
 } from "@/lib/dataverse/refreshAll";
 import {
   EntityRowsTable,
@@ -172,9 +173,14 @@ export function DataManagementPage() {
   // Realised project purchases — vendor invoice transactions, narrowed
   // to the 12 inspector columns. Project FK lives at
   // `mserp_purchtable_etgtryprojid` (different prefix from siblings).
+  // Intercompany rows excluded — see NON_INTERCOMPANY_FILTER.
   const purchase = useEntityRows<Record<string, unknown>>({
     entitySet: ENTITY_SETS.purchase,
-    query: { $select: PURCHASE_COLUMNS.join(","), $count: true },
+    query: {
+      $filter: NON_INTERCOMPANY_FILTER,
+      $select: PURCHASE_COLUMNS.join(","),
+      $count: true,
+    },
   });
   // Customer invoice transactions — per-PROJECT server-side fetch.
   // Entity is huge tenant-wide (thousands of invoiced rows; a single
@@ -187,7 +193,8 @@ export function DataManagementPage() {
     entitySet: ENTITY_SETS.sales,
     query: selectedProjId
       ? {
-          $filter: `mserp_etgtryprojid eq '${selectedProjId}'`,
+          // Intercompany rows excluded — see NON_INTERCOMPANY_FILTER.
+          $filter: `mserp_etgtryprojid eq '${selectedProjId}' and (${NON_INTERCOMPANY_FILTER})`,
           $select: SALES_COLUMNS.join(","),
           $orderby: "mserp_invoicedate desc",
           $count: true,
@@ -369,6 +376,7 @@ export function DataManagementPage() {
         // Realised project purchases — vendor invoice transactions.
         // Same chunked-IN pattern; FK is `mserp_purchtable_etgtryprojid`
         // (purchtable_ prefix, NOT the standard `mserp_etgtryprojid`).
+        // Intercompany rows excluded — see NON_INTERCOMPANY_FILTER.
         label: "Gerçekleşen Satınalma",
         refetch: async () => {
           const client = getDataverseClient();
@@ -381,7 +389,9 @@ export function DataManagementPage() {
             {
               $select: PURCHASE_COLUMNS.join(","),
               $count: true,
-            }
+            },
+            undefined,
+            NON_INTERCOMPANY_FILTER
           );
           writeCache(ENTITY_SETS.purchase, {
             fetchedAt: new Date().toISOString(),
@@ -395,7 +405,7 @@ export function DataManagementPage() {
         // Per-project invoiced sales totals (segmented by currency).
         // Chunked $apply pipeline — each chunk groups its slice of
         // projids; chunks don't overlap so the row arrays just
-        // concatenate.
+        // concatenate. Intercompany rows excluded.
         label: "Satış Toplamları",
         refetch: async () => {
           const client = getDataverseClient();
@@ -406,7 +416,7 @@ export function DataManagementPage() {
             "mserp_etgtryprojid",
             projids,
             (inClause) =>
-              `filter(${inClause})/groupby((mserp_etgtryprojid,mserp_currencycode),aggregate(mserp_lineamount with sum as total,$count as cnt))`
+              `filter((${inClause}) and (${NON_INTERCOMPANY_FILTER}))/groupby((mserp_etgtryprojid,mserp_currencycode),aggregate(mserp_lineamount with sum as total,$count as cnt))`
           );
           writeCache("salesAggregateByProject", {
             fetchedAt: new Date().toISOString(),
@@ -440,7 +450,7 @@ export function DataManagementPage() {
             const result = await client.listAll<Record<string, unknown>>(
               "mserp_tryaicustinvoicetransentities",
               {
-                $filter: `${inClause} and mserp_currencycode eq 'USD'`,
+                $filter: `${inClause} and mserp_currencycode eq 'USD' and (${NON_INTERCOMPANY_FILTER})`,
                 $select:
                   "mserp_etgtryprojid,mserp_invoicedate,mserp_lineamount",
                 $count: true,

@@ -2,6 +2,7 @@ import * as React from "react";
 import { getDataverseClient } from "@/lib/dataverse";
 import { readCache, writeCache } from "@/lib/storage/entityCache";
 import { SALES_COLUMNS } from "@/lib/dataverse/columnOrder";
+import { NON_INTERCOMPANY_FILTER } from "@/lib/dataverse/refreshAll";
 
 const ENTITY_SET = "mserp_tryaicustinvoicetransentities";
 
@@ -46,7 +47,7 @@ export function useProjectInvoices(
         const result = await client.listAll<Record<string, unknown>>(
           ENTITY_SET,
           {
-            $filter: `mserp_etgtryprojid eq '${projectNo}'`,
+            $filter: `mserp_etgtryprojid eq '${projectNo}' and (${NON_INTERCOMPANY_FILTER})`,
             $select: SALES_COLUMNS.join(","),
             $orderby: "mserp_invoicedate desc",
             $count: true,
