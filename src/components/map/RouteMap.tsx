@@ -579,7 +579,9 @@ function operationDays(p: Project): number | null {
  *  a group but each carries its own hue.
  *
  *   Yükleme   → amber  (loading: warming up)
- *   Tahliye   → emerald (discharge: arrival side / "boşaltma yeşili")
+ *   Tahliye   → violet (distinct from emerald, which the P&L cards
+ *                       reserve; clearly different from amber/sky/
+ *                       indigo)
  *   Transit   → sky    (the dominant blue we already used)
  *   Operasyon → indigo (the dominant indigo we already used) */
 const PILL_TONES = {
@@ -590,10 +592,10 @@ const PILL_TONES = {
     value: "rgb(120 53 15)", // amber-900
   },
   discharge: {
-    bg: "rgba(16,185,129,0.13)",
-    ring: "rgba(16,185,129,0.34)",
-    label: "rgb(4 120 87 / 0.85)", // emerald-700 @ 85
-    value: "rgb(6 78 59)", // emerald-900
+    bg: "rgba(139,92,246,0.13)",
+    ring: "rgba(139,92,246,0.34)",
+    label: "rgb(109 40 217 / 0.85)", // violet-700 @ 85
+    value: "rgb(76 29 149)", // violet-900
   },
   transit: {
     bg: "rgba(56,189,248,0.14)",
@@ -653,11 +655,12 @@ function DurationPill({
 }
 
 /** Four duration pills shown next to the stage chip in the map
- *  header — all four sourced from the F&O Gemi Planı:
+ *  header — chronological voyage order (load → sail → discharge →
+ *  total operation):
  *
- *    Yükleme  ← `mserp_loadingtime`
- *    Tahliye  ← `mserp_evacuationtime`
- *    Transit  ← `mserp_transfertime`
+ *    Yükleme   ← `mserp_loadingtime`
+ *    Transit   ← `mserp_transfertime`     (between load + discharge)
+ *    Tahliye   ← `mserp_evacuationtime`
  *    Operasyon ← derived: full days between LP-ETA and DP-ED
  *                 (endpoints excluded; milestone days don't count
  *                 against the operation span).
@@ -667,13 +670,13 @@ function DurationPill({
 function DurationPills({ project }: { project: Project }) {
   const vp = project.vesselPlan;
   const loading = vp?.loadingDays ?? null;
-  const discharge = vp?.evacuationDays ?? null;
   const transit = vp?.transferDays ?? null;
+  const discharge = vp?.evacuationDays ?? null;
   const operation = operationDays(project);
   if (
     loading == null &&
-    discharge == null &&
     transit == null &&
+    discharge == null &&
     operation == null
   ) {
     return null;
@@ -687,16 +690,16 @@ function DurationPills({ project }: { project: Project }) {
         title={`Yükleme Süresi: ${loading} gün (mserp_loadingtime)`}
       />
       <DurationPill
-        value={discharge}
-        label="Tahliye"
-        tone={PILL_TONES.discharge}
-        title={`Tahliye Süresi: ${discharge} gün (mserp_evacuationtime)`}
-      />
-      <DurationPill
         value={transit}
         label="Transit"
         tone={PILL_TONES.transit}
         title={`Transit Süresi: ${transit} gün (mserp_transfertime)`}
+      />
+      <DurationPill
+        value={discharge}
+        label="Tahliye"
+        tone={PILL_TONES.discharge}
+        title={`Tahliye Süresi: ${discharge} gün (mserp_evacuationtime)`}
       />
       <DurationPill
         value={operation}
