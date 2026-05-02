@@ -250,6 +250,34 @@ export const ACTUAL_EXPENSE_COLUMNS = [
   "mserp_itemname",
 ] as const;
 
+/** mserp_tryaiexpenselineentities — Realised expense LINES (the
+ *  parent of the distribution-line entity).
+ *
+ *  The Veri Yönetimi "Gerçekleşen Gider" tab now sources its display
+ *  rows from here. The flow:
+ *    1. `mserp_tryaifrtexpenselinedistlineentities` is filtered by
+ *       `mserp_etgtryprojid eq '<projectNo>'` → distinct
+ *       `mserp_expensenum` set (the dist entity is just a project
+ *        filter, NOT shown).
+ *    2. This entity is filtered by
+ *       `Microsoft.Dynamics.CRM.In(mserp_expensenum, …)` → the
+ *       authoritative amounts + descriptions per expense.
+ *
+ *  Confirmed display columns:
+ *    - `mserp_expensenum`   — join key + voucher/sequence ID
+ *    - `mserp_expenseid`    — expense category code
+ *    - `mserp_description`  — free-text expense description
+ *    - `mserp_amountcur`    — amount in the row's currency
+ *    - `mserp_currencycode` — currency for `mserp_amountcur`
+ */
+export const EXPENSE_LINE_COLUMNS = [
+  "mserp_expensenum",
+  "mserp_expenseid",
+  "mserp_description",
+  "mserp_amountcur",
+  "mserp_currencycode",
+] as const;
+
 /** mserp_tryaivendinvoicetransentities — Realised (actual) project
  *  purchases. Vendor invoice transactions linked to a project line
  *  (counterpart of `mserp_tryaicustinvoicetransentities` for sales).

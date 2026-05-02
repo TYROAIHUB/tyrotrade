@@ -28,11 +28,12 @@ import {
   PROJECT_LINE_COLUMNS,
   SHIP_COLUMNS,
   EXPENSE_COLUMNS,
-  ACTUAL_EXPENSE_COLUMNS,
+  EXPENSE_LINE_COLUMNS,
   PURCHASE_COLUMNS,
   SALES_COLUMNS,
   BUDGET_COLUMNS,
 } from "@/lib/dataverse/columnOrder";
+import { useProjectExpenseLines } from "@/hooks/useProjectExpenseLines";
 
 /* ─────────── Entity sets + filters ─────────── */
 
@@ -126,24 +127,17 @@ export function DataManagementPage() {
     entitySet: ENTITY_SETS.expense,
     query: { $select: EXPENSE_COLUMNS.join(","), $count: true },
   });
-  // Realised expense distribution lines — fetched **per-selected
-  // project** on demand (same pattern as `sales` below). The entity
-  // is granular distribution lines whose tenant-wide payload blew
-  // the browser localStorage quota when included in the global
-  // refresh chain. Per-project fetches stay tiny (a few KB each)
-  // and only one project's data is in cache at a time. Effect
-  // below auto-refetches when `selectedProjId` changes.
-  const actualExpense = useEntityRows<Record<string, unknown>>({
-    entitySet: ENTITY_SETS.actualExpense,
-    query: selectedProjId
-      ? {
-          $filter: `mserp_etgtryprojid eq '${selectedProjId}'`,
-          $select: ACTUAL_EXPENSE_COLUMNS.join(","),
-          $orderby: "mserp_datefinancial desc",
-          $count: true,
-        }
-      : { $top: 0 },
-  });
+  // Realised expense LINES — fetched per-selected project via a
+  // two-step chain (see `useProjectExpenseLines`):
+  //   1. distribution entity (`mserp_tryaifrtexpenselinedistlineentities`)
+  //      filtered by `mserp_etgtryprojid eq …` → distinct expensenums
+  //   2. expense-line entity (`mserp_tryaiexpenselineentities`)
+  //      filtered by `In(mserp_expensenum, …)` → authoritative rows
+  // The dist entity is just a project-scoping filter; the rows we
+  // surface here come from the expense-line entity. This is also the
+  // entity dashboard calculations will read from when we wire them
+  // up later.
+  const actualExpense = useProjectExpenseLines(selectedProjId);
   // Realised project purchases — vendor invoice transactions, narrowed
   // to the 12 inspector columns. Project FK lives at
   // `mserp_purchtable_etgtryprojid` (different prefix from siblings).
@@ -170,16 +164,12 @@ export function DataManagementPage() {
       : { $top: 0 },
   });
 
-  // Auto-fetch per-selected-project entities when the project changes.
-  // Both `sales` (customer invoices) and `actualExpense` (vendor
-  // distribution lines) are too granular for global caching and use
-  // this on-demand pattern. The hook memoises `refetch` by entitySet
-  // + JSON(query), so the latest closure (with the new $filter)
-  // fires correctly.
+  // Auto-fetch per-selected-project sales when the project changes.
+  // (`actualExpense` uses `useProjectExpenseLines`, which has its
+  // own `useEffect` keyed on projectNo — no manual refetch needed.)
   React.useEffect(() => {
     if (selectedProjId) {
       void sales.refetch();
-      void actualExpense.refetch();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedProjId]);
@@ -215,7 +205,10 @@ export function DataManagementPage() {
       "Gerçekleşen Gider",
       actualExpense.rows,
       actualExpense.fetchedAt,
-      "mserp_etgtryprojid"
+      // Expense-line entity has no project FK — the dist entity
+      // filtered upstream. The probe just surfaces row count + the
+      // expense voucher number on the first row for sanity.
+      "mserp_expensenum"
     );
     probe(
       "Proje Satınalma",
@@ -491,17 +484,12 @@ export function DataManagementPage() {
         : [],
     [expense.rows, selectedProjId]
   );
-  // Realised expense distribution rows for the selected project — same
-  // FK convention as the estimate table.
-  const childActualExpense = React.useMemo(
-    () =>
-      selectedProjId
-        ? actualExpense.rows.filter(
-            (r) => r["mserp_etgtryprojid"] === selectedProjId
-          )
-        : [],
-    [actualExpense.rows, selectedProjId]
-  );
+  // Expense-line rows are already server-side scoped to the
+  // selected project (via the two-step chain in
+  // `useProjectExpenseLines`), so no client-side filter is needed —
+  // a redundant filter on `mserp_etgtryprojid` would always return
+  // 0 rows because the expense-line entity doesn't carry that FK.
+  const childActualExpense = actualExpense.rows;
   // Realised purchase rows for the selected project — FK is the
   // flattened parent-table column `mserp_purchtable_etgtryprojid`.
   const childPurchase = React.useMemo(
@@ -708,13 +696,18 @@ export function DataManagementPage() {
             {childTab === "actualExpense" && (
               <EntityRowsTable
                 rows={childActualExpense}
-                // Per-project on-demand fetch (server-filtered by
-                // mserp_etgtryprojid). Client-side
-                // `childActualExpense` re-filters as a safety net.
-                columns={[...ACTUAL_EXPENSE_COLUMNS]}
+                // Two-step chain: dist entity → expensenum set →
+                // authoritative expense-line rows. Display columns
+                // come from the expense-line entity now (auth.
+                // amounts + descriptions).
+                columns={[...EXPENSE_LINE_COLUMNS]}
                 emptyText={
                   selectedProjId
-                    ? "Bu projeye ait gerçekleşen gider kaydı yok"
+                    ? actualExpense.error
+                      ? `Hata: ${actualExpense.error}`
+                      : actualExpense.isFetching
+                        ? "Yükleniyor…"
+                        : "Bu projeye ait gerçekleşen gider kaydı yok"
                     : "Üstten bir proje seç"
                 }
                 maxHeight="55vh"
