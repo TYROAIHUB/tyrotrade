@@ -6,7 +6,12 @@ import {
   ChevronDown,
 } from "lucide-react";
 import { GlassPanel } from "@/components/glass/GlassPanel";
-import { AccentIconBadge, TONE_PL } from "./AccentIconBadge";
+import {
+  AccentIconBadge,
+  TONE_PL,
+  TONE_EXPENSE,
+  TONE_FORECAST,
+} from "./AccentIconBadge";
 import { formatCurrency, formatNumber } from "@/lib/format";
 import {
   selectSalesTotal,
@@ -262,6 +267,18 @@ export function BudgetSalesCard({ project }: Props) {
       : realizedTone === "negative"
         ? TrendingDown
         : Minus;
+  // Icon-pill background follows the tone too:
+  //   positive (profit)   → emerald TONE_PL  (no change)
+  //   negative (loss)     → rose TONE_EXPENSE (was emerald — misleading)
+  //   neutral / no data   → TONE_FORECAST (matches the now-removed
+  //                         Expected P&L card so neutral surfaces
+  //                         keep the same chrome)
+  const iconTone =
+    realizedTone === "positive"
+      ? TONE_PL
+      : realizedTone === "negative"
+        ? TONE_EXPENSE
+        : TONE_FORECAST;
 
   return (
     <GlassPanel tone="default" className="rounded-2xl">
@@ -272,7 +289,7 @@ export function BudgetSalesCard({ project }: Props) {
           aria-expanded={open}
           className="w-full flex items-center gap-2.5 mb-3 text-left cursor-pointer hover:opacity-90 transition-colors"
         >
-          <AccentIconBadge size="sm" tone={TONE_PL}>
+          <AccentIconBadge size="sm" tone={iconTone}>
             <Icon className="size-4" strokeWidth={2} />
           </AccentIconBadge>
           <div className="min-w-0 flex-1">

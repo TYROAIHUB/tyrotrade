@@ -10,7 +10,6 @@ import { CommoditySalesCard } from "@/components/details/CommoditySalesCard";
 // `ExpectedRealizedExpenseCard` temporarily unmounted — kept in
 // `src/components/details/` for the next iteration. Re-import here
 // when the per-project expense math is verified end-to-end.
-import { ProfitLossCard } from "@/components/details/ProfitLossCard";
 import { BudgetSalesCard } from "@/components/details/BudgetSalesCard";
 import { BudgetPLCard } from "@/components/details/BudgetPLCard";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -162,7 +161,6 @@ export function ProjectsPage() {
               <div className="space-y-3 pb-4">
                 <ProjectOverviewCard project={selected} />
                 <CommoditySalesCard project={selected} />
-                <ProfitLossCard project={selected} />
                 <BudgetSalesCard project={selected} />
                 <BudgetPLCard project={selected} />
               </div>
@@ -195,7 +193,6 @@ export function ProjectsPage() {
             <div className="space-y-3">
               <ProjectOverviewCard project={selected} />
               <CommoditySalesCard project={selected} />
-              <ProfitLossCard project={selected} />
               <BudgetSalesCard project={selected} />
               <BudgetPLCard project={selected} />
             </div>
