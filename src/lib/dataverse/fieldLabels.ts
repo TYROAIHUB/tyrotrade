@@ -85,6 +85,8 @@ export const FIELD_LABELS: Record<string, string> = {
   mserp_vessel: "Gemi",
   mserp_vesselname: "Gemi Adı",
   mserp_vesselvoyagenumber: "Sefer",
+  mserp_imonumber: "IMO Numarası",
+  mserp_vesseltable_recid: "Gemi RecID",
   mserp_voyageouttype: "Charter Out Type",
   mserp_voyagestatus: "Gemi Durumu",
 

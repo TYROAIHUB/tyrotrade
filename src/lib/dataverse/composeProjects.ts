@@ -534,8 +534,16 @@ function toVesselPlan(
     : extractVesselFromProjectName(projectName);
   const vesselName = fromCandidates ?? fromTitle ?? "—";
 
+  // IMO number — surfaced via the post-fetch enrichment that joins
+  // the ship row's `mserp_vessel` RecID against the vessel-master
+  // entity. Null when the master lookup didn't match (rare; new
+  // vessel just chartered, master not refreshed yet).
+  const imoRaw = readString(s, "mserp_imonumber").trim();
+  const imoNumber = imoRaw.length > 0 ? imoRaw : null;
+
   return {
     vesselName,
+    imoNumber,
     fixtureId: readString(s, "mserp_assignmentid") || "",
     voyage:
       Number(readString(s, "mserp_vesselvoyagenumber") || "1") || 1,

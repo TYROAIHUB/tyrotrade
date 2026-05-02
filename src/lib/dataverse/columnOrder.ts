@@ -72,6 +72,24 @@ export const PROJECT_LINE_COLUMNS = [
   "mserp_enddate",
 ] as const;
 
+/** mserp_tryvlxvesseltableentities — Vessel master table.
+ *
+ *  Lookup source for vessel name + IMO number. The ship-relation
+ *  entity carries `mserp_vessel` as a bare numeric RecID; we join to
+ *  this entity on `mserp_vesseltable_recid` to surface the
+ *  human-readable name + IMO. Tiny entity (one row per vessel
+ *  Tiryaki has chartered), fetched once tenant-wide and enriched
+ *  into the ship-plan cache after each ship refresh.
+ *
+ *  Locked to exactly the 3 columns we need — entity may carry
+ *  many more, but Dataverse $select narrows the payload.
+ */
+export const VESSEL_TABLE_COLUMNS = [
+  "mserp_vesseltable_recid",
+  "mserp_vesselname",
+  "mserp_imonumber",
+] as const;
+
 /** mserp_tryaiprojectshiprelationentities — Vessel plan + voyage milestones */
 export const SHIP_COLUMNS = [
   // Identity. `mserp_vesselname` is intentionally absent — Dataverse
@@ -168,6 +186,21 @@ export const SHIP_COLUMNS = [
   "mserp_sellerrec",
   "mserp_sellerrec_bigint",
   "mserp_tryaiprojectshiprelationentityid",
+] as const;
+
+/** Display-priority list for the Veri Yönetimi Gemi Planı tab —
+ *  same order as `SHIP_COLUMNS` (the $select fetch list) but with
+ *  `mserp_vesselname` + `mserp_imonumber` inserted near the top.
+ *  Those two are NOT in the entity schema; they get injected into
+ *  ship rows after each refresh by joining `mserp_vessel` (RecID)
+ *  to the vessel-master entity (`mserp_tryvlxvesseltableentities`).
+ *  Inspector renders them via `priorityColumns`, so they appear
+ *  even though the fetch never selected them. */
+export const SHIP_DISPLAY_COLUMNS = [
+  "mserp_tryshipprojid",
+  "mserp_vesselname",   // enriched from vessel master
+  "mserp_imonumber",    // enriched from vessel master
+  ...SHIP_COLUMNS.slice(1),
 ] as const;
 
 /** mserp_tryaiotherexpenseentities — Estimated expense lines.

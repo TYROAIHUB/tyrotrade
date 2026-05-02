@@ -58,6 +58,11 @@ export interface VesselMilestones {
 
 export interface VesselPlan {
   vesselName: string;
+  /** IMO Numarası — looked up from the vessel-master entity
+   *  (`mserp_tryvlxvesseltableentities.mserp_imonumber`) via the
+   *  ship-relation row's `mserp_vessel` RecID. Null when the
+   *  vessel-master entry is missing or the IMO field is empty. */
+  imoNumber?: string | null;
   fixtureId: string;
   voyage: number;
   /** Optional — may be omitted when the ship row has no recognisable

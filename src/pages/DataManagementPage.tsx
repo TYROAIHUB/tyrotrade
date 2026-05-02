@@ -10,6 +10,7 @@ import { getDataverseClient } from "@/lib/dataverse";
 import { readCache, writeCache } from "@/lib/storage/entityCache";
 import {
   applyByInChunked,
+  fetchVesselMasterAndEnrichShipCache,
   listAllByInChunked,
 } from "@/lib/dataverse/refreshAll";
 import {
@@ -30,6 +31,7 @@ import {
   PROJECT_COLUMNS,
   PROJECT_LINE_COLUMNS,
   SHIP_COLUMNS,
+  SHIP_DISPLAY_COLUMNS,
   EXPENSE_COLUMNS,
   EXPENSE_LINE_COLUMNS,
   PURCHASE_COLUMNS,
@@ -60,6 +62,11 @@ const ENTITY_SETS = {
   // Replaced earlier salesline entity which mostly carried the same data
   // but in unposted form; invoice trans are the realised "actual" sales.
   sales: "mserp_tryaicustinvoicetransentities",
+  // Vessel master — joined to ship rows via `mserp_vessel` (RecID)
+  // → `mserp_vesseltable_recid` to enrich each ship-relation row
+  // with a real vessel name + IMO. The fetch + ship-cache
+  // enrichment lives in `fetchVesselMasterAndEnrichShipCache`.
+  vesselTable: "mserp_tryvlxvesseltableentities",
   budget: "mserp_tryaiprojectbudgetlineentities",
 } as const;
 
@@ -318,6 +325,17 @@ export function DataManagementPage() {
             value: result.value,
             totalCount: result.totalCount,
           });
+        },
+      },
+      {
+        // Vessel master lookup — same helper the auto-refresh chain
+        // uses. Runs RIGHT AFTER Gemi Planı so the freshly-written
+        // ship cache is the one we enrich. Bails gracefully if the
+        // ship cache wasn't populated.
+        label: "Gemi Bilgileri",
+        refetch: async () => {
+          const client = getDataverseClient();
+          await fetchVesselMasterAndEnrichShipCache(client);
         },
       },
       {
@@ -707,7 +725,7 @@ export function DataManagementPage() {
             {childTab === "ship" && (
               <EntityRowsTable
                 rows={childShip}
-                priorityColumns={SHIP_COLUMNS}
+                priorityColumns={SHIP_DISPLAY_COLUMNS}
                 emptyText={
                   selectedProjId
                     ? "Bu projeye ait gemi planı yok"

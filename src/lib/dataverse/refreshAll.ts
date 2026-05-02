@@ -12,6 +12,7 @@ import {
   // global refresh chain skips it to keep the localStorage cache
   // under quota.
   PURCHASE_COLUMNS,
+  VESSEL_TABLE_COLUMNS,
   BUDGET_COLUMNS,
 } from "@/lib/dataverse/columnOrder";
 
@@ -62,6 +63,11 @@ const ENTITY_SETS = {
    *  `mserp_purchtable_etgtryprojid`. Counterpart of the customer-side
    *  sales `mserp_tryaicustinvoicetransentities`. */
   purchase: "mserp_tryaivendinvoicetransentities",
+  /** Vessel master table — looked up by `mserp_vesseltable_recid`
+   *  to enrich each ship-relation row with its real
+   *  `mserp_vesselname` + `mserp_imonumber`. The ship entity itself
+   *  carries only the numeric `mserp_vessel` RecID. */
+  vesselTable: "mserp_tryvlxvesseltableentities",
   budget: "mserp_tryaiprojectbudgetlineentities",
 } as const;
 
@@ -88,6 +94,85 @@ export interface RefreshResult {
    *  toast so the user sees "437 proje senkronlandı". `undefined`
    *  when the projects step never ran (very first failure). */
   projectCount?: number;
+}
+
+/* ─────────── Vessel master enrichment ─────────── */
+
+/**
+ * Fetch the vessel-master entity tenant-wide AND enrich the cached
+ * ship-relation rows with the looked-up `mserp_vesselname` +
+ * `mserp_imonumber`. The vessel-master table is small (one row per
+ * chartered vessel, ~hundreds), so a single tenant-wide list is
+ * cheaper than per-row lookups during compose.
+ *
+ * Join key: ship row's `mserp_vessel` (numeric RecID) ===
+ *           vessel master's `mserp_vesseltable_recid` (numeric RecID).
+ *
+ * After enrichment, the ship cache rows carry the friendly fields
+ * directly — composer reads them as plain row keys and the Veri
+ * Yönetimi inspector renders them via `SHIP_DISPLAY_COLUMNS`. Both
+ * the post-login auto-refresh and the manual "Verileri Güncelle"
+ * chain call this helper so the two paths stay aligned.
+ */
+export async function fetchVesselMasterAndEnrichShipCache(
+  client: DataverseClient
+): Promise<{ vesselCount: number; enrichedShipCount: number }> {
+  // Fetch vessel master (tenant-wide, locked to 3 columns).
+  const masterResult = await client.listAll<Record<string, unknown>>(
+    ENTITY_SETS.vesselTable,
+    {
+      $select: VESSEL_TABLE_COLUMNS.join(","),
+      $count: true,
+    }
+  );
+  // Cache the master so the inspector can show it later if we add
+  // a tab for it; also makes the data inspectable via DevTools.
+  writeCache(ENTITY_SETS.vesselTable, {
+    fetchedAt: new Date().toISOString(),
+    value: masterResult.value,
+    totalCount: masterResult.totalCount,
+  });
+
+  // Build recid → {vesselname, imonumber} index. Numeric RecIDs.
+  const byRecid = new Map<
+    number,
+    { vesselname: string; imonumber: string }
+  >();
+  for (const v of masterResult.value) {
+    const recid = Number(v["mserp_vesseltable_recid"]);
+    if (!Number.isFinite(recid)) continue;
+    byRecid.set(recid, {
+      vesselname: String(v["mserp_vesselname"] ?? "").trim(),
+      imonumber: String(v["mserp_imonumber"] ?? "").trim(),
+    });
+  }
+
+  // Enrich the ship cache in place. If the cache hasn't been
+  // populated yet (Gemi Planı step skipped or failed), bail —
+  // there's nothing to enrich.
+  const shipCache = readCache<Record<string, unknown>>(ENTITY_SETS.ship);
+  if (!shipCache) {
+    return { vesselCount: byRecid.size, enrichedShipCount: 0 };
+  }
+  let enrichedCount = 0;
+  const enrichedRows = shipCache.value.map((r) => {
+    const vesselRecid = Number(r["mserp_vessel"]);
+    if (!Number.isFinite(vesselRecid)) return r;
+    const match = byRecid.get(vesselRecid);
+    if (!match) return r;
+    enrichedCount++;
+    return {
+      ...r,
+      mserp_vesselname: match.vesselname,
+      mserp_imonumber: match.imonumber,
+    };
+  });
+  writeCache(ENTITY_SETS.ship, {
+    fetchedAt: shipCache.fetchedAt,
+    value: enrichedRows,
+    totalCount: shipCache.totalCount,
+  });
+  return { vesselCount: byRecid.size, enrichedShipCount: enrichedCount };
 }
 
 /* ─────────── Filter helpers ─────────── */
@@ -275,6 +360,16 @@ export async function refreshAllEntities(
           value: result.value,
           totalCount: result.totalCount,
         });
+      },
+    },
+    {
+      // Vessel master lookup — runs RIGHT AFTER Gemi Planı so the
+      // ship cache that the helper enriches is the freshly-written
+      // one. Order matters; if Gemi Planı failed earlier in the
+      // chain, this step has nothing to enrich and bails gracefully.
+      label: "Gemi Bilgileri",
+      run: async () => {
+        await fetchVesselMasterAndEnrichShipCache(client);
       },
     },
     {
