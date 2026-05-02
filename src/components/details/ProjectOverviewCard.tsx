@@ -127,7 +127,7 @@ export function ProjectOverviewCard({ project }: Props) {
         <div className="flex items-start justify-between gap-2 mb-2.5">
           <div className="min-w-0">
             <div className="flex items-center gap-1.5 flex-wrap">
-              <span className="font-mono text-[11px] tracking-tight text-muted-foreground">
+              <span className="font-mono font-semibold text-[12.5px] tracking-tight text-foreground/70">
                 {project.projectNo}
               </span>
               {project.organic && (

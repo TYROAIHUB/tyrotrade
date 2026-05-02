@@ -21,6 +21,11 @@ import {
   X,
   Check,
   Clock,
+  ArrowDownToLine,
+  ArrowUpFromLine,
+  Hourglass,
+  CircleCheck,
+  type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import lineSliceAlong from "@turf/line-slice-along";
@@ -95,6 +100,26 @@ const STAGE_TONE: Record<string, { bg: string; text: string; border: string }> =
   },
 };
 const FALLBACK_STAGE_TONE = STAGE_TONE["in-transit"];
+
+/** Stage-specific glyph for the status chip. Picks the icon that
+ *  best signals the voyage's current operational mode at a glance:
+ *
+ *    pre-loading / at-loading-port → Anchor (sitting in port)
+ *    loading                       → ArrowDownToLine (cargo flowing in)
+ *    in-transit                    → Ship (under way)
+ *    at-discharge-port             → MapPin (arrived at destination)
+ *    discharged                    → CircleCheck (voyage closed)
+ *
+ *  Falls back to Compass when the stage string is unknown — same
+ *  neutral cue the topbar's "Rota Haritası" header uses. */
+const STAGE_ICON: Record<string, LucideIcon> = {
+  "pre-loading": Anchor,
+  "at-loading-port": Anchor,
+  loading: ArrowDownToLine,
+  "in-transit": ShipIcon,
+  "at-discharge-port": MapPin,
+  discharged: CircleCheck,
+};
 
 export function RouteMap({ project }: RouteMapProps) {
   const mapRef = React.useRef<MapRef>(null);
@@ -410,6 +435,11 @@ export function RouteMap({ project }: RouteMapProps) {
               {project &&
                 (() => {
                   const stageTone = STAGE_TONE[stage] ?? FALLBACK_STAGE_TONE;
+                  // Compass is the neutral fallback — it's already the
+                  // header glyph next to "Rota Haritası", so an unknown
+                  // stage just degrades to the same cue rather than
+                  // forcing an arbitrary mismatched icon.
+                  const StageIcon = STAGE_ICON[stage] ?? Compass;
                   return (
                     <span
                       className="ml-1 inline-flex items-center rounded-full px-2 py-0.5 text-[10.5px] font-medium tracking-tight"
@@ -419,6 +449,10 @@ export function RouteMap({ project }: RouteMapProps) {
                         boxShadow: `inset 0 0 0 1px ${stageTone.border}`,
                       }}
                     >
+                      <StageIcon
+                        className="size-2.5 mr-1"
+                        strokeWidth={2.5}
+                      />
                       {STAGE_LABEL[stage] ?? stage} · %
                       {(progress * 100).toFixed(0)}
                     </span>
@@ -622,17 +656,22 @@ const PILL_TONES = {
 } as const;
 
 /** Compact day-count pill shared by all four metrics. Renders only
- *  when `value` is a finite number — null collapses to nothing. */
+ *  when `value` is a finite number — null collapses to nothing. The
+ *  leading `Icon` is metric-specific (caller decides) so the four
+ *  pills can be told apart at a glance even before the eye reaches
+ *  the label text. */
 function DurationPill({
   value,
   label,
   tone,
   title,
+  Icon,
 }: {
   value: number | null;
   label: string;
   tone: (typeof PILL_TONES)[keyof typeof PILL_TONES];
   title: string;
+  Icon: LucideIcon;
 }) {
   if (value == null) return null;
   return (
@@ -644,7 +683,11 @@ function DurationPill({
       }}
       title={title}
     >
-      <Clock className="size-2.5 mr-1" strokeWidth={2.5} />
+      <Icon
+        className="size-2.5 mr-1"
+        strokeWidth={2.5}
+        style={{ color: tone.label }}
+      />
       <span
         className="uppercase tracking-wider"
         style={{ color: tone.label }}
@@ -693,28 +736,37 @@ function DurationPills({ project }: { project: Project }) {
   }
   return (
     <>
+      {/* Yükleme = cargo flowing INTO the vessel — down-arrow.
+          Transit = under way — Ship.
+          Tahliye = cargo flowing OUT of the vessel — up-arrow.
+          Operasyon = total elapsed time — Hourglass (the only
+                     one that's a duration metric vs. a verb). */}
       <DurationPill
         value={loading}
         label="Yükleme"
         tone={PILL_TONES.loading}
+        Icon={ArrowDownToLine}
         title={`Yükleme Süresi: ${loading} gün (mserp_loadingtime)`}
       />
       <DurationPill
         value={transit}
         label="Transit"
         tone={PILL_TONES.transit}
+        Icon={ShipIcon}
         title={`Transit Süresi: ${transit} gün (mserp_transfertime)`}
       />
       <DurationPill
         value={discharge}
         label="Tahliye"
         tone={PILL_TONES.discharge}
+        Icon={ArrowUpFromLine}
         title={`Tahliye Süresi: ${discharge} gün (mserp_evacuationtime)`}
       />
       <DurationPill
         value={operation}
         label="Operasyon"
         tone={PILL_TONES.operation}
+        Icon={Hourglass}
         title={
           operation != null
             ? `Operasyon Süresi: ${operation} gün (LP-ETA → DP-ED, başlangıç/bitiş günleri hariç)`

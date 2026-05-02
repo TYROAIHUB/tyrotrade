@@ -692,11 +692,17 @@ function KZFooterRow({
         : marginPct < -5
           ? "negative"
           : "neutral";
-  const valueColor = positive
-    ? "text-emerald-700"
-    : negative
-      ? "text-rose-700"
-      : "text-foreground";
+  // Headline value colour — muted rows force a strong grey so the
+  // forecast K&Z total can't be confused with the realised K&Z
+  // sitting right below it (which keeps emerald/rose). Sign is still
+  // legible from the leading +/− and the bold tabular-nums weight.
+  const valueColor = muted
+    ? "text-slate-600"
+    : positive
+      ? "text-emerald-700"
+      : negative
+        ? "text-rose-700"
+        : "text-foreground";
   const marginColor =
     marginTone === "positive"
       ? "rgb(4 120 87)"
@@ -717,7 +723,7 @@ function KZFooterRow({
         </div>
         {marginPct != null && (
           <span
-            className="inline-flex items-center mt-1 px-1.5 py-0.5 rounded-md text-[10px] font-semibold tabular-nums tracking-tight"
+            className="inline-flex items-center mt-1 px-2 py-[3px] rounded-md text-[11.5px] font-semibold tabular-nums tracking-tight"
             style={{ color: marginColor, backgroundColor: marginBg }}
           >
             {marginLabel} %{marginPct.toFixed(1)}
