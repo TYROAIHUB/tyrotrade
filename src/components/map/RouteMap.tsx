@@ -575,15 +575,14 @@ function operationDays(p: Project): number | null {
   return daysBetweenExclusive(ms.lpEta, ms.dpEd);
 }
 
-/** Pill colour palette per metric — picked so the four pills read as
- *  a group but each carries its own hue.
+/** Pill colour palette per metric — four distinct chromatic
+ *  families so no two pills sit in the same hue territory.
  *
- *   Yükleme   → amber  (loading: warming up)
- *   Tahliye   → violet (distinct from emerald, which the P&L cards
- *                       reserve; clearly different from amber/sky/
- *                       indigo)
- *   Transit   → sky    (the dominant blue we already used)
- *   Operasyon → indigo (the dominant indigo we already used) */
+ *   Yükleme   → amber  (warm yellow-orange)
+ *   Transit   → sky    (cool light blue)
+ *   Tahliye   → rose   (warm pink-red)
+ *   Operasyon → indigo (cool deep blue-purple — keeps the
+ *                       original "summary" colour) */
 const PILL_TONES = {
   loading: {
     bg: "rgba(245,158,11,0.13)",
@@ -592,10 +591,10 @@ const PILL_TONES = {
     value: "rgb(120 53 15)", // amber-900
   },
   discharge: {
-    bg: "rgba(139,92,246,0.13)",
-    ring: "rgba(139,92,246,0.34)",
-    label: "rgb(109 40 217 / 0.85)", // violet-700 @ 85
-    value: "rgb(76 29 149)", // violet-900
+    bg: "rgba(244,63,94,0.13)",
+    ring: "rgba(244,63,94,0.34)",
+    label: "rgb(159 18 57 / 0.85)", // rose-700 @ 85
+    value: "rgb(136 19 55)", // rose-900
   },
   transit: {
     bg: "rgba(56,189,248,0.14)",
