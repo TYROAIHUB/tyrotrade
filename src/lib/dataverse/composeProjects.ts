@@ -370,24 +370,33 @@ export function composeProjects(input: ComposeInput): ComposeResult {
 
 /**
  * Regex extractor for vessel names embedded in F&O project titles
- * like "55KMT BRZ SOY / MV XIN HAI TONG 29" or "M/T EVINOS - SBO".
- * Mirrors the logic in `scripts/build-mocks.py:extract_vessel`. The
- * lookbehind on `[\d.,]` prevents quantity markers ("30.000 MT") from
- * being mistaken for vessel prefixes.
+ * like "MV MY REYHAN / 1960 MT SBPP / ARASA / MC FOOD" or
+ * "55KMT BRZ SOY / MV XIN HAI TONG 29".
+ *
+ * IMPORTANT: only `MV / M\V / M\T` are accepted as vessel prefixes.
+ * Bare `MT` is intentionally NOT matched — in Tiryaki F&O data it
+ * almost always means "Metric Ton" (quantity unit), e.g.
+ * "1960 MT SBPP" or "55KMT BRZ SOY". Treating it as a vessel prefix
+ * caused captures like "SBPP" to leak through and mask the real
+ * vessel mentioned earlier in the same title.
+ *
+ * The match list is scanned end-to-end; the LAST match wins because
+ * some titles put the vessel at the end after quantity prefixes
+ * ("55KMT BRZ SOY / MV XIN HAI TONG 29"). Titles like
+ * "MV MY REYHAN / 1960 MT SBPP / …" produce a single match, so the
+ * "last == only" — vessel "MY REYHAN" wins.
  */
 const VESSEL_NAME_RE =
-  /(?<![\d.,])\b(?:MV|MT|M\/V|M\/T)[ \-/]+([A-Z][A-Z0-9 \-]{1,30})/i;
+  /\b(?:MV|M\/V|M\/T)[ \-/]+([A-Z][A-Z0-9 \-]{1,30})/i;
 
 function extractVesselFromProjectName(name: string): string | null {
   if (!name) return null;
-  // Find the LAST match — vessel name almost always appears at the
-  // end of F&O titles (quantity markers come earlier).
   const matches = [...name.matchAll(new RegExp(VESSEL_NAME_RE, "gi"))];
   if (matches.length === 0) return null;
   const m = matches[matches.length - 1];
   let v = m[1].trim().replace(/^[\s\-/.,]+|[\s\-/.,]+$/g, "").toUpperCase();
-  // Cut at any 2+ space gap or "//" or ")" — those usually delimit a
-  // following section ("MV XYZ // SAMA APRIL...").
+  // Cut at any 2+ space gap, " - " separator, "/", or "(" — those
+  // usually delimit a following section ("MV XYZ // SAMA APRIL").
   v = v.split(/\s{2,}|\s*-\s*|\/|\(/)[0].trim();
   return v ? v.slice(0, 32) : null;
 }
