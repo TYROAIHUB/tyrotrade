@@ -7,7 +7,7 @@ import {
 } from "lucide-react";
 import { GlassPanel } from "@/components/glass/GlassPanel";
 import { AccentIconBadge, TONE_PL } from "./AccentIconBadge";
-import { formatCurrency } from "@/lib/format";
+import { formatCurrency, formatNumber } from "@/lib/format";
 import {
   selectSalesTotal,
   selectPurchaseTotal,
@@ -15,6 +15,7 @@ import {
 import { selectEstimateTotal } from "@/lib/selectors/project";
 import { toUsdAtDate } from "@/lib/finance/fxRates";
 import { readCache } from "@/lib/storage/entityCache";
+import { useProjectInvoices } from "@/hooks/useProjectInvoices";
 import { useProjectExpenseLines } from "@/hooks/useProjectExpenseLines";
 import { cn } from "@/lib/utils";
 import type { Project } from "@/lib/dataverse/entities";
@@ -29,77 +30,202 @@ const PURCHASE_ENTITY_SET = "mserp_tryaivendinvoicetransentities";
  * "Realized P&L" — full sales × purchase × expense P&L resolution
  * for the selected project, both forecast and realized side-by-side.
  *
- *   Tahmini Satış  =  Σ (line.qty/1000) × line.unitPrice   (FX→USD)
- *   Gerçekleşen Satış  =  project.salesActualUsd
- *   Tahmini Alım   =  Σ (line.qty/1000) × line.purchasePrice (FX→USD)
- *   Gerçekleşen Alım  =  Σ rows from `mserp_tryaivendinvoicetransentities`
- *                        for the project, FX→USD per row date.
- *   Tahmini Gider  =  selectEstimateTotal(project)         (already USD)
- *   Gerçekleşen Gider =  Σ `mserp_amountcur` from the expense-line
- *                        entity (`mserp_tryaiexpenselineentities`),
- *                        joined via the dist entity on
- *                        `mserp_expensenum` per `useProjectExpenseLines`.
+ * Mirrors the ProfitLossCard ("Expected P&L") layout pattern:
+ *   - Top toggle expands the whole card.
+ *   - Each section row (Tahmini/Gerçekleşen × Satış/Alım/Gider) is
+ *     itself an `ExpandableRow` carrying a +/- signed value chip
+ *     in the appropriate emerald/rose tone, and revealing per-line
+ *     `DetailLine` breakdowns when opened.
+ *   - Footer carries two K&Z resolutions (Tahmini first, Gerçekleşen
+ *     second) with margin chips, in the same visual dialect as
+ *     ProfitLossCard's single footer.
  *
- * Bottom totals (always visible — Tahmini first, Gerçekleşen second
- * per user spec):
- *   Tahmini K&Z       = Tahmini Satış − Tahmini Alım − Tahmini Gider
- *   Tahmini Marj %    = Tahmini K&Z / Tahmini Satış × 100
- *   Gerçekleşen K&Z   = Gerçekleşen Satış − Gerçekleşen Alım − Gerçekleşen Gider
- *   Gerçekleşen Marj %= Gerçekleşen K&Z / Gerçekleşen Satış × 100
+ * Estimates side: same line math the Expected P&L card uses
+ *   (line.qty/1000) × line.unitPrice / line.purchasePrice, plus the
+ *   project's `costEstimateLines`. Totals FX-converted to USD at the
+ *   project's signing date so estimated and realized sit on the same
+ *   axis.
  *
- * Each footer row matches the `ProfitLossCard` (Expected P&L) bottom
- * style — uppercase eyebrow + tone-coloured margin chip on the left,
- * signed bold value on the right. Same chip palette (emerald >5%,
- * rose <-5%, slate otherwise).
+ * Realized side:
+ *   - Satış  ← `useProjectInvoices` rows, each FX→USD per
+ *              `mserp_invoicedate`
+ *   - Alım   ← `mserp_tryaivendinvoicetransentities` cache rows
+ *              filtered by `mserp_purchtable_etgtryprojid`,
+ *              FX→USD per `mserp_invoicedate`
+ *   - Gider  ← `useProjectExpenseLines` rows (the 2-step chain via
+ *              the dist entity); `mserp_amountcur` summed as USD
+ *              (entity doesn't expose currencycode).
  *
- * Hides itself entirely when every metric is zero.
+ * Hides itself entirely when every figure is zero.
  */
 export function BudgetSalesCard({ project }: Props) {
-  const lineCurrency = project.lines[0]?.currency ?? project.currency ?? "USD";
-
-  // Expand/collapse — closed by default, matches ProfitLossCard.
+  const lines = project.lines ?? [];
+  const lineCurrency = lines[0]?.currency ?? project.currency ?? "USD";
   const [open, setOpen] = React.useState(false);
 
-  /* ─────────── Estimates (line currency → USD via project-date FX) ─────────── */
-  const tahminiSatisNative = selectSalesTotal(project);
-  const tahminiAlimNative = selectPurchaseTotal(project);
+  /* ─────────── Invoice item label lookup (shared helper) ───────────
+   * Project lines carry only the F&O item code (no Turkish product
+   * name). Customer invoices DO carry a `mserp_name` per item, so
+   * build a code→name map from invoices to enrich the estimate
+   * line breakdown — same trick ProfitLossCard uses. */
+  const { invoices } = useProjectInvoices(project.projectNo);
+  const productNameByCode = React.useMemo(() => {
+    const map = new Map<string, string>();
+    for (const inv of invoices) {
+      const code = String(inv["mserp_itemid"] ?? "").trim();
+      const name = String(inv["mserp_name"] ?? "").trim();
+      if (!code || !name) continue;
+      if (!map.has(code)) map.set(code, name);
+    }
+    return map;
+  }, [invoices]);
+  const labelFor = React.useCallback(
+    (code: string) => productNameByCode.get(code) ?? code,
+    [productNameByCode]
+  );
+
+  /* ─────────── Estimate line breakdowns ─────────── */
+  const tahminiSalesLines = React.useMemo(
+    () =>
+      lines
+        .filter((l) => l.unitPrice > 0 && l.quantityKg > 0)
+        .map((l) => ({
+          label: labelFor(l.itemCode),
+          tons: l.quantityKg / 1000,
+          price: l.unitPrice,
+          totalNative: (l.quantityKg / 1000) * l.unitPrice,
+        })),
+    [lines, labelFor]
+  );
+  const tahminiPurchaseLines = React.useMemo(
+    () =>
+      lines
+        .filter((l) => (l.purchasePrice ?? 0) > 0 && l.quantityKg > 0)
+        .map((l) => ({
+          label: labelFor(l.itemCode),
+          tons: l.quantityKg / 1000,
+          price: l.purchasePrice ?? 0,
+          totalNative: (l.quantityKg / 1000) * (l.purchasePrice ?? 0),
+        })),
+    [lines, labelFor]
+  );
+  const tahminiExpenseLines = React.useMemo(
+    () => project.costEstimateLines ?? [],
+    [project.costEstimateLines]
+  );
+
+  /* ─────────── Estimate totals (USD-equivalent at projectDate) ─────────── */
   const tahminiSatisUsd = toUsdAtDate(
-    tahminiSatisNative,
+    selectSalesTotal(project),
     lineCurrency,
     project.projectDate
   );
   const tahminiAlimUsd = toUsdAtDate(
-    tahminiAlimNative,
+    selectPurchaseTotal(project),
     lineCurrency,
     project.projectDate
   );
-  // Gider estimate already USD per F&O entity model.
   const tahminiGiderUsd = selectEstimateTotal(project);
 
-  /* ─────────── Realized side ─────────── */
-  const gerceklesenSatisUsd = project.salesActualUsd ?? 0;
-  const gerceklesenAlimUsd = useRealizedPurchaseUsd(project.projectNo);
-  // Authoritative realized expenses come from the same 2-step chain
-  // the Veri Yönetimi tab uses. `mserp_amountcur` is treated as USD
-  // — the entity doesn't expose `mserp_currencycode`, so there's no
-  // FX context to convert against.
-  const expenseLines = useProjectExpenseLines(project.projectNo);
-  const gerceklesenGiderUsd = React.useMemo(() => {
-    let sum = 0;
-    for (const r of expenseLines.rows) {
-      const amount = Number(r["mserp_amountcur"]);
-      if (Number.isFinite(amount)) sum += amount;
-    }
-    return sum;
-  }, [expenseLines.rows]);
+  /* ─────────── Realized line breakdowns ─────────── */
+  // Sales — invoices carry per-line currency + invoice date, so
+  // FX-convert each row before summing. Filter zero-amount rows so
+  // the breakdown count reflects substantive postings only.
+  const gerceklesenSalesLines = React.useMemo(() => {
+    return invoices
+      .map((inv) => {
+        const amount = Number(inv["mserp_lineamount"]);
+        if (!Number.isFinite(amount) || amount === 0) return null;
+        const cur = String(inv["mserp_currencycode"] ?? "USD")
+          .trim()
+          .toUpperCase();
+        const date =
+          typeof inv["mserp_invoicedate"] === "string"
+            ? (inv["mserp_invoicedate"] as string)
+            : null;
+        const qty = Number(inv["mserp_qty"]);
+        return {
+          label: String(inv["mserp_name"] ?? inv["mserp_itemid"] ?? "—"),
+          tons: Number.isFinite(qty) ? qty / 1000 : 0,
+          nativeAmount: amount,
+          nativeCurrency: cur,
+          totalUsd: toUsdAtDate(amount, cur, date),
+        };
+      })
+      .filter((l): l is NonNullable<typeof l> => l !== null);
+  }, [invoices]);
+  const gerceklesenSatisUsd = gerceklesenSalesLines.reduce(
+    (s, l) => s + l.totalUsd,
+    0
+  );
+
+  // Purchase — read cached vendor invoice rows scoped to the
+  // selected project, same FX treatment as sales.
+  const gerceklesenPurchaseLines = React.useMemo(() => {
+    if (!project.projectNo) return [];
+    const cached = readCache<Record<string, unknown>>(PURCHASE_ENTITY_SET);
+    const all = cached?.value ?? [];
+    return all
+      .filter((r) => r["mserp_purchtable_etgtryprojid"] === project.projectNo)
+      .map((r) => {
+        const amount = Number(r["mserp_lineamount"]);
+        if (!Number.isFinite(amount) || amount === 0) return null;
+        const cur = String(r["mserp_currencycode"] ?? "USD")
+          .trim()
+          .toUpperCase();
+        const date =
+          typeof r["mserp_invoicedate"] === "string"
+            ? (r["mserp_invoicedate"] as string)
+            : null;
+        const qty = Number(r["mserp_qty"]);
+        return {
+          label: String(r["mserp_name"] ?? r["mserp_itemid"] ?? "—"),
+          tons: Number.isFinite(qty) ? qty / 1000 : 0,
+          nativeAmount: amount,
+          nativeCurrency: cur,
+          totalUsd: toUsdAtDate(amount, cur, date),
+        };
+      })
+      .filter((l): l is NonNullable<typeof l> => l !== null);
+  }, [project.projectNo]);
+  const gerceklesenAlimUsd = gerceklesenPurchaseLines.reduce(
+    (s, l) => s + l.totalUsd,
+    0
+  );
+
+  // Expense — 2-step chain via `useProjectExpenseLines`. Amounts
+  // treated as USD because the expense-line entity doesn't expose a
+  // currency column.
+  const expenseLineQuery = useProjectExpenseLines(project.projectNo);
+  const gerceklesenExpenseLines = React.useMemo(
+    () =>
+      expenseLineQuery.rows
+        .map((r) => {
+          const amount = Number(r["mserp_amountcur"]);
+          if (!Number.isFinite(amount) || amount === 0) return null;
+          const description = String(r["mserp_description"] ?? "").trim();
+          const expenseId = String(r["mserp_expenseid"] ?? "").trim();
+          const expensenum = String(r["mserp_expensenum"] ?? "").trim();
+          return {
+            label: description || expenseId || expensenum || "—",
+            expenseId,
+            expensenum,
+            totalUsd: amount,
+          };
+        })
+        .filter((l): l is NonNullable<typeof l> => l !== null),
+    [expenseLineQuery.rows]
+  );
+  const gerceklesenGiderUsd = gerceklesenExpenseLines.reduce(
+    (s, l) => s + l.totalUsd,
+    0
+  );
 
   /* ─────────── P&L resolutions ─────────── */
   const tahminiKZ = tahminiSatisUsd - tahminiAlimUsd - tahminiGiderUsd;
   const gerceklesenKZ =
     gerceklesenSatisUsd - gerceklesenAlimUsd - gerceklesenGiderUsd;
 
-  // Margin = K&Z / Satış × 100. Null when sales is zero (no
-  // reference frame for percentage).
   const tahminiMargin =
     tahminiSatisUsd > 0 ? (tahminiKZ / tahminiSatisUsd) * 100 : null;
   const gerceklesenMargin =
@@ -107,7 +233,7 @@ export function BudgetSalesCard({ project }: Props) {
       ? (gerceklesenKZ / gerceklesenSatisUsd) * 100
       : null;
 
-  // Hide when every figure is zero — keeps the right rail clean.
+  // Auto-hide when nothing meaningful exists on any side.
   if (
     tahminiSatisUsd <= 0 &&
     tahminiAlimUsd <= 0 &&
@@ -168,49 +294,139 @@ export function BudgetSalesCard({ project }: Props) {
         <div className="rounded-xl border border-border/40 overflow-hidden">
           {open && (
             <>
+              {/* ─── Satış ─── */}
               <SectionHeader>Satış</SectionHeader>
-              <StatRow
+              <ExpandableRow
                 label="Tahmini Satış"
-                sub="Σ (ton × birim fiyat)"
-                value={formatCurrency(tahminiSatisUsd, "USD")}
-                muted
-              />
-              <StatRow
+                count={tahminiSalesLines.length}
+                countLabel="satış kalemi"
+                value={`+${formatCurrency(tahminiSatisUsd, "USD")}`}
+                sign="positive"
+                disabled={tahminiSalesLines.length === 0}
+                faded={tahminiSatisUsd === 0}
+              >
+                {tahminiSalesLines.map((l, i) => (
+                  <DetailLine
+                    key={i}
+                    code={l.label}
+                    sub={`${formatNumber(l.tons, 0)} t × ${formatCurrency(l.price, lineCurrency, { maximumFractionDigits: 2 })} / t`}
+                    total={`+${formatCurrency(l.totalNative, lineCurrency)}`}
+                    sign="positive"
+                  />
+                ))}
+              </ExpandableRow>
+              <ExpandableRow
                 label="Gerçekleşen Satış"
-                sub="Σ faturalı satışlar (USD)"
-                value={formatCurrency(gerceklesenSatisUsd, "USD")}
-              />
+                count={gerceklesenSalesLines.length}
+                countLabel="fatura kalemi"
+                value={`+${formatCurrency(gerceklesenSatisUsd, "USD")}`}
+                sign="positive"
+                disabled={gerceklesenSalesLines.length === 0}
+                faded={gerceklesenSatisUsd === 0}
+              >
+                {gerceklesenSalesLines.map((l, i) => (
+                  <DetailLine
+                    key={i}
+                    code={l.label}
+                    sub={subForRealizedLine(l)}
+                    total={`+${formatCurrency(l.totalUsd, "USD")}`}
+                    sign="positive"
+                  />
+                ))}
+              </ExpandableRow>
+
+              {/* ─── Alım ─── */}
               <SectionHeader>Alım</SectionHeader>
-              <StatRow
+              <ExpandableRow
                 label="Tahmini Alım"
-                sub="Σ (ton × alış fiyatı)"
-                value={formatCurrency(tahminiAlimUsd, "USD")}
-                muted
-              />
-              <StatRow
+                count={tahminiPurchaseLines.length}
+                countLabel="alım kalemi"
+                value={`-${formatCurrency(tahminiAlimUsd, "USD")}`}
+                sign="negative"
+                disabled={tahminiPurchaseLines.length === 0}
+                faded={tahminiAlimUsd === 0}
+              >
+                {tahminiPurchaseLines.map((l, i) => (
+                  <DetailLine
+                    key={i}
+                    code={l.label}
+                    sub={`${formatNumber(l.tons, 0)} t × ${formatCurrency(l.price, lineCurrency, { maximumFractionDigits: 2 })} / t`}
+                    total={`-${formatCurrency(l.totalNative, lineCurrency)}`}
+                    sign="negative"
+                  />
+                ))}
+              </ExpandableRow>
+              <ExpandableRow
                 label="Gerçekleşen Alım"
-                sub="Σ tedarikçi faturaları (FX → USD)"
-                value={formatCurrency(gerceklesenAlimUsd, "USD")}
-              />
+                count={gerceklesenPurchaseLines.length}
+                countLabel="tedarikçi faturası"
+                value={`-${formatCurrency(gerceklesenAlimUsd, "USD")}`}
+                sign="negative"
+                disabled={gerceklesenPurchaseLines.length === 0}
+                faded={gerceklesenAlimUsd === 0}
+              >
+                {gerceklesenPurchaseLines.map((l, i) => (
+                  <DetailLine
+                    key={i}
+                    code={l.label}
+                    sub={subForRealizedLine(l)}
+                    total={`-${formatCurrency(l.totalUsd, "USD")}`}
+                    sign="negative"
+                  />
+                ))}
+              </ExpandableRow>
+
+              {/* ─── Gider ─── */}
               <SectionHeader>Gider</SectionHeader>
-              <StatRow
+              <ExpandableRow
                 label="Tahmini Gider"
-                sub="Σ tahmini gider satırları (USD)"
-                value={formatCurrency(tahminiGiderUsd, "USD")}
-                muted
-              />
-              <StatRow
+                count={tahminiExpenseLines.length}
+                countLabel="gider kalemi"
+                value={`-${formatCurrency(tahminiGiderUsd, "USD")}`}
+                sign="negative"
+                disabled={tahminiExpenseLines.length === 0}
+                faded={tahminiGiderUsd === 0}
+              >
+                {tahminiExpenseLines.map((l, i) => (
+                  <DetailLine
+                    key={i}
+                    code={l.name}
+                    sub={`${formatNumber(l.tons, 0)} t × ${formatCurrency(l.unitPriceUsd, "USD", { maximumFractionDigits: 2 })} / t`}
+                    total={`-${formatCurrency(l.totalUsd, "USD")}`}
+                    sign="negative"
+                  />
+                ))}
+              </ExpandableRow>
+              <ExpandableRow
                 label="Gerçekleşen Gider"
-                sub="Σ gerçekleşen masraf satırları (USD)"
-                value={formatCurrency(gerceklesenGiderUsd, "USD")}
-              />
+                count={gerceklesenExpenseLines.length}
+                countLabel="masraf kaydı"
+                value={`-${formatCurrency(gerceklesenGiderUsd, "USD")}`}
+                sign="negative"
+                disabled={gerceklesenExpenseLines.length === 0}
+                faded={gerceklesenGiderUsd === 0}
+              >
+                {gerceklesenExpenseLines.map((l, i) => (
+                  <DetailLine
+                    key={i}
+                    code={l.label}
+                    sub={
+                      l.expenseId
+                        ? `Masraf Kalemi: ${l.expenseId}`
+                        : l.expensenum
+                          ? `Masraf No: ${l.expensenum}`
+                          : ""
+                    }
+                    total={`-${formatCurrency(l.totalUsd, "USD")}`}
+                    sign="negative"
+                  />
+                ))}
+              </ExpandableRow>
             </>
           )}
 
-          {/* Bottom totals — Tahmini first, Gerçekleşen second.
-              Each row matches the ProfitLossCard footer layout
-              (uppercase eyebrow + tone-coloured margin chip on the
-              left, signed bold value on the right). */}
+          {/* Footer totals — Tahmini first, Gerçekleşen second.
+              Each row mirrors the ProfitLossCard footer layout. */}
           <KZFooterRow
             label="Tahmini Kâr / Zarar"
             marginLabel="Tahmini marj"
@@ -229,36 +445,29 @@ export function BudgetSalesCard({ project }: Props) {
   );
 }
 
-/* ─────────── Realized purchase totals ─────────── */
-
+/* ─────────── Realized-line subtitle helper ─────────── */
 /**
- * Sum the project's vendor invoice rows from the cached
- * `mserp_tryaivendinvoicetransentities` slot (populated by the Veri
- * Yönetimi "Gerçekleşen Satınalma" refresh step). Each row's
- * `mserp_lineamount` is FX-converted to USD using its
- * `mserp_invoicedate` so currency mismatch never inflates the total.
+ * Pretty-print the per-line subtitle for a realized invoice/purchase
+ * row: "X t · $Y" when both quantity and a different native currency
+ * are usable, otherwise falls back to whichever piece is meaningful.
+ * Hides redundancy — we don't repeat USD when totals are already in
+ * USD on the right side.
  */
-function useRealizedPurchaseUsd(projectNo: string): number {
-  return React.useMemo(() => {
-    if (!projectNo) return 0;
-    const cached = readCache<Record<string, unknown>>(PURCHASE_ENTITY_SET);
-    const all = cached?.value ?? [];
-    let usd = 0;
-    for (const r of all) {
-      if (r["mserp_purchtable_etgtryprojid"] !== projectNo) continue;
-      const amount = Number(r["mserp_lineamount"]);
-      if (!Number.isFinite(amount) || amount === 0) continue;
-      const currency = String(r["mserp_currencycode"] ?? "USD")
-        .trim()
-        .toUpperCase();
-      const date =
-        typeof r["mserp_invoicedate"] === "string"
-          ? (r["mserp_invoicedate"] as string)
-          : null;
-      usd += toUsdAtDate(amount, currency, date);
-    }
-    return usd;
-  }, [projectNo]);
+function subForRealizedLine(l: {
+  tons: number;
+  nativeAmount: number;
+  nativeCurrency: string;
+}): string {
+  const tonsPart =
+    Number.isFinite(l.tons) && l.tons > 0
+      ? `${formatNumber(l.tons, 0)} t`
+      : "";
+  const nativePart =
+    l.nativeCurrency && l.nativeCurrency !== "USD"
+      ? formatCurrency(l.nativeAmount, l.nativeCurrency)
+      : "";
+  if (tonsPart && nativePart) return `${tonsPart} · ${nativePart}`;
+  return tonsPart || nativePart;
 }
 
 /* ─────────── Helpers ─────────── */
@@ -273,46 +482,125 @@ function SectionHeader({ children }: { children: React.ReactNode }) {
   );
 }
 
-function StatRow({
+/* ─────────── Expandable section row ───────────
+ * Verbatim copy of ProfitLossCard's `ExpandableRow` so the two cards
+ * stack with identical row chrome. Local rather than shared so each
+ * card's behaviour can drift independently if needed (e.g. the
+ * Realized side might surface FX hover later). */
+function ExpandableRow({
   label,
-  sub,
+  count,
+  countLabel,
   value,
-  muted,
+  sign,
+  faded = false,
+  disabled = false,
+  children,
 }: {
   label: string;
-  sub?: string;
+  count: number;
+  countLabel: string;
   value: string;
-  muted?: boolean;
+  sign: Tone;
+  faded?: boolean;
+  disabled?: boolean;
+  children?: React.ReactNode;
 }) {
+  const [open, setOpen] = React.useState(false);
+  const valueColor =
+    sign === "positive"
+      ? "text-emerald-700"
+      : sign === "negative"
+        ? "text-rose-700"
+        : "text-foreground";
   return (
-    <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-x-3 px-3 py-2.5 text-[11.5px] border-t border-border/30 first:border-t-0 items-baseline">
+    <div
+      className={cn(
+        "border-t border-border/30 first:border-t-0",
+        faded && "opacity-55"
+      )}
+    >
+      <button
+        type="button"
+        onClick={() => !disabled && setOpen((v) => !v)}
+        disabled={disabled}
+        className={cn(
+          "w-full grid grid-cols-[minmax(0,1fr)_auto] gap-x-3 px-3 py-2 text-[11.5px] items-baseline transition-colors text-left",
+          !disabled && "hover:bg-foreground/[0.025] cursor-pointer",
+          disabled && "cursor-default"
+        )}
+        aria-expanded={open}
+      >
+        <div className="min-w-0 flex items-center gap-1">
+          <ChevronDown
+            className={cn(
+              "size-3 shrink-0 text-muted-foreground transition-transform",
+              open && "rotate-180",
+              disabled && "opacity-40"
+            )}
+          />
+          <div className="min-w-0">
+            <div className="font-medium text-foreground truncate">{label}</div>
+            <div className="text-[10px] text-muted-foreground/80 truncate mt-0.5">
+              {count} {countLabel}
+            </div>
+          </div>
+        </div>
+        <div
+          className={cn("text-right tabular-nums font-semibold", valueColor)}
+        >
+          {value}
+        </div>
+      </button>
+      {open && children && (
+        <div className="bg-foreground/[0.025] px-3 pb-2.5 pt-1 border-t border-border/20">
+          <div className="space-y-1">{children}</div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ─────────── Detail line shown inside an expanded row ───────────
+ * Same shape as ProfitLossCard's `DetailLine` but the `sub` is a
+ * pre-formatted string so each section can carry its own subtitle
+ * dialect (tons × rate for estimates, native currency / expense
+ * code / etc. for realized). */
+function DetailLine({
+  code,
+  sub,
+  total,
+  sign,
+}: {
+  code: string;
+  sub: string;
+  total: string;
+  sign: "positive" | "negative";
+}) {
+  const valueColor =
+    sign === "positive" ? "text-emerald-700" : "text-rose-700";
+  return (
+    <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-x-3 py-0.5 tabular-nums items-baseline">
       <div className="min-w-0">
-        <div className="font-medium text-foreground truncate">{label}</div>
+        <div className="text-[12px] text-foreground/90 line-clamp-2 font-medium leading-snug">
+          {code}
+        </div>
         {sub && (
-          <div className="text-[10px] text-muted-foreground/80 truncate mt-0.5">
+          <div className="text-muted-foreground/90 text-[11px] truncate mt-0.5">
             {sub}
           </div>
         )}
       </div>
       <div
-        className={cn(
-          "text-right tabular-nums",
-          muted ? "text-muted-foreground font-medium" : "font-bold text-foreground"
-        )}
+        className={cn("text-right font-semibold text-[12px]", valueColor)}
       >
-        {value}
+        {total}
       </div>
     </div>
   );
 }
 
-/**
- * Footer row matching the ProfitLossCard "Tahmini Kâr / Zarar" block
- * one-for-one: uppercase eyebrow label, tone-coloured margin chip
- * underneath, signed bold value on the right. Used twice (Tahmini
- * row + Gerçekleşen row) so both K&Z resolutions read with the same
- * visual language as the Expected P&L card.
- */
+/* ─────────── K&Z footer row (mirrors ProfitLossCard footer) ─────────── */
 function KZFooterRow({
   label,
   marginLabel,
@@ -326,10 +614,6 @@ function KZFooterRow({
 }) {
   const positive = value > 0;
   const negative = value < 0;
-
-  // Margin tone — drives chip colour. Same thresholds as
-  // `aggregateMarginDistribution` in the dashboard so the right rail
-  // and the executive rollup agree on what counts as "healthy".
   const marginTone: Tone =
     marginPct == null
       ? "neutral"
@@ -338,15 +622,11 @@ function KZFooterRow({
         : marginPct < -5
           ? "negative"
           : "neutral";
-
   const valueColor = positive
     ? "text-emerald-700"
     : negative
       ? "text-rose-700"
       : "text-foreground";
-
-  // Chip colours match the ProfitLossCard palette (rgb literals so
-  // the inline styles don't depend on Tailwind class generation).
   const marginColor =
     marginTone === "positive"
       ? "rgb(4 120 87)"
@@ -359,7 +639,6 @@ function KZFooterRow({
       : marginTone === "negative"
         ? "rgba(244,63,94,0.12)"
         : "rgba(100,116,139,0.12)";
-
   return (
     <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-x-3 px-3 py-2.5 text-[11.5px] bg-foreground/[0.04] items-baseline border-t border-border/40">
       <div className="min-w-0">
