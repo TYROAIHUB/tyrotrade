@@ -28,12 +28,15 @@ const STORAGE_KEY = "tyro:sidebar:pinned";
 const THEME_STORAGE_KEY = "tyro:sidebar:theme";
 
 function readTheme(): SidebarTheme {
-  if (typeof window === "undefined") return "navy";
+  // Default to "light" for first-time visitors and anyone who has
+  // cleared localStorage. Returning users keep whatever they last
+  // picked (persisted under THEME_STORAGE_KEY).
+  if (typeof window === "undefined") return "light";
   const raw = localStorage.getItem(THEME_STORAGE_KEY);
   const v = raw === "sky-navy" ? "navy" : raw;
   return (THEME_VALUES as readonly string[]).includes(v ?? "")
     ? (v as SidebarTheme)
-    : "navy";
+    : "light";
 }
 
 export function SidebarProvider({ children }: { children: React.ReactNode }) {

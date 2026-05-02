@@ -765,11 +765,14 @@ export function DataManagementPage() {
             {childTab === "actualExpense" && (
               <EntityRowsTable
                 rows={childActualExpense}
-                // Two-step chain: dist entity → expensenum set →
-                // authoritative expense-line rows. Display columns
-                // come from the expense-line entity now (auth.
-                // amounts + descriptions).
-                columns={[...EXPENSE_LINE_COLUMNS]}
+                // Three-step chain: inventdimb → dist → expense-line
+                // (rows come from the expense-line entity — auth.
+                // amounts + descriptions). `mserp_refexpenseid` is
+                // appended as a virtual column populated by the
+                // hook's refmap enrichment so the realised side can
+                // show the same textual class (`OPEX`, `FREIGHT`,
+                // …) the forecast table already shows.
+                columns={[...EXPENSE_LINE_COLUMNS, "mserp_refexpenseid"]}
                 emptyText={
                   selectedProjId
                     ? actualExpense.error

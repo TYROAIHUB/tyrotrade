@@ -21,6 +21,16 @@ const DIST_ENTITY = "mserp_tryaifrtexpenselinedistlineentities";
  *  `mserp_expensenum`. */
 const EXPENSE_ENTITY = "mserp_tryaiexpenselineentities";
 
+/** Reference-map entity — per project, carries
+ *  `(mserp_tryexpensetype, mserp_refexpenseid)` pairs that translate
+ *  the numeric `mserp_expenseid` values surfaced on the realised
+ *  expense-line entity (e.g. `730026`, `710041`) into the textual
+ *  label used on the forecast side (e.g. `OPEX`, `FREIGHT`,
+ *  `İTHALAT BULK - NAVLUN`). Without this lookup the forecast and
+ *  realised expense rows are impossible to reconcile by class.
+ *  Filtered per project so the map stays small. */
+const EXPENSE_REFMAP_ENTITY = "mserp_tryaiotherexpenseprojectlineentities";
+
 /** Same chunk size as the global IN filter helpers — keeps each
  *  request URL safely under proxy/CDN limits. Used for both the
  *  inventdimid → distribution lookup and the expensenum → expense
@@ -47,7 +57,7 @@ export interface UseProjectExpenseLinesReturn {
 
 /**
  * 🔒 Read-only — fetch realised-expense LINES for one project via a
- * three-step chain:
+ * chain of three sequential steps + one parallel reference-map step:
  *
  *   0. List inventory-dimension rows from `mserp_inventdimbientities`
  *      filtered by `mserp_inventdimension2 eq '<projectNo>'`. Pull
@@ -55,6 +65,12 @@ export interface UseProjectExpenseLinesReturn {
  *      distribution entity (Step 1) is not directly indexed by
  *      project number — the project link lives in the inventdim
  *      table.
+ *   R. (PARALLEL to Step 0) List rows from
+ *      `mserp_tryaiotherexpenseprojectlineentities` filtered by
+ *      `mserp_etgtryprojid eq '<projectNo>'`. Build a
+ *      `mserp_tryexpensetype → mserp_refexpenseid` map. This is
+ *      best-effort: failure here just leaves enriched rows without
+ *      the textual class label, the rest of the chain proceeds.
  *   1. De-duplicate the inventdimids, then list distribution rows
  *      from `mserp_tryaifrtexpenselinedistlineentities` using a
  *      chunked `In(mserp_inventdimid, …)` filter. Pull only
@@ -64,10 +80,12 @@ export interface UseProjectExpenseLinesReturn {
  *      `In(mserp_expensenum, …)` filter so the URL stays under
  *      proxy limits even when a project touches hundreds of expense
  *      vouchers.
+ *   3. Enrich each Step-2 row by setting `mserp_refexpenseid` from
+ *      Step-R's map keyed on the row's `mserp_expenseid`.
  *
- * Returns the step-2 rows. The inventdimb + distribution entities
- * act as filter intermediaries only — their data isn't surfaced
- * anywhere.
+ * Returns the enriched step-2 rows. The inventdimb + distribution +
+ * refmap entities act as filter / lookup intermediaries only — their
+ * raw rows aren't surfaced anywhere.
  *
  * In-memory state only (no localStorage cache). The hook re-fetches
  * on every project change; same-project re-renders use cached state.
@@ -97,15 +115,43 @@ export function useProjectExpenseLines(
       try {
         const client = getDataverseClient();
 
-        // Step 0: inventory-dimension rows for the project → distinct inventdimids
-        const dimResult = await client.listAll<Record<string, unknown>>(
-          INVENTDIMB_ENTITY,
-          {
+        // Step 0 (parallel): inventory-dimension rows for the project →
+        //   distinct inventdimids that drive Step 1.
+        // Step R (parallel to Step 0): expense-type → refexpenseid map
+        //   for this project. Used purely to enrich Step 2 rows with a
+        //   textual expense class (`OPEX`, `FREIGHT`, …). Refmap fetch
+        //   is best-effort — if it fails we keep going with raw rows.
+        const [dimSettled, refMapSettled] = await Promise.allSettled([
+          client.listAll<Record<string, unknown>>(INVENTDIMB_ENTITY, {
             $filter: `mserp_inventdimension2 eq '${projectNo}'`,
             $select: "mserp_inventdimid",
-          }
-        );
+          }),
+          client.listAll<Record<string, unknown>>(EXPENSE_REFMAP_ENTITY, {
+            $filter: `mserp_etgtryprojid eq '${projectNo}'`,
+            $select: "mserp_tryexpensetype,mserp_refexpenseid",
+          }),
+        ]);
         if (cancelled) return;
+
+        // Step 0 is required — bail if it failed.
+        if (dimSettled.status === "rejected") throw dimSettled.reason;
+        const dimResult = dimSettled.value;
+
+        // Step R is best-effort. Build the lookup either way.
+        const refMap = new Map<string, string>();
+        if (refMapSettled.status === "fulfilled") {
+          for (const r of refMapSettled.value.value) {
+            const k = String(r.mserp_tryexpensetype ?? "").trim();
+            const v = String(r.mserp_refexpenseid ?? "").trim();
+            if (k && v && !refMap.has(k)) refMap.set(k, v);
+          }
+        } else {
+          // eslint-disable-next-line no-console
+          console.warn(
+            `[useProjectExpenseLines] refmap fetch failed for ${projectNo} — proceeding without expense-class labels:`,
+            refMapSettled.reason
+          );
+        }
 
         const inventDimIds = [
           ...new Set(
@@ -178,7 +224,21 @@ export function useProjectExpenseLines(
           all.push(...expResult.value);
         }
 
-        setRows(all);
+        // Enrichment: attach `mserp_refexpenseid` (textual class) onto
+        // each row by looking up the row's `mserp_expenseid` against the
+        // refmap built during Step R. Rows whose code has no entry in
+        // the refmap stay untouched (the column will read empty in the
+        // UI). We splice the field with the same Dataverse-style key
+        // so downstream consumers (EntityRowsTable column lookup,
+        // BudgetSalesCard label fallback) can read it like any other
+        // column without a dedicated enriched-row type.
+        const enriched = all.map((r) => {
+          const code = String(r.mserp_expenseid ?? "").trim();
+          const ref = code ? refMap.get(code) : undefined;
+          return ref ? { ...r, mserp_refexpenseid: ref } : r;
+        });
+
+        setRows(enriched);
         setFetchedAt(new Date().toISOString());
       } catch (err) {
         if (cancelled) return;

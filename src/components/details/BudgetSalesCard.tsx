@@ -208,8 +208,16 @@ export function BudgetSalesCard({ project }: Props) {
   );
 
   // Expense — 3-step chain via `useProjectExpenseLines` (inventdimb
-  // → dist → expense-line). Amounts treated as USD because the
-  // expense-line entity doesn't expose a currency column.
+  // → dist → expense-line + refmap enrichment). Amounts treated as
+  // USD because the expense-line entity doesn't expose a currency
+  // column.
+  //
+  // Special handling for code `710041` (Satış Fiyat Farkı): this is
+  // an FX-driven sales price-difference adjustment that REDUCES the
+  // realised expense burden rather than adding to it. We surface it
+  // as a positive (green +) line in the breakdown AND subtract its
+  // amount from the gerceklesenGider total instead of adding.
+  const PRICE_DIFF_EXPENSE_CODE = "710041";
   const expenseLineQuery = useProjectExpenseLines(project.projectNo);
   const gerceklesenExpenseLines = React.useMemo(
     () =>
@@ -220,18 +228,32 @@ export function BudgetSalesCard({ project }: Props) {
           const description = String(r["mserp_description"] ?? "").trim();
           const expenseId = String(r["mserp_expenseid"] ?? "").trim();
           const expensenum = String(r["mserp_expensenum"] ?? "").trim();
+          // Refmap-derived textual class (e.g. "İTHALAT BULK - NAVLUN").
+          // Falls back to description / id / num when refmap had no
+          // entry for this code. This is what the user sees as the
+          // primary line label.
+          const refExpenseId = String(r["mserp_refexpenseid"] ?? "").trim();
+          const isPriceDiff = expenseId === PRICE_DIFF_EXPENSE_CODE;
           return {
-            label: description || expenseId || expensenum || "—",
+            label:
+              refExpenseId ||
+              description ||
+              expenseId ||
+              expensenum ||
+              "—",
             expenseId,
             expensenum,
+            refExpenseId,
             totalUsd: amount,
+            isPriceDiff,
           };
         })
         .filter((l): l is NonNullable<typeof l> => l !== null),
     [expenseLineQuery.rows]
   );
+  // Net gider: regular expenses ADD, price-diff entries SUBTRACT.
   const gerceklesenGiderUsd = gerceklesenExpenseLines.reduce(
-    (s, l) => s + l.totalUsd,
+    (s, l) => s + (l.isPriceDiff ? -l.totalUsd : l.totalUsd),
     0
   );
 
@@ -427,8 +449,15 @@ export function BudgetSalesCard({ project }: Props) {
                 label="Gerçekleşen Gider"
                 count={gerceklesenExpenseLines.length}
                 countLabel="masraf kaydı"
-                value={`-${formatCurrency(gerceklesenGiderUsd, "USD")}`}
-                sign="negative"
+                // When price-diff lines outweigh raw expenses the net
+                // becomes negative — flip the sign on the headline so
+                // the row reads "+$X" green instead of "-$-X".
+                value={
+                  gerceklesenGiderUsd < 0
+                    ? `+${formatCurrency(Math.abs(gerceklesenGiderUsd), "USD")}`
+                    : `-${formatCurrency(gerceklesenGiderUsd, "USD")}`
+                }
+                sign={gerceklesenGiderUsd < 0 ? "positive" : "negative"}
                 disabled={gerceklesenExpenseLines.length === 0}
                 faded={gerceklesenGiderUsd === 0}
               >
@@ -443,8 +472,12 @@ export function BudgetSalesCard({ project }: Props) {
                           ? `Masraf No: ${l.expensenum}`
                           : ""
                     }
-                    total={`-${formatCurrency(l.totalUsd, "USD")}`}
-                    sign="negative"
+                    // Price-diff (710041) lines reduce the realised
+                    // expense burden — show them as positive/green
+                    // instead of negative/red so the breakdown reads
+                    // honestly.
+                    total={`${l.isPriceDiff ? "+" : "-"}${formatCurrency(l.totalUsd, "USD")}`}
+                    sign={l.isPriceDiff ? "positive" : "negative"}
                   />
                 ))}
               </ExpandableRow>

@@ -185,13 +185,17 @@ export async function fetchVesselMasterAndEnrichShipCache(
  * the same wording is used in every call site (auto-refresh, manual
  * refresh, per-project hooks, dashboard rollups).
  *
- * `eq null` is the OData v4 standard for "field unset"; F&O virtual
- * entities accept it on string columns. If a tenant ever surfaces
- * empty-string sentinels instead, widen this to
- * `(mserp_intercompanyinventtransid eq null or mserp_intercompanyinventtransid eq '')`.
+ * `eq null` is the OData v4 standard for "field unset" but on this
+ * Tiryaki tenant the F&O dual-write surface populates the column
+ * with an empty string for non-intercompany rows instead of NULL —
+ * so a pure `eq null` clause leaks intercompany==='' rows back into
+ * the cache. We catch both shapes here. The whole expression is
+ * pre-wrapped in parentheses so call sites can splice it in with
+ * `${NON_INTERCOMPANY_FILTER}` without worrying about `and`/`or`
+ * precedence.
  */
 export const NON_INTERCOMPANY_FILTER =
-  "mserp_intercompanyinventtransid eq null";
+  "(mserp_intercompanyinventtransid eq null or mserp_intercompanyinventtransid eq '')";
 
 /** Maximum project IDs per `Microsoft.Dynamics.CRM.In(...)` clause.
  *
