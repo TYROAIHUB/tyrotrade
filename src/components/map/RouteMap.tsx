@@ -902,18 +902,92 @@ interface MilestoneStripProps {
 
 function MilestoneStrip({ ms, progress, onClose }: MilestoneStripProps) {
   // Production-aligned 9-step voyage timeline. Order matches the D365
-  // F&O screen (LP loading → BL → DP discharge) so the chip strip reads
-  // the same as the source system.
-  const steps: Array<{ key: string; label: string; date: string | null }> = [
-    { key: "lpEta", label: "LP-ETA", date: ms.lpEta },
-    { key: "lpNor", label: "LP-NOR", date: ms.lpNorAccepted },
-    { key: "lpSd", label: "LP-SD", date: ms.lpSd },
-    { key: "lpEd", label: "LP-ED", date: ms.lpEd },
-    { key: "bl", label: "BL", date: ms.blDate },
-    { key: "dpEta", label: "DP-ETA", date: ms.dpEta },
-    { key: "dpNor", label: "DP-NOR", date: ms.dpNorAccepted },
-    { key: "dpSd", label: "DP-SD", date: ms.dpSd },
-    { key: "dpEd", label: "DP-ED", date: ms.dpEd },
+  // F&O screen (LP loading → BL → DP discharge) so the chip strip
+  // reads the same as the source system.
+  //
+  // `tooltipTitle` + `tooltipBody` feed the Radix Tooltip that shows
+  // when the user hovers on a step — abbreviations like "LP-ETA"
+  // are operationally familiar but not self-explanatory, so each
+  // chip explains itself in plain Turkish.
+  const steps: Array<{
+    key: string;
+    label: string;
+    date: string | null;
+    tooltipTitle: string;
+    tooltipBody: string;
+  }> = [
+    {
+      key: "lpEta",
+      label: "LP-ETA",
+      date: ms.lpEta,
+      tooltipTitle: "Yükleme Limanı — Tahmini Varış",
+      tooltipBody:
+        "Geminin yükleme limanına tahmini varış tarihi (Loading Port — Estimated Time of Arrival).",
+    },
+    {
+      key: "lpNor",
+      label: "LP-NOR",
+      date: ms.lpNorAccepted,
+      tooltipTitle: "Yükleme Limanı — NOR Kabul",
+      tooltipBody:
+        "Geminin yüklemeye hazır olduğunu bildiren Notice of Readiness'in liman tarafından kabul edildiği tarih.",
+    },
+    {
+      key: "lpSd",
+      label: "LP-SD",
+      date: ms.lpSd,
+      tooltipTitle: "Yükleme — Başlangıç",
+      tooltipBody:
+        "Yükleme operasyonunun fiilen başladığı tarih (Loading Start Date).",
+    },
+    {
+      key: "lpEd",
+      label: "LP-ED",
+      date: ms.lpEd,
+      tooltipTitle: "Yükleme — Bitiş",
+      tooltipBody:
+        "Yükleme operasyonunun tamamlandığı tarih (Loading End Date).",
+    },
+    {
+      key: "bl",
+      label: "BL",
+      date: ms.blDate,
+      tooltipTitle: "Bill of Lading",
+      tooltipBody:
+        "Konşimentonun (taşıma senedi) düzenlendiği tarih. Yükün gemiye teslim edildiğinin resmî kanıtı.",
+    },
+    {
+      key: "dpEta",
+      label: "DP-ETA",
+      date: ms.dpEta,
+      tooltipTitle: "Varış Limanı — Tahmini Varış",
+      tooltipBody:
+        "Geminin tahliye limanına tahmini varış tarihi (Discharge Port — Estimated Time of Arrival).",
+    },
+    {
+      key: "dpNor",
+      label: "DP-NOR",
+      date: ms.dpNorAccepted,
+      tooltipTitle: "Varış Limanı — NOR Kabul",
+      tooltipBody:
+        "Geminin tahliyeye hazır olduğunu bildiren Notice of Readiness'in liman tarafından kabul edildiği tarih.",
+    },
+    {
+      key: "dpSd",
+      label: "DP-SD",
+      date: ms.dpSd,
+      tooltipTitle: "Tahliye — Başlangıç",
+      tooltipBody:
+        "Tahliye operasyonunun fiilen başladığı tarih (Discharge Start Date).",
+    },
+    {
+      key: "dpEd",
+      label: "DP-ED",
+      date: ms.dpEd,
+      tooltipTitle: "Tahliye — Bitiş",
+      tooltipBody:
+        "Tahliye operasyonunun tamamlandığı tarih (Discharge End Date). Operasyon süresinin bitiş kotalı milestone'u.",
+    },
   ];
   const completedCount = steps.filter((s) => s.date).length;
   const pct = Math.round(progress * 100);
@@ -947,64 +1021,106 @@ function MilestoneStrip({ ms, progress, onClose }: MilestoneStripProps) {
           </button>
         </div>
 
-        <div className="flex items-stretch gap-1">
-          {steps.map((s, i) => {
-            const done = !!s.date;
-            const nextDone = i < steps.length - 1 && !!steps[i + 1].date;
-            const isCurrent = done && !nextDone;
-            return (
-              <div
-                key={s.key}
-                className="flex-1 min-w-0 flex flex-col items-center gap-1.5"
-              >
-                <div className="relative w-full flex items-center">
-                  <div
-                    className={cn(
-                      "h-1.5 flex-1 rounded-full transition-colors",
-                      done
-                        ? isCurrent
-                          ? "bg-gradient-to-r from-emerald-500 to-emerald-400"
-                          : "bg-emerald-500"
-                        : "bg-muted"
-                    )}
-                  />
-                  <div
-                    className={cn(
-                      "ml-1 size-4 shrink-0 rounded-full grid place-items-center transition-colors",
-                      done
-                        ? "bg-emerald-500 text-white"
-                        : "bg-muted text-muted-foreground/60 border border-border"
-                    )}
+        {/* Tooltip provider — local instance keeps the strip's
+            tooltips independent from the marker tooltips above
+            (markers use the native `title` attribute per CLAUDE.md
+            because Radix portals collide with react-map-gl's
+            <Marker> portal). The strip is a regular DOM child of
+            the glass panel, so Radix works fine here. */}
+        <TooltipProvider delayDuration={150}>
+          <div className="flex items-stretch gap-1">
+            {steps.map((s, i) => {
+              const done = !!s.date;
+              const nextDone = i < steps.length - 1 && !!steps[i + 1].date;
+              const isCurrent = done && !nextDone;
+              return (
+                <Tooltip key={s.key}>
+                  <TooltipTrigger asChild>
+                    <div
+                      className="flex-1 min-w-0 flex flex-col items-center gap-1.5 cursor-help focus:outline-none rounded-md focus-visible:ring-2 focus-visible:ring-ring"
+                      tabIndex={0}
+                      aria-label={`${s.label} — ${s.tooltipTitle}`}
+                    >
+                      <div className="relative w-full flex items-center">
+                        <div
+                          className={cn(
+                            "h-1.5 flex-1 rounded-full transition-colors",
+                            done
+                              ? isCurrent
+                                ? "bg-gradient-to-r from-emerald-500 to-emerald-400"
+                                : "bg-emerald-500"
+                              : "bg-muted"
+                          )}
+                        />
+                        <div
+                          className={cn(
+                            "ml-1 size-4 shrink-0 rounded-full grid place-items-center transition-colors",
+                            done
+                              ? "bg-emerald-500 text-white"
+                              : "bg-muted text-muted-foreground/60 border border-border"
+                          )}
+                        >
+                          {done ? (
+                            <Check className="size-2.5" strokeWidth={3} />
+                          ) : (
+                            <Clock className="size-2.5" strokeWidth={2.5} />
+                          )}
+                        </div>
+                      </div>
+                      <div className="text-center min-w-0 w-full">
+                        <div
+                          className={cn(
+                            "text-[9px] font-semibold uppercase tracking-wider truncate",
+                            done ? "text-foreground" : "text-muted-foreground"
+                          )}
+                        >
+                          {s.label}
+                        </div>
+                        <div
+                          className={cn(
+                            "text-[9px] tabular-nums truncate",
+                            done
+                              ? "text-muted-foreground"
+                              : "text-muted-foreground/60"
+                          )}
+                        >
+                          {s.date ? formatDate(s.date) : "—"}
+                        </div>
+                      </div>
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent
+                    side="top"
+                    sideOffset={8}
+                    className="max-w-[280px] px-3 py-2"
                   >
-                    {done ? (
-                      <Check className="size-2.5" strokeWidth={3} />
-                    ) : (
-                      <Clock className="size-2.5" strokeWidth={2.5} />
-                    )}
-                  </div>
-                </div>
-                <div className="text-center min-w-0 w-full">
-                  <div
-                    className={cn(
-                      "text-[9px] font-semibold uppercase tracking-wider truncate",
-                      done ? "text-foreground" : "text-muted-foreground"
-                    )}
-                  >
-                    {s.label}
-                  </div>
-                  <div
-                    className={cn(
-                      "text-[9px] tabular-nums truncate",
-                      done ? "text-muted-foreground" : "text-muted-foreground/60"
-                    )}
-                  >
-                    {s.date ? formatDate(s.date) : "—"}
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
+                    {/* Two-line tooltip: bold abbreviation + Turkish
+                        title on top, full description below in a
+                        muted tone. Date echoed at the bottom for
+                        quick reference (so the user doesn't have to
+                        re-read the chip). */}
+                    <div className="flex items-center gap-1.5 text-[11.5px] font-semibold leading-tight">
+                      <span className="font-mono text-[10.5px] text-muted-foreground/85 tracking-tight">
+                        {s.label}
+                      </span>
+                      <span className="text-foreground">
+                        · {s.tooltipTitle}
+                      </span>
+                    </div>
+                    <div className="text-[11px] text-muted-foreground leading-snug mt-1">
+                      {s.tooltipBody}
+                    </div>
+                    <div className="text-[10.5px] tabular-nums text-foreground/80 mt-1.5 pt-1.5 border-t border-border/40">
+                      {s.date
+                        ? `Tarih: ${formatDate(s.date)}`
+                        : "Tarih henüz girilmemiş"}
+                    </div>
+                  </TooltipContent>
+                </Tooltip>
+              );
+            })}
+          </div>
+        </TooltipProvider>
       </div>
     </GlassPanel>
   );
