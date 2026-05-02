@@ -525,13 +525,24 @@ export function RouteMap({ project }: RouteMapProps) {
                   <CalendarClock className="size-4" />
                 )}
               </button>
-              <PortChip
-                kind="discharge"
-                name={project.vesselPlan.dischargePort.name}
-                country={project.vesselPlan.dischargePort.country}
-                date={project.vesselPlan.milestones.dpEta}
-                dateLabel="DP-ETA"
-              />
+              {(() => {
+                // Show the most-recent populated DP milestone instead
+                // of always pinning the chip to DP-ETA — once the
+                // vessel reaches the discharge port the chip should
+                // advance to DP-NOR / DP-SD / DP-ED.
+                const dp = pickLatestDpMilestone(
+                  project.vesselPlan.milestones
+                );
+                return (
+                  <PortChip
+                    kind="discharge"
+                    name={project.vesselPlan.dischargePort.name}
+                    country={project.vesselPlan.dischargePort.country}
+                    date={dp.date}
+                    dateLabel={dp.label}
+                  />
+                );
+              })()}
             </div>
           </div>
         )}
@@ -848,6 +859,22 @@ function VesselMarker({
       </div>
     </div>
   );
+}
+
+/** Pick the most recent populated discharge-port milestone for the
+ *  varış-limanı chip. Once the vessel passes a stage we want the chip
+ *  to reflect that — DP-ETA only stays visible while the voyage is
+ *  still en route. Priority chain (most recent first):
+ *    DP-ED > DP-SD > DP-NOR > DP-ETA.
+ *  When all are null we still fall back to DP-ETA's slot (label +
+ *  null date) so the layout doesn't shift. */
+function pickLatestDpMilestone(
+  ms: NonNullable<Project["vesselPlan"]>["milestones"]
+): { date: string | null; label: string } {
+  if (ms.dpEd) return { date: ms.dpEd, label: "DP-ED" };
+  if (ms.dpSd) return { date: ms.dpSd, label: "DP-SD" };
+  if (ms.dpNorAccepted) return { date: ms.dpNorAccepted, label: "DP-NOR" };
+  return { date: ms.dpEta, label: "DP-ETA" };
 }
 
 function PortChip({

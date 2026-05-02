@@ -160,15 +160,18 @@ export function DataManagementPage() {
     query: { $select: EXPENSE_COLUMNS.join(","), $count: true },
   });
   // Realised expense LINES — fetched per-selected project via a
-  // two-step chain (see `useProjectExpenseLines`):
+  // three-step chain (see `useProjectExpenseLines`):
+  //   0. inventdimb entity (`mserp_inventdimbientities`) filtered by
+  //      `mserp_inventdimension2 eq <projectNo>` → distinct
+  //      `mserp_inventdimid` keys
   //   1. distribution entity (`mserp_tryaifrtexpenselinedistlineentities`)
-  //      filtered by `mserp_etgtryprojid eq …` → distinct expensenums
+  //      filtered by `In(mserp_inventdimid, …)` → distinct expensenums
   //   2. expense-line entity (`mserp_tryaiexpenselineentities`)
   //      filtered by `In(mserp_expensenum, …)` → authoritative rows
-  // The dist entity is just a project-scoping filter; the rows we
-  // surface here come from the expense-line entity. This is also the
-  // entity dashboard calculations will read from when we wire them
-  // up later.
+  // The inventdimb + dist entities are project-scoping filters only;
+  // the rows we surface here come from the expense-line entity. This
+  // is also the entity dashboard calculations will read from when we
+  // wire them up later.
   const actualExpense = useProjectExpenseLines(selectedProjId);
   // Realised project purchases — vendor invoice transactions, narrowed
   // to the 12 inspector columns. Project FK lives at
@@ -544,10 +547,11 @@ export function DataManagementPage() {
     [expense.rows, selectedProjId]
   );
   // Expense-line rows are already server-side scoped to the
-  // selected project (via the two-step chain in
-  // `useProjectExpenseLines`), so no client-side filter is needed —
-  // a redundant filter on `mserp_etgtryprojid` would always return
-  // 0 rows because the expense-line entity doesn't carry that FK.
+  // selected project (via the three-step chain in
+  // `useProjectExpenseLines` — inventdimb → dist → expense-line),
+  // so no client-side filter is needed — a redundant filter on
+  // `mserp_etgtryprojid` would always return 0 rows because the
+  // expense-line entity doesn't carry that FK.
   const childActualExpense = actualExpense.rows;
   // Realised purchase rows for the selected project — FK is the
   // flattened parent-table column `mserp_purchtable_etgtryprojid`.

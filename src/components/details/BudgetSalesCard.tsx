@@ -60,9 +60,9 @@ const PURCHASE_ENTITY_SET = "mserp_tryaivendinvoicetransentities";
  *   - Alım   ← `mserp_tryaivendinvoicetransentities` cache rows
  *              filtered by `mserp_purchtable_etgtryprojid`,
  *              FX→USD per `mserp_invoicedate`
- *   - Gider  ← `useProjectExpenseLines` rows (the 2-step chain via
- *              the dist entity); `mserp_amountcur` summed as USD
- *              (entity doesn't expose currencycode).
+ *   - Gider  ← `useProjectExpenseLines` rows (the 3-step chain
+ *              inventdimb → dist → expense-line); `mserp_amountcur`
+ *              summed as USD (entity doesn't expose currencycode).
  *
  * Hides itself entirely when every figure is zero.
  */
@@ -207,9 +207,9 @@ export function BudgetSalesCard({ project }: Props) {
     0
   );
 
-  // Expense — 2-step chain via `useProjectExpenseLines`. Amounts
-  // treated as USD because the expense-line entity doesn't expose a
-  // currency column.
+  // Expense — 3-step chain via `useProjectExpenseLines` (inventdimb
+  // → dist → expense-line). Amounts treated as USD because the
+  // expense-line entity doesn't expose a currency column.
   const expenseLineQuery = useProjectExpenseLines(project.projectNo);
   const gerceklesenExpenseLines = React.useMemo(
     () =>
@@ -452,12 +452,15 @@ export function BudgetSalesCard({ project }: Props) {
           )}
 
           {/* Footer totals — Tahmini first, Gerçekleşen second.
-              Each row mirrors the ProfitLossCard footer layout. */}
+              Each row mirrors the ProfitLossCard footer layout.
+              Tahmini's margin pill is muted (always grey) so the
+              realised K&Z row below it carries the headline colour. */}
           <KZFooterRow
             label="Tahmini Kâr / Zarar"
             marginLabel="Tahmini marj"
             value={tahminiKZ}
             marginPct={tahminiMargin}
+            muted
           />
           <KZFooterRow
             label="Gerçekleşen Kâr / Zarar"
@@ -632,16 +635,24 @@ function KZFooterRow({
   marginLabel,
   value,
   marginPct,
+  muted = false,
 }: {
   label: string;
   marginLabel: string;
   value: number;
   marginPct: number | null;
+  /** When true the margin pill is forced to the neutral (gri) palette
+   *  regardless of the percentage, so the row reads as a reference
+   *  number rather than the headline metric. We use this for the
+   *  Tahmini row so the eye lands on the realised K&Z below it
+   *  (which keeps its value-driven emerald/rose colouring). */
+  muted?: boolean;
 }) {
   const positive = value > 0;
   const negative = value < 0;
-  const marginTone: Tone =
-    marginPct == null
+  const marginTone: Tone = muted
+    ? "neutral"
+    : marginPct == null
       ? "neutral"
       : marginPct > 5
         ? "positive"
