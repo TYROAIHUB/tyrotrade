@@ -263,19 +263,21 @@ export const ACTUAL_EXPENSE_COLUMNS = [
  *       `Microsoft.Dynamics.CRM.In(mserp_expensenum, …)` → the
  *       authoritative amounts + descriptions per expense.
  *
- *  Confirmed display columns:
+ *  Confirmed display columns (locked to exactly what the user
+ *  requested — DO NOT widen this list without their say-so;
+ *  Dataverse 400's $select on properties that don't exist on the
+ *  virtual entity, and `mserp_currencycode` was rejected when I
+ *  speculatively added it for FX context):
  *    - `mserp_expensenum`   — join key + voucher/sequence ID
  *    - `mserp_expenseid`    — expense category code
  *    - `mserp_description`  — free-text expense description
  *    - `mserp_amountcur`    — amount in the row's currency
- *    - `mserp_currencycode` — currency for `mserp_amountcur`
  */
 export const EXPENSE_LINE_COLUMNS = [
   "mserp_expensenum",
   "mserp_expenseid",
   "mserp_description",
   "mserp_amountcur",
-  "mserp_currencycode",
 ] as const;
 
 /** mserp_tryaivendinvoicetransentities — Realised (actual) project
