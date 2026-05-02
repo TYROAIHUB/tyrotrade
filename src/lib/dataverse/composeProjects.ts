@@ -510,10 +510,13 @@ function toVesselPlan(
   // and bail out to a project-title regex when none do.
   //
   // Numeric-only strings (RecIDs leaking past FV) are rejected so
-  // the UI never shows "5637148123" as a vessel name — that bug
-  // was visible in production until 2026-05-01.
+  // the UI never shows "5637148123" — or its locale-formatted twin
+  // "5,637,148,123" — as a vessel name. That bug was visible in
+  // production until 2026-05-01.
   const isUsableVesselString = (v: string | undefined | null): v is string =>
-    !!v && v.trim().length > 0 && !/^\d+$/.test(v.trim());
+    !!v &&
+    v.trim().length > 0 &&
+    !/^\d[\d\s,.]*$/.test(v.trim());
   const vesselCandidates = [
     readString(s, "mserp_vesselname"),
     getFormattedValue(s, "mserp_vessel"),

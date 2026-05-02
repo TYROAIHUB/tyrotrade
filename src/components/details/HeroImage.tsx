@@ -18,7 +18,13 @@ export function HeroImage({ project }: HeroImageProps) {
   const Icon = sea ? Ship : Truck;
   const url =
     project.vesselPlan?.heroImageUrl ?? (sea ? FALLBACK_SEA : FALLBACK_ROAD);
-  const name = project.vesselPlan?.vesselName ?? "—";
+  // Defensive guard: numeric-only strings (RecID leak from F&O) are
+  // not real vessel names — show the em-dash placeholder instead.
+  const rawName = project.vesselPlan?.vesselName ?? "";
+  const name =
+    rawName && rawName !== "—" && !/^\d[\d\s,.]*$/.test(rawName.trim())
+      ? rawName
+      : "—";
   const fixture = project.vesselPlan?.fixtureId;
 
   // Voyage status when known, otherwise fall back to project Open/Closed.

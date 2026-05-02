@@ -52,7 +52,13 @@ export function ProjectOverviewCard({ project }: Props) {
   // Hero image follows the voyage stage (Pending → Loading → In-transit
   // → Completed). See `selectHeroImage` for the mapping.
   const url = selectHeroImage(project);
-  const vesselName = vp?.vesselName ?? "—";
+  // Defensive guard: F&O `mserp_vessel` is a bare numeric RecID. If
+  // an upstream change ever lets it leak through composer's
+  // resolution chain (or the user is on a stale bundle), don't show
+  // a 10-digit number as a vessel name — surface the em-dash so the
+  // card remains semantically correct.
+  const rawVesselName = vp?.vesselName ?? "";
+  const vesselName = isMeaningfulName(rawVesselName) ? rawVesselName : "—";
   // Show vessel voyage status when it's set; otherwise fall back to the
   // project-level Open/Closed status — there's no "Pending" sentinel.
   const vesselStatus = vp?.vesselStatus ?? project.status;
@@ -330,4 +336,19 @@ function Row({
       </div>
     </div>
   );
+}
+
+/**
+ * Reject pure-numeric strings as a vessel name display value.
+ * F&O sometimes leaks a `mserp_vessel` RecID (e.g. "5637588578") when
+ * the composer's resolution chain can't find a real string. Showing
+ * a 10-digit number as a vessel name reads as nonsense — surface
+ * the em-dash placeholder instead.
+ */
+function isMeaningfulName(s: string): boolean {
+  const t = s.trim();
+  if (!t) return false;
+  if (t === "—") return false;
+  if (/^\d[\d\s,.]*$/.test(t)) return false;
+  return true;
 }
