@@ -124,10 +124,10 @@ export function BudgetSalesCard({ project }: Props) {
           </AccentIconBadge>
           <div className="min-w-0 flex-1">
             <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
-              Realized P&amp;L
+              Gerçekleşen Kâr &amp; Zarar
             </div>
             <div className="text-[13px] font-semibold leading-snug text-foreground/85">
-              Tahmini × Gerçekleşen · Satış − Alım
+              Realized P&amp;L
             </div>
           </div>
           <ChevronDown
