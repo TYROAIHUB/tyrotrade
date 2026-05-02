@@ -165,6 +165,29 @@ export const FIELD_LABELS: Record<string, string> = {
   mserp_year: "Dönem",
   mserp_projectexpenseid: "Bütçe Tipi",
   mserp_amount: "Tutar",
+
+  /* ─────────── mserp_tryaiexpenselineentities (Gerçekleşen Gider) ───────────
+   * The two-step chain (frt-dist filter → expense-line authoritative)
+   * surfaces these 4 columns in the Veri Yönetimi tab.
+   */
+  mserp_expensenum: "Masraf No",
+  mserp_expenseid: "Masraf Kalemi",
+  mserp_amountcur: "Tutar",
+  // mserp_description already mapped above (line ~143) → "Açıklama".
+
+  /* ─────────── mserp_tryaivendinvoicetransentities (Gerçekleşen Satınalma) ───
+   * Vendor invoice transactions joined to the parent purchase table
+   * via flattened `mserp_purchtable_*` columns. Most fields here are
+   * already labelled in the project / sales sections above (they
+   * share names — itemid, name, qty, invoicedate, lineamount,
+   * currencycode); the entries below cover the purchase-only fields.
+   */
+  mserp_purchtable_etgtryprojid: "Proje No",
+  mserp_purchid: "Satınalma No",
+  mserp_purchtable_etgtraderid: "Trader",
+  mserp_purchtable_etgmaintraderid: "Ana Trader",
+  mserp_purchtable_purchname: "Satınalma Açıklaması",
+  mserp_purchprice: "Birim Alış Fiyatı",
 };
 
 /**
