@@ -1,6 +1,9 @@
 import * as React from "react";
+import { HugeiconsIcon } from "@hugeicons/react";
+import { Cancel01Icon, Search01Icon } from "@hugeicons/core-free-icons";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { GlassPanel } from "@/components/glass/GlassPanel";
+import { useThemeAccent } from "@/components/layout/theme-accent";
 import { cn } from "@/lib/utils";
 import { useEntityRows } from "@/hooks/useEntityRows";
 import { getDataverseClient } from "@/lib/dataverse";
@@ -80,6 +83,27 @@ export function DataManagementPage() {
   // page is for raw-row inspection, not operational triage.
   const [projectFilters, setProjectFilters] = React.useState<ProjectFilterState>(
     () => makeEmptyFilters({ includeWithoutShipPlan: true })
+  );
+  // Free-text search applied across the projects master table AND
+  // the ship-plan child rows. Independent of the categorical
+  // AdvancedFilter — the two compose: filter narrows rows by
+  // dimension chips, search narrows by substring.
+  const [searchQuery, setSearchQuery] = React.useState("");
+  const matchesSearch = React.useCallback(
+    (row: Record<string, unknown>): boolean => {
+      const q = searchQuery.trim().toLowerCase();
+      if (!q) return true;
+      // Substring match on every value in the row, cast to string —
+      // dates, numbers, codes, FormattedValue annotations all caught.
+      // `Object.values` walks the row in one pass; rows with hundreds
+      // of fields stay fast because we early-return on first hit.
+      for (const value of Object.values(row)) {
+        if (value == null) continue;
+        if (String(value).toLowerCase().includes(q)) return true;
+      }
+      return false;
+    },
+    [searchQuery]
   );
 
   // Domain Project[] (already-composed) — used to derive the allowed
@@ -428,11 +452,12 @@ export function DataManagementPage() {
   }, [domainProjects, projectFilters]);
 
   const visibleProjects = React.useMemo(() => {
-    const filtered = projects.rows.filter((r) =>
+    let filtered = projects.rows.filter((r) =>
       allowedProjectNos.has(String(r.mserp_projid ?? ""))
     );
+    if (searchQuery.trim()) filtered = filtered.filter(matchesSearch);
     return sortRows(filtered, projectSort);
-  }, [projects.rows, allowedProjectNos, projectSort]);
+  }, [projects.rows, allowedProjectNos, projectSort, searchQuery, matchesSearch]);
 
   // Resolve selected project from the FULL projects.rows (not filtered) so it
   // survives if the project is filtered out of the visible list.
@@ -467,11 +492,17 @@ export function DataManagementPage() {
     [lines.rows, selectedProjId]
   );
   const childShip = React.useMemo(
-    () =>
-      selectedProjId
-        ? ship.rows.filter((r) => r["mserp_tryshipprojid"] === selectedProjId)
-        : [],
-    [ship.rows, selectedProjId]
+    () => {
+      if (!selectedProjId) return [];
+      let rows = ship.rows.filter(
+        (r) => r["mserp_tryshipprojid"] === selectedProjId
+      );
+      // Search applies to the ship-plan child too — user explicitly
+      // asked for projects + gemi planı text search in one pass.
+      if (searchQuery.trim()) rows = rows.filter(matchesSearch);
+      return rows;
+    },
+    [ship.rows, selectedProjId, searchQuery, matchesSearch]
   );
   const childExpense = React.useMemo(
     () =>
@@ -573,6 +604,12 @@ export function DataManagementPage() {
                 onChange={(k) => setTopTab(k as TopTabKey)}
               />
             </div>
+            {topTab === "projects" && (
+              <DataInspectorSearch
+                value={searchQuery}
+                onChange={setSearchQuery}
+              />
+            )}
             {topTab === "projects" && (
               <AdvancedFilter
                 projects={domainProjects}
@@ -934,4 +971,66 @@ function humanAgo(d: Date): string {
   const day = Math.floor(hr / 24);
   if (day < 7) return `${day} gün önce`;
   return d.toLocaleDateString("tr-TR");
+}
+
+/**
+ * Free-text search input for the Veri Yönetimi top bar — sits to
+ * the LEFT of the AdvancedFilter trigger and filters BOTH the
+ * projects master table AND the ship-plan child rows by matching
+ * the query against every column value (case-insensitive
+ * substring). Composes with the AdvancedFilter chip-based narrowing
+ * (filter narrows by dimension; search narrows by substring).
+ *
+ * Style mirrors the ProjectList search pill — rounded-full, accent
+ * search icon on the left, X-clear on the right, soft drop shadow
+ * + inset highlight for the glassy disc look. Capped at 280px so
+ * the toolbar stays compact alongside the filter pill +
+ * RefreshAllButton.
+ */
+function DataInspectorSearch({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+}) {
+  const accent = useThemeAccent();
+  return (
+    <div className="relative w-full max-w-[280px] shrink-0 min-w-[180px]">
+      <HugeiconsIcon
+        icon={Search01Icon}
+        size={15}
+        strokeWidth={2.25}
+        className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none z-[1]"
+        style={{ color: accent.solid }}
+      />
+      <input
+        type="text"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder="Proje veya gemi planı içinde ara…"
+        aria-label="Veri yönetimi içinde ara"
+        className={cn(
+          "w-full h-9 pl-9 pr-7 rounded-full text-[13px] outline-none",
+          "bg-white/85 backdrop-blur-xl backdrop-saturate-150",
+          "ring-1 ring-foreground/15 hover:ring-foreground/30 focus:ring-2 focus:ring-ring",
+          "placeholder:text-muted-foreground/70 transition-shadow"
+        )}
+        style={{
+          boxShadow:
+            "0 4px 12px -4px rgba(15,23,42,0.18), inset 0 1px 0 0 rgba(255,255,255,0.85)",
+        }}
+      />
+      {value && (
+        <button
+          type="button"
+          onClick={() => onChange("")}
+          aria-label="Aramayı temizle"
+          className="absolute right-2 top-1/2 -translate-y-1/2 size-5 grid place-items-center rounded-md text-muted-foreground hover:text-foreground hover:bg-foreground/[0.06] z-[1]"
+        >
+          <HugeiconsIcon icon={Cancel01Icon} size={11} strokeWidth={2.5} />
+        </button>
+      )}
+    </div>
+  );
 }
