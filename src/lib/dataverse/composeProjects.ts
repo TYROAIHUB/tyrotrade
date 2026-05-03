@@ -721,12 +721,19 @@ function computeProjectTons(
   vesselPlan: VesselPlan | undefined,
   lines: ProjectLine[]
 ): number {
+  // Prefer the project line tonnage so estimated expense scales the
+  // same way Tahmini Satış / Tahmini Alım do (both sum
+  // `Σ (line.quantityKg / 1000) × unitPrice`). Mixing voyage tonnage
+  // here would produce an off-axis Tahmini Gider when the vessel
+  // booking covers a different load size than the project lines —
+  // typically because the vessel is shared across multiple projects.
+  // Falls back to vessel plan only when there are no priced lines.
+  const totalKg = lines.reduce((acc, l) => acc + l.quantityKg, 0);
+  if (totalKg > 0) return totalKg / 1000;
   if (vesselPlan && vesselPlan.voyageTotalTonnage > 0) {
     return vesselPlan.voyageTotalTonnage;
   }
-  // Fallback — sum line quantities (kg) and convert to tons.
-  const totalKg = lines.reduce((acc, l) => acc + l.quantityKg, 0);
-  return totalKg / 1000;
+  return 0;
 }
 
 /* ─────────── Expenses → CostEstimateLine[] (per-line totals) ─────────── */
