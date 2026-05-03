@@ -479,14 +479,15 @@ export async function refreshAllEntities(
     // we'll add a server-side `$apply=groupby` aggregate step here
     // — small per-project totals only.
     {
-      // List of sales orders flagged as "Finansman" on the sales
-      // header (`mserp_etgordertype`). Their invoice trans rows are
-      // financing entries, not realised commercial activity, and must
-      // be excluded from sales totals + per-project lists. We pull the
-      // ID list once here so downstream steps + per-project hooks can
-      // splice a single `not In(salesid, ...)` clause without each
-      // having to re-query the header table.
-      label: "Finansman Satış Siparişleri",
+      // Build the exclusion list of sales orders flagged "Finansman"
+      // on the sales header (`mserp_etgordertype`). Their invoice
+      // trans rows are financing entries, not realised commercial
+      // activity. Downstream sales steps + per-project hooks splice
+      // a single `not In(salesid, ...)` clause keyed off this cache
+      // so the rows are dropped server-side rather than after the
+      // fact. Step label leads with "Hariç" to make it clear we're
+      // pulling these IDs to EXCLUDE, not to surface.
+      label: "Finansman Hariç (Satış)",
       run: async () => {
         const result = await client.listAll<Record<string, unknown>>(
           ENTITY_SETS.salesTable,
@@ -505,11 +506,12 @@ export async function refreshAllEntities(
       },
     },
     {
-      // Counterpart of "Finansman Satış Siparişleri" for the buy
-      // side: vendor purchase orders flagged as financing on
-      // `mserp_tryaipurchtableentities`. Their invoice rows must be
-      // excluded from realised-purchase math.
-      label: "Finansman Satınalma Siparişleri",
+      // Counterpart of "Finansman Hariç (Satış)" for the buy side:
+      // vendor purchase orders flagged as financing on
+      // `mserp_tryaipurchtableentities`. Their invoice rows are
+      // excluded from realised-purchase math via the same
+      // `not In(...)` mechanism.
+      label: "Finansman Hariç (Satınalma)",
       run: async () => {
         const result = await client.listAll<Record<string, unknown>>(
           ENTITY_SETS.purchTable,

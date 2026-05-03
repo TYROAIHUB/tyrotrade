@@ -411,11 +411,14 @@ export function DataManagementPage() {
         },
       },
       {
-        // Pull the list of sales orders flagged as "Finansman" on
-        // their header so the next steps (sales aggregate, monthly
-        // sales, per-project invoice fetch) can chain a `not In(...)`
-        // clause and exclude their invoice rows from realised totals.
-        label: "Finansman Satış Siparişleri",
+        // Build the exclusion list of sales orders flagged
+        // "Finansman" on their header so the next steps (sales
+        // aggregate, monthly sales, per-project invoice fetch) can
+        // chain a `not In(...)` clause and drop those invoice rows
+        // server-side. Label leads with "Hariç" so the user reads
+        // it as "we're EXCLUDING financing", not "we're fetching
+        // financing".
+        label: "Finansman Hariç (Satış)",
         refetch: async () => {
           const client = getDataverseClient();
           const result = await client.listAll<Record<string, unknown>>(
@@ -435,10 +438,10 @@ export function DataManagementPage() {
         },
       },
       {
-        // Counterpart of "Finansman Satış Siparişleri" for the buy
+        // Counterpart of "Finansman Hariç (Satış)" for the buy
         // side — financing purchase orders excluded from realised
         // purchase totals.
-        label: "Finansman Satınalma Siparişleri",
+        label: "Finansman Hariç (Satınalma)",
         refetch: async () => {
           const client = getDataverseClient();
           const result = await client.listAll<Record<string, unknown>>(
