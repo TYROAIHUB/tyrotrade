@@ -240,33 +240,26 @@ function buildInFilter(field: string, projids: string[]): string {
     .join(",")}])`;
 }
 
-/**
- * Build a chunked `not In(...)` clause for excluding a list of IDs
- * (typically the financing-order IDs) from a server-side filter. The
- * returned expression is parens-wrapped and meant to be `and`-ed onto
- * the rest of the filter. Returns `null` when the exclusion list is
- * empty (caller should skip splicing).
- *
- * Chunk size mirrors `PROJID_CHUNK_SIZE` so the URL stays under the
- * same proxy ceilings as every other helper. With a typical financing
- * list of 10–50 IDs this is a single chunk.
- */
-function buildNotInFilter(field: string, ids: string[]): string | null {
-  if (ids.length === 0) return null;
-  const chunks: string[] = [];
-  for (let i = 0; i < ids.length; i += PROJID_CHUNK_SIZE) {
-    const chunk = ids.slice(i, i + PROJID_CHUNK_SIZE);
-    chunks.push(`not ${buildInFilter(field, chunk)}`);
-  }
-  return `(${chunks.join(" and ")})`;
-}
-
 /** Read the cached financing-order ID list (sales or purchase). Returns
  *  `[]` when the cache slot is missing — callers then skip the filter
  *  entirely so the chain still works on first run before refresh. */
 export function readFinancingIds(cacheKey: string): string[] {
   const cached = readCache<string>(cacheKey);
   return cached?.value ?? [];
+}
+
+/** Read the cached Finansman sales-ID list as a Set for O(1) lookup
+ *  during client-side row filtering. F&O virtual entities reject
+ *  `not Microsoft.Dynamics.CRM.In(...)` filters with a 405, so every
+ *  consumer that wants Finansman exclusion has to filter rows after
+ *  the fetch — using this Set. */
+export function getFinancingSalesIdSet(): Set<string> {
+  return new Set(readFinancingIds(FINANCING_SALES_IDS_CACHE));
+}
+
+/** Counterpart of `getFinancingSalesIdSet` for the buy side. */
+export function getFinancingPurchIdSet(): Set<string> {
+  return new Set(readFinancingIds(FINANCING_PURCH_IDS_CACHE));
 }
 
 /** Numeric option-set code for `mserp_etgordertype === "Finansman"`
@@ -581,21 +574,14 @@ export async function refreshAllEntities(
         // (`mserp_purchtable_etgtryprojid`). Narrowed to 12 columns the
         // inspector renders, chunked the same way as siblings so a
         // 440-project IN list never blows past the URL limit.
-        // Intercompany rows excluded — see NON_INTERCOMPANY_FILTER.
-        // Financing-order purchase rows excluded server-side via
-        // `not In(mserp_purchid, ...)` so the master cache doesn't
-        // carry them at all — every consumer (BudgetSalesCard,
-        // DataManagementPage, dashboard rollups) inherits the
+        // Intercompany rows excluded server-side. Financing-order rows
+        // (mserp_purchid in cached set) excluded CLIENT-SIDE because
+        // F&O virtual entities reject `not In(...)` filters with a
+        // 405 ("Not operator along with the Custom Named Condition
+        // operators is not allowed"). Master cache is written
+        // already-filtered so every downstream consumer inherits the
         // exclusion automatically.
         const projids = readProjids();
-        const financingPurchIds = readFinancingIds(FINANCING_PURCH_IDS_CACHE);
-        const notFinancing = buildNotInFilter(
-          "mserp_purchid",
-          financingPurchIds
-        );
-        const extra = notFinancing
-          ? `${NON_INTERCOMPANY_FILTER} and ${notFinancing}`
-          : NON_INTERCOMPANY_FILTER;
         const result = await listAllByInChunked<Record<string, unknown>>(
           client,
           ENTITY_SETS.purchase,
@@ -606,11 +592,17 @@ export async function refreshAllEntities(
             $count: true,
           },
           undefined,
-          extra
+          NON_INTERCOMPANY_FILTER
         );
+        const financingSet = getFinancingPurchIdSet();
+        const filtered = financingSet.size > 0
+          ? result.value.filter(
+              (r) => !financingSet.has(String(r.mserp_purchid ?? ""))
+            )
+          : result.value;
         writeCache(ENTITY_SETS.purchase, {
           fetchedAt: new Date().toISOString(),
-          value: result.value,
+          value: filtered,
           totalCount: result.totalCount,
         });
       },
@@ -636,37 +628,63 @@ export async function refreshAllEntities(
       label: "Satış Toplamları",
       run: async () => {
         // Sales aggregate scopes to the project IDs already pulled in
-        // the first step (which themselves come from the dlvmode/segment
-        // filter). Chunked so the `$apply=filter(IN(...))` URL stays
-        // small even when the project list is large.
-        // Intercompany rows excluded — see NON_INTERCOMPANY_FILTER.
-        // Financing-order invoice rows excluded via not-In on
-        // mserp_salesid — keeps the per-project totals (and therefore
-        // dashboard rollups + composer's salesActualUsd) in sync with
-        // the per-project hook.
+        // the first step. Chunked so the `$apply=filter(IN(...))` URL
+        // stays small. Intercompany rows excluded server-side.
+        //
+        // Financing-order rows can't be excluded on the server — F&O
+        // rejects `not In(...)`, and the invoice-trans entity has no
+        // `mserp_etgordertype` field to check (that lives on the
+        // sales-table header). Workaround: include `mserp_salesid` in
+        // the groupby key so the response carries one row per
+        // (projid, currency, salesid). We then drop financing salesids
+        // client-side and re-aggregate on (projid, currency) to match
+        // the cache shape downstream consumers (composer's
+        // salesActualUsd, dashboard rollups) expect.
         const projids = readProjids();
-        const financingSalesIds = readFinancingIds(FINANCING_SALES_IDS_CACHE);
-        const notFinancing = buildNotInFilter(
-          "mserp_salesid",
-          financingSalesIds
-        );
         const result = await applyByInChunked<Record<string, unknown>>(
           client,
           SALES_ENTITY,
           "mserp_etgtryprojid",
           projids,
-          (inClause) => {
-            const whereParts = [
-              `(${inClause})`,
-              `(${NON_INTERCOMPANY_FILTER})`,
-            ];
-            if (notFinancing) whereParts.push(notFinancing);
-            return `filter(${whereParts.join(" and ")})/groupby((mserp_etgtryprojid,mserp_currencycode),aggregate(mserp_lineamount with sum as total,$count as cnt))`;
-          }
+          (inClause) =>
+            `filter((${inClause}) and (${NON_INTERCOMPANY_FILTER}))/groupby((mserp_etgtryprojid,mserp_currencycode,mserp_salesid),aggregate(mserp_lineamount with sum as total,$count as cnt))`
         );
+        const financingSet = getFinancingSalesIdSet();
+        // Re-aggregate on (projid, currency), dropping financing
+        // salesids. Map key: `${projid}::${currency}`.
+        const rolled = new Map<
+          string,
+          { projid: string; currency: string; total: number; cnt: number }
+        >();
+        for (const row of result.value) {
+          const salesid = String(row.mserp_salesid ?? "");
+          if (financingSet.has(salesid)) continue;
+          const projid = String(row.mserp_etgtryprojid ?? "");
+          const currency = String(row.mserp_currencycode ?? "");
+          if (!projid) continue;
+          const key = `${projid}::${currency}`;
+          const total = Number(row.total) || 0;
+          const cnt = Number(row.cnt) || 0;
+          const existing = rolled.get(key);
+          if (existing) {
+            existing.total += total;
+            existing.cnt += cnt;
+          } else {
+            rolled.set(key, { projid, currency, total, cnt });
+          }
+        }
+        const reAggregated: Record<string, unknown>[] = [];
+        for (const r of rolled.values()) {
+          reAggregated.push({
+            mserp_etgtryprojid: r.projid,
+            mserp_currencycode: r.currency,
+            total: r.total,
+            cnt: r.cnt,
+          });
+        }
         writeCache("salesAggregateByProject", {
           fetchedAt: new Date().toISOString(),
-          value: result.value,
+          value: reAggregated,
         });
       },
     },
@@ -678,8 +696,10 @@ export async function refreshAllEntities(
         // helper's $filter directly because it builds the IN clause and
         // returns it as the entire $filter — so we layer the currency
         // gate by chunking ourselves and AND-ing the IN clause with it.
-        // Financing-order invoice rows excluded for the same reason as
-        // the aggregate above (see Satış Toplamları).
+        // Financing-order rows excluded CLIENT-SIDE (F&O rejects
+        // `not In(...)`) — we include `mserp_salesid` in $select so we
+        // can drop matches against the cached financing-id Set after
+        // each chunk lands.
         const projids = readProjids();
         if (projids.length === 0) {
           writeCache("salesByProjectMonth", {
@@ -689,30 +709,29 @@ export async function refreshAllEntities(
           });
           return;
         }
-        const financingSalesIds = readFinancingIds(FINANCING_SALES_IDS_CACHE);
-        const notFinancing = buildNotInFilter(
-          "mserp_salesid",
-          financingSalesIds
-        );
+        const financingSet = getFinancingSalesIdSet();
         const all: Record<string, unknown>[] = [];
         let totalCount: number | undefined;
         for (let i = 0; i < projids.length; i += 100) {
           const chunk = projids.slice(i, i + 100);
           const inClause = buildInFilter("mserp_etgtryprojid", chunk);
-          const baseFilter = `${inClause} and mserp_currencycode eq 'USD' and (${NON_INTERCOMPANY_FILTER})`;
-          const $filter = notFinancing
-            ? `${baseFilter} and ${notFinancing}`
-            : baseFilter;
+          const $filter = `${inClause} and mserp_currencycode eq 'USD' and (${NON_INTERCOMPANY_FILTER})`;
           const result = await client.listAll<Record<string, unknown>>(
             SALES_ENTITY,
             {
               $filter,
               $select:
-                "mserp_etgtryprojid,mserp_invoicedate,mserp_lineamount",
+                "mserp_etgtryprojid,mserp_invoicedate,mserp_lineamount,mserp_salesid",
               $count: true,
             }
           );
-          all.push(...result.value);
+          for (const row of result.value) {
+            if (financingSet.size > 0) {
+              const salesid = String(row.mserp_salesid ?? "");
+              if (financingSet.has(salesid)) continue;
+            }
+            all.push(row);
+          }
           if (typeof result.totalCount === "number") {
             totalCount = (totalCount ?? 0) + result.totalCount;
           }

@@ -3,36 +3,11 @@ import { getDataverseClient } from "@/lib/dataverse";
 import { readCache, writeCache } from "@/lib/storage/entityCache";
 import { SALES_COLUMNS } from "@/lib/dataverse/columnOrder";
 import {
-  FINANCING_SALES_IDS_CACHE,
+  getFinancingSalesIdSet,
   NON_INTERCOMPANY_FILTER,
-  readFinancingIds,
 } from "@/lib/dataverse/refreshAll";
 
 const ENTITY_SET = "mserp_tryaicustinvoicetransentities";
-
-/** Same chunk size as the global IN-filter helpers — keeps URL length
- *  predictable when chaining multiple `not In(...)` clauses. */
-const NOT_IN_CHUNK_SIZE = 50;
-
-/** Build a chunked `not In(...)` clause for excluding financing-order
- *  sales IDs from the per-project invoice fetch. Mirrors the helper in
- *  `refreshAll.ts` so the per-project hook applies the same exclusion
- *  the global aggregate already applies — the two stay in sync as the
- *  financing list grows. Returns `null` when there's nothing to
- *  exclude (caller skips splicing). */
-function buildNotInSalesIds(ids: string[]): string | null {
-  if (ids.length === 0) return null;
-  const chunks: string[] = [];
-  for (let i = 0; i < ids.length; i += NOT_IN_CHUNK_SIZE) {
-    const slice = ids.slice(i, i + NOT_IN_CHUNK_SIZE);
-    chunks.push(
-      `not Microsoft.Dynamics.CRM.In(PropertyName='mserp_salesid',PropertyValues=[${slice
-        .map((id) => `'${id}'`)
-        .join(",")}])`
-    );
-  }
-  return `(${chunks.join(" and ")})`;
-}
 
 export interface UseProjectInvoicesReturn {
   /** Invoice rows for the current project. */
@@ -72,16 +47,13 @@ export function useProjectInvoices(
     (async () => {
       try {
         const client = getDataverseClient();
-        const financingSalesIds = readFinancingIds(FINANCING_SALES_IDS_CACHE);
-        const notFinancing = buildNotInSalesIds(financingSalesIds);
-        const baseFilter = `mserp_etgtryprojid eq '${projectNo}' and (${NON_INTERCOMPANY_FILTER})`;
-        const $filter = notFinancing
-          ? `${baseFilter} and ${notFinancing}`
-          : baseFilter;
+        // F&O virtual entities reject `not In(...)` (405) so financing
+        // sales IDs are stripped CLIENT-SIDE in the useMemo below.
+        // Server-side filter only carries project + intercompany terms.
         const result = await client.listAll<Record<string, unknown>>(
           ENTITY_SET,
           {
-            $filter,
+            $filter: `mserp_etgtryprojid eq '${projectNo}' and (${NON_INTERCOMPANY_FILTER})`,
             $select: SALES_COLUMNS.join(","),
             $orderby: "mserp_invoicedate desc",
             $count: true,
@@ -112,9 +84,26 @@ export function useProjectInvoices(
   return React.useMemo(() => {
     const cached = readCache<Record<string, unknown>>(ENTITY_SET);
     const all = cached?.value ?? [];
-    const filtered = projectNo
-      ? all.filter((r) => r["mserp_etgtryprojid"] === projectNo)
-      : [];
+    if (!projectNo) {
+      return { invoices: [], isFetching, fetchedAt: cached?.fetchedAt ?? null };
+    }
+    // Defensive client-side narrow to the current project (cache may
+    // hold rows from a previously-selected project that haven't been
+    // overwritten yet).
+    const projectRows = all.filter(
+      (r) => r["mserp_etgtryprojid"] === projectNo
+    );
+    // Strip financing-order rows. F&O can't filter these server-side
+    // (no `not In`, no salesid → header navigation), so the cached
+    // `tyro:dv:financingSalesIds` ID set is the source of truth and
+    // we apply it here, lazily on every render.
+    const financingSet = getFinancingSalesIdSet();
+    const filtered =
+      financingSet.size > 0
+        ? projectRows.filter(
+            (r) => !financingSet.has(String(r["mserp_salesid"] ?? ""))
+          )
+        : projectRows;
     return {
       invoices: filtered,
       isFetching,
