@@ -501,9 +501,162 @@ export function BudgetSalesCard({ project }: Props) {
             value={gerceklesenKZ}
             marginPct={gerceklesenMargin}
           />
+          {/* Variance + achievement bar — Realised vs Forecast K&Z.
+              Always rendered (regardless of `open`) so the bottom-line
+              comparison is visible at a glance even when the per-section
+              breakdown is collapsed. */}
+          <VarianceFooter tahmini={tahminiKZ} gerceklesen={gerceklesenKZ} />
         </div>
       </div>
     </GlassPanel>
+  );
+}
+
+/* ─────────── Variance + achievement footer ─────────── */
+/**
+ * Two-row block summarising Realised vs Forecast K&Z:
+ *   Row 1 — "Δ Sapma": absolute USD delta + percent deviation,
+ *           sign-coloured (positive = realised better than forecast,
+ *           negative = worse). Sub-line reads "Tahminin üstünde / altında".
+ *   Row 2 — achievement bar: realised / forecast as a percent, capped
+ *           at 0–150% so a wild overshoot doesn't blow the visual but
+ *           the trailing chip still shows the true number. A vertical
+ *           tick at the 100% mark gives "hit forecast exactly" a
+ *           reference point. Bar is suppressed when the forecast K&Z
+ *           is ≤ 0 (a planned-loss project — achievement % becomes
+ *           misleading because the math flips signs).
+ */
+function VarianceFooter({
+  tahmini,
+  gerceklesen,
+}: {
+  tahmini: number;
+  gerceklesen: number;
+}) {
+  const delta = gerceklesen - tahmini;
+  // Percent deviation against the magnitude of the forecast — gives
+  // a stable "X% above/below plan" reading even when forecast is
+  // negative (planned loss).
+  const deltaPct = tahmini !== 0 ? (delta / Math.abs(tahmini)) * 100 : null;
+  const tone: Tone =
+    deltaPct == null
+      ? "neutral"
+      : deltaPct > 5
+        ? "positive"
+        : deltaPct < -5
+          ? "negative"
+          : "neutral";
+  const valueColor =
+    tone === "positive"
+      ? "text-emerald-700"
+      : tone === "negative"
+        ? "text-rose-700"
+        : "text-foreground";
+  // Achievement bar only makes sense when the forecast is profit —
+  // realised/forecast becomes a "hit my plan?" signal. With a planned
+  // loss the same ratio flips orientation (a smaller actual loss is
+  // good but produces a smaller %), so we hide the bar there.
+  const achievedPct =
+    tahmini > 0 ? (gerceklesen / tahmini) * 100 : null;
+
+  return (
+    <>
+      <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-x-3 px-3 py-2.5 bg-foreground/[0.06] items-baseline border-t border-border/40">
+        <div className="min-w-0">
+          <div className="text-[10.5px] uppercase tracking-wider font-semibold text-muted-foreground">
+            Δ Sapma
+          </div>
+          {deltaPct != null && (
+            <div className="text-[10.5px] text-muted-foreground/80 mt-0.5">
+              Tahminin {deltaPct >= 0 ? "üstünde" : "altında"}
+            </div>
+          )}
+        </div>
+        <div className="text-right">
+          <div
+            className={cn(
+              "tabular-nums font-bold text-[13px]",
+              valueColor
+            )}
+          >
+            {delta >= 0 ? "+" : "−"}
+            {formatCurrency(Math.abs(delta), "USD")}
+          </div>
+          {deltaPct != null && (
+            <div
+              className={cn(
+                "text-[11px] tabular-nums font-semibold mt-0.5",
+                valueColor
+              )}
+            >
+              {deltaPct >= 0 ? "+" : ""}
+              {deltaPct.toFixed(1)}%
+            </div>
+          )}
+        </div>
+      </div>
+      {achievedPct != null && (
+        <div className="px-3 pt-3 pb-3 border-t border-border/40 bg-foreground/[0.04]">
+          <ProgressBar pct={achievedPct} tone={tone} />
+        </div>
+      )}
+    </>
+  );
+}
+
+const TONE_BAR: Record<Tone, string> = {
+  positive: "bg-gradient-to-r from-emerald-500 to-emerald-400",
+  neutral: "bg-gradient-to-r from-slate-500 to-slate-400",
+  negative: "bg-gradient-to-r from-rose-600 to-rose-400",
+};
+
+const TONE_CHIP: Record<Tone, string> = {
+  positive: "bg-emerald-500/15 text-emerald-700",
+  neutral: "bg-slate-500/15 text-slate-700",
+  negative: "bg-rose-500/15 text-rose-700",
+};
+
+function ProgressBar({ pct, tone }: { pct: number; tone: Tone }) {
+  // Visual domain is 0–150% so a wild overshoot doesn't blow the bar
+  // but the chip on the right still shows the unclamped real value.
+  const clamped = Math.max(0, Math.min(150, pct));
+  const fill = (clamped / 150) * 100;
+  return (
+    <div className="flex items-center gap-2">
+      <div
+        className="relative flex-1 h-2.5 rounded-full bg-foreground/[0.08] ring-1 ring-foreground/10 overflow-hidden"
+        style={{ boxShadow: "inset 0 1px 2px 0 rgba(15,23,42,0.08)" }}
+        role="progressbar"
+        aria-valuemin={0}
+        aria-valuemax={150}
+        aria-valuenow={Math.round(pct)}
+      >
+        <div
+          className={cn(
+            "absolute inset-y-0 left-0 rounded-full transition-all duration-500",
+            TONE_BAR[tone]
+          )}
+          style={{
+            width: `${fill}%`,
+            boxShadow: "inset 0 1px 0 0 rgba(255,255,255,0.35)",
+          }}
+        />
+        {/* 100% mark — vertical tick for "hit forecast exactly". */}
+        <span
+          aria-hidden
+          className="absolute top-0 bottom-0 w-px bg-foreground/35"
+          style={{ left: `${(100 / 150) * 100}%` }}
+        />
+      </div>
+      <span
+        className={cn(
+          "shrink-0 text-[11px] font-semibold tabular-nums px-1.5 py-0.5 rounded-sm",
+          TONE_CHIP[tone]
+        )}
+      >
+        %{pct.toFixed(1)}
+      </span>
+    </div>
   );
 }
 
