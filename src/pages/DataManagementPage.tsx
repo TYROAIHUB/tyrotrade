@@ -7,10 +7,10 @@ import { useThemeAccent } from "@/components/layout/theme-accent";
 import { cn } from "@/lib/utils";
 import { useEntityRows } from "@/hooks/useEntityRows";
 import { getDataverseClient } from "@/lib/dataverse";
-import { getFormattedValue } from "@/lib/dataverse/formatted";
 import { readCache, writeCache } from "@/lib/storage/entityCache";
 import {
   applyByInChunked,
+  fetchFinancingOrderIds,
   fetchVesselMasterAndEnrichShipCache,
   FINANCING_PURCH_IDS_CACHE,
   FINANCING_SALES_IDS_CACHE,
@@ -422,23 +422,15 @@ export function DataManagementPage() {
         label: "Gerçekleşen Satış",
         refetch: async () => {
           const client = getDataverseClient();
-          // `mserp_etgordertype` is an Edm.Int32 option-set — a
-          // server-side `eq 'Finansman'` returns 400 with
-          // "incompatible operand types". Pull the full header
-          // narrowed to two columns and filter client-side via the
-          // `@FormattedValue` annotation (the
-          // `Prefer: odata.include-annotations="*"` header already
-          // brings it in for option-sets).
-          const result = await client.listAll<Record<string, unknown>>(
+          // Discovery + targeted filter via `fetchFinancingOrderIds`:
+          //   1. groupby → distinct option-set codes (~5-10 row)
+          //   2. eq <Finansman code> → just the financing salesids
+          // No full-table pull, no client-side filter on huge payload.
+          const ids = await fetchFinancingOrderIds(
+            client,
             ENTITY_SETS.salesTable,
-            { $select: "mserp_salesid,mserp_etgordertype" }
+            "mserp_salesid"
           );
-          const ids = result.value
-            .filter(
-              (r) => getFormattedValue(r, "mserp_etgordertype") === "Finansman"
-            )
-            .map((r) => String(r.mserp_salesid ?? "").trim())
-            .filter((s) => s.length > 0);
           writeCache(FINANCING_SALES_IDS_CACHE, {
             fetchedAt: new Date().toISOString(),
             value: ids,
@@ -446,25 +438,14 @@ export function DataManagementPage() {
         },
       },
       {
-        // Counterpart of "Finansman Hariç (Satış)" for the buy
-        // side — financing purchase orders excluded from realised
-        // purchase totals.
         label: "Gerçekleşen Satınalma",
         refetch: async () => {
           const client = getDataverseClient();
-          // Same option-set caveat as the sales step above —
-          // `mserp_etgordertype` is Edm.Int32, so we filter via
-          // the `@FormattedValue` annotation client-side.
-          const result = await client.listAll<Record<string, unknown>>(
+          const ids = await fetchFinancingOrderIds(
+            client,
             ENTITY_SETS.purchTable,
-            { $select: "mserp_purchid,mserp_etgordertype" }
+            "mserp_purchid"
           );
-          const ids = result.value
-            .filter(
-              (r) => getFormattedValue(r, "mserp_etgordertype") === "Finansman"
-            )
-            .map((r) => String(r.mserp_purchid ?? "").trim())
-            .filter((s) => s.length > 0);
           writeCache(FINANCING_PURCH_IDS_CACHE, {
             fetchedAt: new Date().toISOString(),
             value: ids,
