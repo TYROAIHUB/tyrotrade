@@ -7,6 +7,7 @@ import { useThemeAccent } from "@/components/layout/theme-accent";
 import { cn } from "@/lib/utils";
 import { useEntityRows } from "@/hooks/useEntityRows";
 import { getDataverseClient } from "@/lib/dataverse";
+import { getFormattedValue } from "@/lib/dataverse/formatted";
 import { readCache, writeCache } from "@/lib/storage/entityCache";
 import {
   applyByInChunked,
@@ -421,14 +422,21 @@ export function DataManagementPage() {
         label: "Finansman Hariç (Satış)",
         refetch: async () => {
           const client = getDataverseClient();
+          // `mserp_etgordertype` is an Edm.Int32 option-set — a
+          // server-side `eq 'Finansman'` returns 400 with
+          // "incompatible operand types". Pull the full header
+          // narrowed to two columns and filter client-side via the
+          // `@FormattedValue` annotation (the
+          // `Prefer: odata.include-annotations="*"` header already
+          // brings it in for option-sets).
           const result = await client.listAll<Record<string, unknown>>(
             ENTITY_SETS.salesTable,
-            {
-              $filter: "mserp_etgordertype eq 'Finansman'",
-              $select: "mserp_salesid",
-            }
+            { $select: "mserp_salesid,mserp_etgordertype" }
           );
           const ids = result.value
+            .filter(
+              (r) => getFormattedValue(r, "mserp_etgordertype") === "Finansman"
+            )
             .map((r) => String(r.mserp_salesid ?? "").trim())
             .filter((s) => s.length > 0);
           writeCache(FINANCING_SALES_IDS_CACHE, {
@@ -444,14 +452,17 @@ export function DataManagementPage() {
         label: "Finansman Hariç (Satınalma)",
         refetch: async () => {
           const client = getDataverseClient();
+          // Same option-set caveat as the sales step above —
+          // `mserp_etgordertype` is Edm.Int32, so we filter via
+          // the `@FormattedValue` annotation client-side.
           const result = await client.listAll<Record<string, unknown>>(
             ENTITY_SETS.purchTable,
-            {
-              $filter: "mserp_etgordertype eq 'Finansman'",
-              $select: "mserp_purchid",
-            }
+            { $select: "mserp_purchid,mserp_etgordertype" }
           );
           const ids = result.value
+            .filter(
+              (r) => getFormattedValue(r, "mserp_etgordertype") === "Finansman"
+            )
             .map((r) => String(r.mserp_purchid ?? "").trim())
             .filter((s) => s.length > 0);
           writeCache(FINANCING_PURCH_IDS_CACHE, {
