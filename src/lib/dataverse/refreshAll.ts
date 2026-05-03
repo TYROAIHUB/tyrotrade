@@ -488,7 +488,7 @@ export async function refreshAllEntities(
       // so the rows are dropped server-side rather than after the
       // fact. Step label leads with "Hariç" to make it clear we're
       // pulling these IDs to EXCLUDE, not to surface.
-      label: "Finansman Hariç (Satış)",
+      label: "Gerçekleşen Satış",
       run: async () => {
         // `mserp_etgordertype` is an Edm.Int32 option-set on the
         // sales header — a server-side `eq 'Finansman'` 400's with
@@ -521,7 +521,7 @@ export async function refreshAllEntities(
       // `mserp_tryaipurchtableentities`. Their invoice rows are
       // excluded from realised-purchase math via the same
       // `not In(...)` mechanism.
-      label: "Finansman Hariç (Satınalma)",
+      label: "Gerçekleşen Satınalma",
       run: async () => {
         // Same option-set caveat as the sales step above —
         // `mserp_etgordertype` is Edm.Int32, so we filter via the
@@ -543,7 +543,11 @@ export async function refreshAllEntities(
       },
     },
     {
-      label: "Gerçekleşen Satınalma",
+      // Renamed from "Gerçekleşen Satınalma" (which now labels the
+      // financing-exclusion step above). This step pulls the actual
+      // realised purchase invoice rows the BudgetSalesCard and the
+      // inspector both read from.
+      label: "Satınalma Faturaları",
       run: async () => {
         // Realised project purchases — vendor invoice transactions
         // joined via the parent purchase table's project FK

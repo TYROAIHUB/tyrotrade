@@ -419,7 +419,7 @@ export function DataManagementPage() {
         // server-side. Label leads with "Hariç" so the user reads
         // it as "we're EXCLUDING financing", not "we're fetching
         // financing".
-        label: "Finansman Hariç (Satış)",
+        label: "Gerçekleşen Satış",
         refetch: async () => {
           const client = getDataverseClient();
           // `mserp_etgordertype` is an Edm.Int32 option-set — a
@@ -449,7 +449,7 @@ export function DataManagementPage() {
         // Counterpart of "Finansman Hariç (Satış)" for the buy
         // side — financing purchase orders excluded from realised
         // purchase totals.
-        label: "Finansman Hariç (Satınalma)",
+        label: "Gerçekleşen Satınalma",
         refetch: async () => {
           const client = getDataverseClient();
           // Same option-set caveat as the sales step above —
@@ -480,13 +480,17 @@ export function DataManagementPage() {
       // `actualExpense` useEntityRows hook above (effect refetches
       // whenever `selectedProjId` changes).
       {
+        // Renamed from "Gerçekleşen Satınalma" — the financing-list
+        // step above now owns that label. This step pulls the
+        // actual realised purchase invoice rows.
+        //
         // Realised project purchases — vendor invoice transactions.
         // Same chunked-IN pattern; FK is `mserp_purchtable_etgtryprojid`
         // (purchtable_ prefix, NOT the standard `mserp_etgtryprojid`).
         // Intercompany rows excluded — see NON_INTERCOMPANY_FILTER.
         // Financing-order purchase rows excluded server-side via
         // `not In(mserp_purchid, ...)`.
-        label: "Gerçekleşen Satınalma",
+        label: "Satınalma Faturaları",
         refetch: async () => {
           const client = getDataverseClient();
           const projids = readProjids();
