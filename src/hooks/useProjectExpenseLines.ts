@@ -44,13 +44,6 @@ export interface UseProjectExpenseLinesReturn {
   isFetching: boolean;
   /** ISO timestamp of the most recent successful chain completion. */
   fetchedAt: string | null;
-  /** Number of distinct inventory dimension IDs the project's
-   *  inventdimb rows pointed to (Step 0 result). Useful for
-   *  diagnostics ("project resolved to 3 inventdimid keys"). */
-  inventDimIdCount: number;
-  /** Number of distinct expense numbers the project's distribution
-   *  rows pointed to (Step 1 result). */
-  expenseNumCount: number;
   /** Last error message, when the chain failed. */
   error: string | null;
 }
@@ -96,15 +89,11 @@ export function useProjectExpenseLines(
   const [rows, setRows] = React.useState<Record<string, unknown>[]>([]);
   const [isFetching, setIsFetching] = React.useState(false);
   const [fetchedAt, setFetchedAt] = React.useState<string | null>(null);
-  const [inventDimIdCount, setInventDimIdCount] = React.useState(0);
-  const [expenseNumCount, setExpenseNumCount] = React.useState(0);
   const [error, setError] = React.useState<string | null>(null);
 
   React.useEffect(() => {
     if (!projectNo) {
       setRows([]);
-      setInventDimIdCount(0);
-      setExpenseNumCount(0);
       setError(null);
       return;
     }
@@ -160,12 +149,10 @@ export function useProjectExpenseLines(
               .filter((s): s is string => s.length > 0)
           ),
         ];
-        setInventDimIdCount(inventDimIds.length);
 
         if (inventDimIds.length === 0) {
           // No inventdim link → no distribution rows → no expenses.
           setRows([]);
-          setExpenseNumCount(0);
           setFetchedAt(new Date().toISOString());
           return;
         }
@@ -196,7 +183,6 @@ export function useProjectExpenseLines(
               .filter((s): s is string => s.length > 0)
           ),
         ];
-        setExpenseNumCount(expensenums.length);
 
         if (expensenums.length === 0) {
           // Distribution rows existed but carried no expensenums.
@@ -262,8 +248,6 @@ export function useProjectExpenseLines(
     rows,
     isFetching,
     fetchedAt,
-    inventDimIdCount,
-    expenseNumCount,
     error,
   };
 }

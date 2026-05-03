@@ -9,7 +9,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { useThemeAccent } from "@/components/layout/theme-accent";
 import { useProjects } from "@/hooks/useProjects";
-import { formatDate } from "@/lib/format";
+import { formatDate, formatRelativeTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import type { Project, VesselMilestones } from "@/lib/dataverse/entities";
 
@@ -72,16 +72,6 @@ function buildEvents(projects: Project[], now: Date): EventItem[] {
   return out;
 }
 
-function relativeTime(date: Date, now: Date): string {
-  const ms = date.getTime() - now.getTime();
-  const days = Math.round(ms / (1000 * 60 * 60 * 24));
-  if (days === 0) return "bugün";
-  if (days === 1) return "yarın";
-  if (days === -1) return "dün";
-  if (days > 0) return `${days} gün sonra`;
-  return `${Math.abs(days)} gün önce`;
-}
-
 /**
  * Premium notification button + popover for the topbar.
  *
@@ -133,15 +123,19 @@ export function NotificationButton() {
         .sort((a, b) => a.date.getTime() - b.date.getTime()),
     [all, upcomingCutoff, now]
   );
+  // Fallback only computed when the in-window list is empty. Booled
+  // out so the memo's dep array doesn't churn on every length flip
+  // (in practice it's almost always 0/0 or N/N anyway).
+  const shouldUseFallback = upcomingInWindow.length === 0;
   const upcomingFallback = React.useMemo(() => {
-    if (upcomingInWindow.length > 0) return [];
+    if (!shouldUseFallback) return [];
     return all
       .filter((e) => e.kind === "upcoming" && e.date.getTime() > now.getTime())
       .sort((a, b) => a.date.getTime() - b.date.getTime())
       .slice(0, 8);
-  }, [all, upcomingInWindow.length, now]);
+  }, [all, shouldUseFallback, now]);
   const isUsingUpcomingFallback =
-    upcomingInWindow.length === 0 && upcomingFallback.length > 0;
+    shouldUseFallback && upcomingFallback.length > 0;
   const upcoming = isUsingUpcomingFallback
     ? upcomingFallback
     : upcomingInWindow.slice(0, 8);
@@ -408,7 +402,7 @@ function EventRow({
               className="shrink-0 px-1.5 py-[1.5px] rounded-full text-[10.5px] font-semibold tabular-nums"
               style={{ backgroundColor: timePillBg, color: timePillFg }}
             >
-              {relativeTime(event.date, now)}
+              {formatRelativeTime(event.date, now)}
             </span>
           </div>
           {/* Bottom meta row: identity + absolute date. Each piece

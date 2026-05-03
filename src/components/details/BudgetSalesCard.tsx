@@ -256,6 +256,8 @@ export function BudgetSalesCard({ project }: Props) {
     (s, l) => s + (l.isPriceDiff ? -l.totalUsd : l.totalUsd),
     0
   );
+  // Net price-diff outweighed raw expenses → row reads as a credit.
+  const isGiderNetCredit = gerceklesenGiderUsd < 0;
 
   /* ─────────── P&L resolutions ─────────── */
   const tahminiKZ = tahminiSatisUsd - tahminiAlimUsd - tahminiGiderUsd;
@@ -452,12 +454,8 @@ export function BudgetSalesCard({ project }: Props) {
                 // When price-diff lines outweigh raw expenses the net
                 // becomes negative — flip the sign on the headline so
                 // the row reads "+$X" green instead of "-$-X".
-                value={
-                  gerceklesenGiderUsd < 0
-                    ? `+${formatCurrency(Math.abs(gerceklesenGiderUsd), "USD")}`
-                    : `-${formatCurrency(gerceklesenGiderUsd, "USD")}`
-                }
-                sign={gerceklesenGiderUsd < 0 ? "positive" : "negative"}
+                value={`${isGiderNetCredit ? "+" : "-"}${formatCurrency(Math.abs(gerceklesenGiderUsd), "USD")}`}
+                sign={isGiderNetCredit ? "positive" : "negative"}
                 disabled={gerceklesenExpenseLines.length === 0}
                 faded={gerceklesenGiderUsd === 0}
               >
@@ -689,6 +687,32 @@ function subForRealizedLine(l: {
 
 type Tone = "positive" | "negative" | "neutral";
 
+/** Tailwind class for the headline value column in `KZFooterRow`. */
+const VALUE_TEXT_CLASS: Record<Tone, string> = {
+  positive: "text-emerald-700",
+  negative: "text-rose-700",
+  // Neutral is also the muted (Tahmini) tone — slate-600 keeps the
+  // total legible while ceding the headline emerald/rose to the
+  // realised row directly below.
+  neutral: "text-slate-600",
+};
+
+/** Margin-pill colour pair (text + bg) used in `KZFooterRow`. */
+const MARGIN_PILL_STYLE: Record<Tone, { color: string; bg: string }> = {
+  positive: {
+    color: "rgb(4 120 87)", // emerald-700
+    bg: "rgba(16,185,129,0.12)",
+  },
+  negative: {
+    color: "rgb(159 18 57)", // rose-700
+    bg: "rgba(244,63,94,0.12)",
+  },
+  neutral: {
+    color: "rgb(71 85 105)", // slate-600
+    bg: "rgba(100,116,139,0.12)",
+  },
+};
+
 function SectionHeader({ children }: { children: React.ReactNode }) {
   return (
     <div className="px-3 py-1.5 bg-foreground/[0.03] border-t border-border/30 first:border-t-0 text-[9.5px] font-bold uppercase tracking-[0.14em] text-foreground/70">
@@ -834,40 +858,26 @@ function KZFooterRow({
    *  (which keeps its value-driven emerald/rose colouring). */
   muted?: boolean;
 }) {
-  const positive = value > 0;
-  const negative = value < 0;
+  // Margin tone — muted rows always neutral; otherwise derived from
+  // the margin %. ±5% is the dead-band that reads as "no signal".
   const marginTone: Tone = muted
     ? "neutral"
-    : marginPct == null
+    : marginPct == null || (marginPct >= -5 && marginPct <= 5)
       ? "neutral"
       : marginPct > 5
         ? "positive"
-        : marginPct < -5
-          ? "negative"
-          : "neutral";
-  // Headline value colour — muted rows force a strong grey so the
-  // forecast K&Z total can't be confused with the realised K&Z
-  // sitting right below it (which keeps emerald/rose). Sign is still
-  // legible from the leading +/− and the bold tabular-nums weight.
-  const valueColor = muted
-    ? "text-slate-600"
-    : positive
-      ? "text-emerald-700"
-      : negative
-        ? "text-rose-700"
-        : "text-foreground";
-  const marginColor =
-    marginTone === "positive"
-      ? "rgb(4 120 87)"
-      : marginTone === "negative"
-        ? "rgb(159 18 57)"
-        : "rgb(71 85 105)";
-  const marginBg =
-    marginTone === "positive"
-      ? "rgba(16,185,129,0.12)"
-      : marginTone === "negative"
-        ? "rgba(244,63,94,0.12)"
-        : "rgba(100,116,139,0.12)";
+        : "negative";
+  // Headline value tone — muted rows force grey so the forecast K&Z
+  // total can't be confused with the realised K&Z below it. Sign is
+  // still legible from the leading +/− and bold tabular-nums weight.
+  const valueTone: Tone = muted
+    ? "neutral"
+    : value > 0
+      ? "positive"
+      : value < 0
+        ? "negative"
+        : "neutral";
+  const marginPill = MARGIN_PILL_STYLE[marginTone];
   return (
     <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-x-3 px-3 py-2.5 text-[11.5px] bg-foreground/[0.04] items-baseline border-t border-border/40">
       <div className="min-w-0">
@@ -877,14 +887,17 @@ function KZFooterRow({
         {marginPct != null && (
           <span
             className="inline-flex items-center mt-1 px-2 py-[3px] rounded-md text-[11.5px] font-semibold tabular-nums tracking-tight"
-            style={{ color: marginColor, backgroundColor: marginBg }}
+            style={{ color: marginPill.color, backgroundColor: marginPill.bg }}
           >
             {marginLabel} %{marginPct.toFixed(1)}
           </span>
         )}
       </div>
       <div
-        className={cn("text-right tabular-nums text-[13px] font-bold", valueColor)}
+        className={cn(
+          "text-right tabular-nums text-[13px] font-bold",
+          VALUE_TEXT_CLASS[valueTone]
+        )}
       >
         {value >= 0 ? "+" : "−"}
         {formatCurrency(Math.abs(value), "USD")}

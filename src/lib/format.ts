@@ -68,3 +68,17 @@ export const formatDateShort = (iso: string | null | undefined): string => {
 };
 
 export const trSort = trCollator.compare;
+
+/** Turkish relative-time helper for milestone/event chips:
+ *  "bugün", "yarın", "dün", "X gün sonra", "X gün önce".
+ *  Day delta is rounded so a few-hour drift around midnight doesn't
+ *  bump the label by a whole bucket. */
+export const formatRelativeTime = (date: Date, now: Date): string => {
+  const ms = date.getTime() - now.getTime();
+  const days = Math.round(ms / (1000 * 60 * 60 * 24));
+  if (days === 0) return "bugün";
+  if (days === 1) return "yarın";
+  if (days === -1) return "dün";
+  if (days > 0) return `${days} gün sonra`;
+  return `${Math.abs(days)} gün önce`;
+};

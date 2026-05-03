@@ -2,7 +2,7 @@ import * as React from "react";
 import { useNavigate } from "react-router-dom";
 import { CircleCheck, Clock } from "lucide-react";
 import { GlassPanel } from "@/components/glass/GlassPanel";
-import { formatDate } from "@/lib/format";
+import { formatDate, formatRelativeTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import type { Project, VesselMilestones } from "@/lib/dataverse/entities";
 
@@ -65,16 +65,6 @@ function buildEvents(projects: Project[], now: Date): EventItem[] {
     }
   }
   return events;
-}
-
-function relativeTime(date: Date, now: Date): string {
-  const ms = date.getTime() - now.getTime();
-  const days = Math.round(ms / (1000 * 60 * 60 * 24));
-  if (days === 0) return "bugün";
-  if (days === 1) return "yarın";
-  if (days === -1) return "dün";
-  if (days > 0) return `${days} gün sonra`;
-  return `${Math.abs(days)} gün önce`;
 }
 
 const STAGE_COLORS: Record<string, { bg: string; fg: string }> = {
@@ -316,7 +306,7 @@ function EventRow({
             </span>
             <span className="text-muted-foreground/70">
               {" "}
-              · {relativeTime(event.date, now)}
+              · {formatRelativeTime(event.date, now)}
             </span>
           </div>
         </div>
