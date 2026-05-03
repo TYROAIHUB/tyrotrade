@@ -1,7 +1,6 @@
 import { getDataverseClient, type DataverseClient } from "@/lib/dataverse";
 import type { ODataQuery } from "@/lib/dataverse/odata";
 import { readCache, writeCache } from "@/lib/storage/entityCache";
-import { getFormattedValue } from "@/lib/dataverse/formatted";
 import {
   PROJECT_COLUMNS,
   PROJECT_LINE_COLUMNS,
@@ -270,42 +269,43 @@ export function readFinancingIds(cacheKey: string): string[] {
   return cached?.value ?? [];
 }
 
+/** Numeric option-set code for `mserp_etgordertype === "Finansman"`
+ *  on this Tiryaki tenant — verified against the live Dataverse
+ *  instance by probing both `mserp_tryaisalestableentities` and
+ *  `mserp_tryaipurchtableentities` headers. Both use the same
+ *  option-set vocabulary; code 200000007 carries the FormattedValue
+ *  "Finance sales" (which the F&O TR UI translates to "Finansman").
+ *
+ *  Hardcoded because:
+ *  - Discovery (groupby) doesn't return the FormattedValue annotation
+ *    on F&O virtual-entity aggregate responses, so we'd otherwise
+ *    have to probe each distinct code separately.
+ *  - The metadata is stable enough to commit to — if F&O admins add
+ *    or renumber order types, this constant is the one place to
+ *    update.
+ *
+ *  If a future schema change moves the code, watch for empty
+ *  realised-sales / realised-purchase totals in the data inspector
+ *  and re-verify with a `$top=1` probe via DevTools. */
+const FINANCING_ORDER_TYPE_CODE = 200000007;
+
 /**
- * Discover the numeric option-set code for `mserp_etgordertype ===
- * "Finansman"` on `entitySet`'s header, then fetch ONLY those rows'
- * `idField` (`mserp_salesid` or `mserp_purchid`). Two server-side
- * requests:
+ * Fetch every salesid / purchid on `entitySet`'s header whose
+ * `mserp_etgordertype` matches the financing code. Single
+ * server-side filter — fast even on 100K-row tables because the
+ * server filters before paging.
  *
- *   1. `$apply=groupby((mserp_etgordertype), aggregate($count))`
- *      returns the distinct option-set codes — typically a handful
- *      of rows — each with the `@FormattedValue` annotation.
- *      We match "Finansman" by its TR label so the numeric code can
- *      differ per tenant without breaking the lookup.
- *   2. `$filter=mserp_etgordertype eq <code> &$select=<idField>`
- *      narrowed to the one ID column — fast even on 100K-row
- *      headers because the server filters before paging.
- *
- * Replaces the older "pull whole header → filter client-side via
- * FormattedValue" pattern that took minutes on this tenant. Returns
- * `[]` when no row carries the "Finansman" label or when discovery
- * fails (caller skips the exclusion filter, totals fall back to the
- * pre-feature behaviour).
+ * Returns `[]` only when the tenant truly carries no financing
+ * orders (or when the hardcoded code has drifted out of sync —
+ * see `FINANCING_ORDER_TYPE_CODE` above).
  */
 export async function fetchFinancingOrderIds(
   client: DataverseClient,
   entitySet: string,
   idField: "mserp_salesid" | "mserp_purchid"
 ): Promise<string[]> {
-  const discovery = await client.list<Record<string, unknown>>(entitySet, {
-    $apply: "groupby((mserp_etgordertype),aggregate($count as cnt))",
-  });
-  const finansmanRow = discovery.value.find(
-    (r) => getFormattedValue(r, "mserp_etgordertype") === "Finansman"
-  );
-  const code = finansmanRow?.mserp_etgordertype;
-  if (code == null) return [];
   const result = await client.listAll<Record<string, unknown>>(entitySet, {
-    $filter: `mserp_etgordertype eq ${code}`,
+    $filter: `mserp_etgordertype eq ${FINANCING_ORDER_TYPE_CODE}`,
     $select: idField,
   });
   return result.value
@@ -536,22 +536,14 @@ export async function refreshAllEntities(
         // `mserp_etgordertype` is an Edm.Int32 option-set on the
         // sales header — a server-side `eq 'Finansman'` 400's with
         // "incompatible operand types". We don't know the numeric
-        // code for "Finansman" up front (and it could differ per
-        // tenant after metadata edits), so we pull the whole header
-        // narrowed to two columns and filter client-side via the
-        // `@FormattedValue` annotation that the
-        // `Prefer: odata.include-annotations="*"` request header
-        // already brings in for option-sets.
-        const result = await client.listAll<Record<string, unknown>>(
+        // Hardcoded financing code (200000007) + targeted filter
+        // via `fetchFinancingOrderIds`. One small server-side
+        // request, no full-header pull.
+        const ids = await fetchFinancingOrderIds(
+          client,
           ENTITY_SETS.salesTable,
-          { $select: "mserp_salesid,mserp_etgordertype" }
+          "mserp_salesid"
         );
-        const ids = result.value
-          .filter(
-            (r) => getFormattedValue(r, "mserp_etgordertype") === "Finansman"
-          )
-          .map((r) => String(r.mserp_salesid ?? "").trim())
-          .filter((s) => s.length > 0);
         writeCache(FINANCING_SALES_IDS_CACHE, {
           fetchedAt: new Date().toISOString(),
           value: ids,
@@ -559,26 +551,18 @@ export async function refreshAllEntities(
       },
     },
     {
-      // Counterpart of "Finansman Hariç (Satış)" for the buy side:
+      // Counterpart of "Gerçekleşen Satış" for the buy side:
       // vendor purchase orders flagged as financing on
       // `mserp_tryaipurchtableentities`. Their invoice rows are
       // excluded from realised-purchase math via the same
       // `not In(...)` mechanism.
       label: "Gerçekleşen Satınalma",
       run: async () => {
-        // Same option-set caveat as the sales step above —
-        // `mserp_etgordertype` is Edm.Int32, so we filter via the
-        // `@FormattedValue` annotation client-side.
-        const result = await client.listAll<Record<string, unknown>>(
+        const ids = await fetchFinancingOrderIds(
+          client,
           ENTITY_SETS.purchTable,
-          { $select: "mserp_purchid,mserp_etgordertype" }
+          "mserp_purchid"
         );
-        const ids = result.value
-          .filter(
-            (r) => getFormattedValue(r, "mserp_etgordertype") === "Finansman"
-          )
-          .map((r) => String(r.mserp_purchid ?? "").trim())
-          .filter((s) => s.length > 0);
         writeCache(FINANCING_PURCH_IDS_CACHE, {
           fetchedAt: new Date().toISOString(),
           value: ids,
