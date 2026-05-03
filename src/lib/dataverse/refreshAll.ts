@@ -270,6 +270,49 @@ export function readFinancingIds(cacheKey: string): string[] {
   return cached?.value ?? [];
 }
 
+/**
+ * Discover the numeric option-set code for `mserp_etgordertype ===
+ * "Finansman"` on `entitySet`'s header, then fetch ONLY those rows'
+ * `idField` (`mserp_salesid` or `mserp_purchid`). Two server-side
+ * requests:
+ *
+ *   1. `$apply=groupby((mserp_etgordertype), aggregate($count))`
+ *      returns the distinct option-set codes — typically a handful
+ *      of rows — each with the `@FormattedValue` annotation.
+ *      We match "Finansman" by its TR label so the numeric code can
+ *      differ per tenant without breaking the lookup.
+ *   2. `$filter=mserp_etgordertype eq <code> &$select=<idField>`
+ *      narrowed to the one ID column — fast even on 100K-row
+ *      headers because the server filters before paging.
+ *
+ * Replaces the older "pull whole header → filter client-side via
+ * FormattedValue" pattern that took minutes on this tenant. Returns
+ * `[]` when no row carries the "Finansman" label or when discovery
+ * fails (caller skips the exclusion filter, totals fall back to the
+ * pre-feature behaviour).
+ */
+export async function fetchFinancingOrderIds(
+  client: DataverseClient,
+  entitySet: string,
+  idField: "mserp_salesid" | "mserp_purchid"
+): Promise<string[]> {
+  const discovery = await client.list<Record<string, unknown>>(entitySet, {
+    $apply: "groupby((mserp_etgordertype),aggregate($count as cnt))",
+  });
+  const finansmanRow = discovery.value.find(
+    (r) => getFormattedValue(r, "mserp_etgordertype") === "Finansman"
+  );
+  const code = finansmanRow?.mserp_etgordertype;
+  if (code == null) return [];
+  const result = await client.listAll<Record<string, unknown>>(entitySet, {
+    $filter: `mserp_etgordertype eq ${code}`,
+    $select: idField,
+  });
+  return result.value
+    .map((r) => String(r[idField] ?? "").trim())
+    .filter((s) => s.length > 0);
+}
+
 function readProjids(): string[] {
   const cached = readCache<Record<string, unknown>>(ENTITY_SETS.projects);
   return (cached?.value ?? [])
