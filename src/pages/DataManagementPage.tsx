@@ -11,8 +11,11 @@ import { readCache, writeCache } from "@/lib/storage/entityCache";
 import {
   applyByInChunked,
   fetchVesselMasterAndEnrichShipCache,
+  FINANCING_PURCH_IDS_CACHE,
+  FINANCING_SALES_IDS_CACHE,
   listAllByInChunked,
   NON_INTERCOMPANY_FILTER,
+  readFinancingIds,
 } from "@/lib/dataverse/refreshAll";
 import {
   EntityRowsTable,
@@ -63,6 +66,12 @@ const ENTITY_SETS = {
   // Replaced earlier salesline entity which mostly carried the same data
   // but in unposted form; invoice trans are the realised "actual" sales.
   sales: "mserp_tryaicustinvoicetransentities",
+  // Sales / purchase order header tables — joined to invoice trans
+  // rows on `mserp_salesid` / `mserp_purchid` to identify financing
+  // (mserp_etgordertype === 'Finansman') orders, whose invoice rows
+  // are excluded from realised totals.
+  salesTable: "mserp_tryaisalestableentities",
+  purchTable: "mserp_tryaipurchtableentities",
   // Vessel master — joined to ship rows via `mserp_vessel` (RecID)
   // → `mserp_vesseltable_recid` to enrich each ship-relation row
   // with a real vessel name + IMO. The fetch + ship-cache
@@ -81,6 +90,27 @@ type ChildTabKey =
   | "actualExpense"
   | "sales"
   | "purchase";
+
+/** Build a chunked `not In(field, ...)` clause for excluding a list
+ *  of IDs (typically the financing-order IDs) from a server-side
+ *  filter. Returns `null` when the exclusion list is empty so the
+ *  caller can skip the splice. Mirrors the helper in `refreshAll.ts`
+ *  so this page's parallel refresh chain applies the same exclusion
+ *  the auto-refresh chain does. */
+function buildNotInClause(field: string, ids: string[]): string | null {
+  if (ids.length === 0) return null;
+  const CHUNK = 50;
+  const parts: string[] = [];
+  for (let i = 0; i < ids.length; i += CHUNK) {
+    const slice = ids.slice(i, i + CHUNK);
+    parts.push(
+      `not Microsoft.Dynamics.CRM.In(PropertyName='${field}',PropertyValues=[${slice
+        .map((v) => `'${v}'`)
+        .join(",")}])`
+    );
+  }
+  return `(${parts.join(" and ")})`;
+}
 
 export function DataManagementPage() {
   const [topTab, setTopTab] = React.useState<TopTabKey>("projects");
@@ -192,17 +222,30 @@ export function DataManagementPage() {
   // needed. Sorted by invoice date desc so the table reads newest-
   // first. Effect below auto-refetches when the user picks a different
   // project.
+  const salesQuery = React.useMemo(() => {
+    if (!selectedProjId) return { $top: 0 };
+    // Intercompany rows excluded — see NON_INTERCOMPANY_FILTER.
+    // Financing-order invoice rows excluded via not-In on
+    // mserp_salesid so this tab matches the headline P&L card +
+    // composer's salesActualUsd, which both apply the same filter.
+    const financingSalesIds = readFinancingIds(FINANCING_SALES_IDS_CACHE);
+    const notFinancing = buildNotInClause(
+      "mserp_salesid",
+      financingSalesIds
+    );
+    const baseFilter = `mserp_etgtryprojid eq '${selectedProjId}' and (${NON_INTERCOMPANY_FILTER})`;
+    return {
+      $filter: notFinancing
+        ? `${baseFilter} and ${notFinancing}`
+        : baseFilter,
+      $select: SALES_COLUMNS.join(","),
+      $orderby: "mserp_invoicedate desc",
+      $count: true,
+    };
+  }, [selectedProjId]);
   const sales = useEntityRows<Record<string, unknown>>({
     entitySet: ENTITY_SETS.sales,
-    query: selectedProjId
-      ? {
-          // Intercompany rows excluded — see NON_INTERCOMPANY_FILTER.
-          $filter: `mserp_etgtryprojid eq '${selectedProjId}' and (${NON_INTERCOMPANY_FILTER})`,
-          $select: SALES_COLUMNS.join(","),
-          $orderby: "mserp_invoicedate desc",
-          $count: true,
-        }
-      : { $top: 0 },
+    query: salesQuery,
   });
 
   // Auto-fetch per-selected-project sales when the project changes.
@@ -367,6 +410,53 @@ export function DataManagementPage() {
           });
         },
       },
+      {
+        // Pull the list of sales orders flagged as "Finansman" on
+        // their header so the next steps (sales aggregate, monthly
+        // sales, per-project invoice fetch) can chain a `not In(...)`
+        // clause and exclude their invoice rows from realised totals.
+        label: "Finansman Satış Siparişleri",
+        refetch: async () => {
+          const client = getDataverseClient();
+          const result = await client.listAll<Record<string, unknown>>(
+            ENTITY_SETS.salesTable,
+            {
+              $filter: "mserp_etgordertype eq 'Finansman'",
+              $select: "mserp_salesid",
+            }
+          );
+          const ids = result.value
+            .map((r) => String(r.mserp_salesid ?? "").trim())
+            .filter((s) => s.length > 0);
+          writeCache(FINANCING_SALES_IDS_CACHE, {
+            fetchedAt: new Date().toISOString(),
+            value: ids,
+          });
+        },
+      },
+      {
+        // Counterpart of "Finansman Satış Siparişleri" for the buy
+        // side — financing purchase orders excluded from realised
+        // purchase totals.
+        label: "Finansman Satınalma Siparişleri",
+        refetch: async () => {
+          const client = getDataverseClient();
+          const result = await client.listAll<Record<string, unknown>>(
+            ENTITY_SETS.purchTable,
+            {
+              $filter: "mserp_etgordertype eq 'Finansman'",
+              $select: "mserp_purchid",
+            }
+          );
+          const ids = result.value
+            .map((r) => String(r.mserp_purchid ?? "").trim())
+            .filter((s) => s.length > 0);
+          writeCache(FINANCING_PURCH_IDS_CACHE, {
+            fetchedAt: new Date().toISOString(),
+            value: ids,
+          });
+        },
+      },
       // "Gerçekleşen Gider" intentionally OUT of the bulk refresh.
       // Granular distribution lines per project — the tenant-wide
       // payload pushed the localStorage cache over its quota when
@@ -380,10 +470,20 @@ export function DataManagementPage() {
         // Same chunked-IN pattern; FK is `mserp_purchtable_etgtryprojid`
         // (purchtable_ prefix, NOT the standard `mserp_etgtryprojid`).
         // Intercompany rows excluded — see NON_INTERCOMPANY_FILTER.
+        // Financing-order purchase rows excluded server-side via
+        // `not In(mserp_purchid, ...)`.
         label: "Gerçekleşen Satınalma",
         refetch: async () => {
           const client = getDataverseClient();
           const projids = readProjids();
+          const financingPurchIds = readFinancingIds(FINANCING_PURCH_IDS_CACHE);
+          const notFinancing = buildNotInClause(
+            "mserp_purchid",
+            financingPurchIds
+          );
+          const extra = notFinancing
+            ? `${NON_INTERCOMPANY_FILTER} and ${notFinancing}`
+            : NON_INTERCOMPANY_FILTER;
           const result = await listAllByInChunked<Record<string, unknown>>(
             client,
             ENTITY_SETS.purchase,
@@ -394,7 +494,7 @@ export function DataManagementPage() {
               $count: true,
             },
             undefined,
-            NON_INTERCOMPANY_FILTER
+            extra
           );
           writeCache(ENTITY_SETS.purchase, {
             fetchedAt: new Date().toISOString(),
@@ -413,13 +513,24 @@ export function DataManagementPage() {
         refetch: async () => {
           const client = getDataverseClient();
           const projids = readProjids();
+          const financingSalesIds = readFinancingIds(FINANCING_SALES_IDS_CACHE);
+          const notFinancing = buildNotInClause(
+            "mserp_salesid",
+            financingSalesIds
+          );
           const result = await applyByInChunked<Record<string, unknown>>(
             client,
             "mserp_tryaicustinvoicetransentities",
             "mserp_etgtryprojid",
             projids,
-            (inClause) =>
-              `filter((${inClause}) and (${NON_INTERCOMPANY_FILTER}))/groupby((mserp_etgtryprojid,mserp_currencycode),aggregate(mserp_lineamount with sum as total,$count as cnt))`
+            (inClause) => {
+              const where = [
+                `(${inClause})`,
+                `(${NON_INTERCOMPANY_FILTER})`,
+              ];
+              if (notFinancing) where.push(notFinancing);
+              return `filter(${where.join(" and ")})/groupby((mserp_etgtryprojid,mserp_currencycode),aggregate(mserp_lineamount with sum as total,$count as cnt))`;
+            }
           );
           writeCache("salesAggregateByProject", {
             fetchedAt: new Date().toISOString(),
@@ -445,15 +556,24 @@ export function DataManagementPage() {
           }
           const all: Record<string, unknown>[] = [];
           let totalCount: number | undefined;
+          const financingSalesIds = readFinancingIds(FINANCING_SALES_IDS_CACHE);
+          const notFinancing = buildNotInClause(
+            "mserp_salesid",
+            financingSalesIds
+          );
           for (let i = 0; i < projids.length; i += 100) {
             const chunk = projids.slice(i, i + 100);
             const inClause = `Microsoft.Dynamics.CRM.In(PropertyName='mserp_etgtryprojid',PropertyValues=[${chunk
               .map((p) => `'${p}'`)
               .join(",")}])`;
+            const baseFilter = `${inClause} and mserp_currencycode eq 'USD' and (${NON_INTERCOMPANY_FILTER})`;
+            const $filter = notFinancing
+              ? `${baseFilter} and ${notFinancing}`
+              : baseFilter;
             const result = await client.listAll<Record<string, unknown>>(
               "mserp_tryaicustinvoicetransentities",
               {
-                $filter: `${inClause} and mserp_currencycode eq 'USD' and (${NON_INTERCOMPANY_FILTER})`,
+                $filter,
                 $select:
                   "mserp_etgtryprojid,mserp_invoicedate,mserp_lineamount",
                 $count: true,
